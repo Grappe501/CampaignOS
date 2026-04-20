@@ -1,7 +1,12 @@
 import type { ReactNode } from 'react'
 import type { CampaignProfile } from '../../hooks/useProfile'
+import type {
+  DistrictOfficialsMap,
+  PublicOfficialEntry,
+} from '../../lib/api/publicOfficials'
 import type { MatchedVoterDisplayRow } from '../../lib/voterMatch'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../../brand/chrisJonesForCongress'
+import ProfilePhotoUpload from './ProfilePhotoUpload'
 
 function display(val: unknown, fallback: string) {
   const s = val != null ? String(val).trim() : ''
@@ -32,14 +37,72 @@ function MetaLine({ label, value }: { label: string; value: string }) {
   )
 }
 
+function DistrictOfficialLine({
+  label,
+  districtText,
+  official,
+  officialsLoading,
+  onOpenOfficial,
+}: {
+  label: string
+  districtText: string
+  official: PublicOfficialEntry | null | undefined
+  officialsLoading: boolean
+  onOpenOfficial?: (o: PublicOfficialEntry) => void
+}) {
+  return (
+    <div className="dash-header-meta-line dash-header-district-line">
+      <span className="dash-header-meta-k">{label}</span>
+      <span className="dash-header-meta-v dash-header-district-value">
+        <span className="dash-district-num">{districtText}</span>
+        {official && onOpenOfficial ? (
+          <>
+            <span className="dash-district-sep" aria-hidden>
+              {' '}
+              ·{' '}
+            </span>
+            <button
+              type="button"
+              className="dash-official-name-link"
+              onClick={() => onOpenOfficial(official)}
+            >
+              {official.name}
+            </button>
+          </>
+        ) : null}
+        {officialsLoading && !official ? (
+          <span className="dash-official-loading"> · …</span>
+        ) : null}
+      </span>
+    </div>
+  )
+}
+
 export default function DashboardHeader({
   profile,
   email,
   matchedVoter,
+  onProfileRefresh,
+  hdWorkspace,
+  onHdWorkspaceChange,
+  districtOfficials,
+  headerOfficials,
+  officialsLoading = false,
+  onOpenOfficial,
 }: {
   profile: CampaignProfile | null
   email?: string | null
   matchedVoter?: MatchedVoterDisplayRow | null
+  onProfileRefresh?: () => void
+  /** Wide (HD) canvas — mirrored in the right workspace dock on large screens. */
+  hdWorkspace?: boolean
+  onHdWorkspaceChange?: (wide: boolean) => void
+  /** U.S. House, state senate, state house from Google Civic (matched to offices). */
+  districtOfficials?: DistrictOfficialsMap | null
+  /** Full merged list (districts first, then remaining officials) for header density. */
+  headerOfficials?: PublicOfficialEntry[]
+  officialsLoading?: boolean
+  onOpenOfficial?: (official: PublicOfficialEntry) => void
 }) {
   const fullName = matchedVoter
     ? `${matchedVoter.name_first} ${matchedVoter.name_last}`.trim()
@@ -52,6 +115,15 @@ export default function DashboardHeader({
       ? '—'
       : pathLabel.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 
+  const profilePhoto = profile?.profile_photo_url
+    ? String(profile.profile_photo_url).trim()
+    : ''
+  const hasCustomPhoto = Boolean(profilePhoto)
+  const avatarSrc =
+    profilePhoto || CHRIS_JONES_FOR_CONGRESS_PUBLIC.assets.candidateHeadshotUrl
+  const profileId =
+    profile?.id != null && profile.id !== '' ? String(profile.id) : undefined
+
   return (
     <header
       className="card card--brand stack-section dash-identity dash-identity--tight"
@@ -59,15 +131,28 @@ export default function DashboardHeader({
     >
       <div className="dash-identity-banner">
         <div className="dash-brand-mark dash-brand-mark--header">
-          <img
-            src={CHRIS_JONES_FOR_CONGRESS_PUBLIC.assets.candidateHeadshotUrl}
-            alt=""
-            className="dash-candidate-headshot dash-candidate-headshot--tight"
-            width={48}
-            height={48}
-            loading="lazy"
-            decoding="async"
-          />
+          <div className="dash-profile-avatar-col">
+            <span className="dash-candidate-headshot-ring dash-candidate-headshot-ring--tight">
+              <img
+                src={avatarSrc}
+                alt=""
+                className={
+                  hasCustomPhoto
+                    ? 'dash-candidate-headshot-img dash-candidate-headshot-img--volunteer'
+                    : 'dash-candidate-headshot-img'
+                }
+                width={48}
+                height={48}
+                loading="lazy"
+                decoding="async"
+              />
+            </span>
+            <ProfilePhotoUpload
+              profileId={profileId}
+              hasCustomPhoto={hasCustomPhoto}
+              onDone={() => onProfileRefresh?.()}
+            />
+          </div>
           <img
             src={CHRIS_JONES_FOR_CONGRESS_PUBLIC.assets.logoPrimaryUrl}
             alt=""
@@ -96,6 +181,19 @@ export default function DashboardHeader({
           </p>
         ) : null}
       </div>
+
+      {onHdWorkspaceChange ? (
+        <div className="dash-layout-toolbar">
+          <button
+            type="button"
+            className="dash-hd-toggle"
+            aria-pressed={Boolean(hdWorkspace)}
+            onClick={() => onHdWorkspaceChange(!hdWorkspace)}
+          >
+            {hdWorkspace ? 'Standard width' : 'Wide workspace (HD)'}
+          </button>
+        </div>
+      ) : null}
 
       <div
         className="dash-header-3col"
@@ -135,17 +233,29 @@ export default function DashboardHeader({
         <MetaCol title="Districts & match">
           {matchedVoter ? (
             <>
-              <MetaLine
+              <DistrictOfficialLine
                 label="Congressional"
-                value={display(matchedVoter.congressional_district, '—')}
+                districtText={display(matchedVoter.congressional_district, '—')}
+                official={districtOfficials?.usHouse}
+                officialsLoading={officialsLoading}
+                onOpenOfficial={onOpenOfficial}
               />
-              <MetaLine
+              <DistrictOfficialLine
                 label="State Senate"
-                value={display(matchedVoter.state_senate_district, '—')}
+                districtText={display(matchedVoter.state_senate_district, '—')}
+                official={districtOfficials?.stateSenate}
+                officialsLoading={officialsLoading}
+                onOpenOfficial={onOpenOfficial}
               />
-              <MetaLine
+              <DistrictOfficialLine
                 label="State House"
-                value={display(matchedVoter.state_representative_district, '—')}
+                districtText={display(
+                  matchedVoter.state_representative_district,
+                  '—',
+                )}
+                official={districtOfficials?.stateHouse}
+                officialsLoading={officialsLoading}
+                onOpenOfficial={onOpenOfficial}
               />
               <MetaLine
                 label="State / ZIP"
@@ -166,6 +276,41 @@ export default function DashboardHeader({
           )}
         </MetaCol>
       </div>
+
+      {matchedVoter && (headerOfficials?.length || officialsLoading) ? (
+        <div
+          className="dash-header-officials-strip"
+          role="region"
+          aria-label="Elected representatives for your area"
+        >
+          <h2 className="dash-header-officials-title">Your representatives</h2>
+          {officialsLoading && !headerOfficials?.length ? (
+            <p className="subtitle dash-header-officials-loading">Loading officials…</p>
+          ) : (
+            <ul className="dash-header-officials-list">
+              {(headerOfficials ?? []).map((row, i) => (
+                <li key={`${row.office}-${row.name}-${i}`} className="dash-header-officials-item">
+                  <span className="dash-header-officials-office">{row.office}</span>
+                  {onOpenOfficial ? (
+                    <button
+                      type="button"
+                      className="dash-official-name-link dash-header-officials-name"
+                      onClick={() => onOpenOfficial(row)}
+                    >
+                      {row.name}
+                    </button>
+                  ) : (
+                    <span className="dash-header-officials-name">{row.name}</span>
+                  )}
+                  {row.party ? (
+                    <span className="dash-header-officials-party"> ({row.party})</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
     </header>
   )
 }

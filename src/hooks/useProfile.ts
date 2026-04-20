@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useDevMockDashboard } from './useDevMockDashboard'
 import { getDevMockProfile, isDevAuthBypassEnabled } from '../lib/devAuth'
 import { readDevOnboardingMomentumPatch } from '../lib/devOnboardingMomentum'
+import { readDevProfilePhotoPatch } from '../lib/devProfilePhoto'
 import { ensureCampaignProfile } from '../lib/ensureCampaignProfile'
 import { supabase } from '../lib/supabaseClient'
 
@@ -20,9 +21,16 @@ export type CampaignProfile = {
   onboarding_momentum_state?: string | null
   onboarding_direction_key?: string | null
   onboarding_micro_commitment_key?: string | null
+  onboarding_last_prompt?: string | null
+  onboarding_last_action_at?: string | null
   exception_request_status?: string | null
   exception_request_note?: string | null
   exception_requested_at?: string | null
+  /** Public URL or data URL (dev) for dashboard avatar. */
+  profile_photo_url?: string | null
+  power5_recruiter_profile_id?: string | null
+  power5_home_team_id?: string | null
+  power5_first_five_hint?: Record<string, unknown> | null
 } & Record<string, unknown>
 
 export function useProfile() {
@@ -33,6 +41,7 @@ export function useProfile() {
       ? ({
           ...(getDevMockProfile(mockState) as CampaignProfile),
           ...readDevOnboardingMomentumPatch(),
+          ...readDevProfilePhotoPatch(),
         } as CampaignProfile)
       : null,
   )
@@ -43,6 +52,7 @@ export function useProfile() {
       setProfile({
         ...(getDevMockProfile(mockState) as CampaignProfile),
         ...readDevOnboardingMomentumPatch(),
+        ...readDevProfilePhotoPatch(),
       } as CampaignProfile)
       return
     }
@@ -103,6 +113,7 @@ export function useProfile() {
         setProfile({
           ...(getDevMockProfile(mockState) as CampaignProfile),
           ...readDevOnboardingMomentumPatch(),
+          ...readDevProfilePhotoPatch(),
         } as CampaignProfile)
       }
     })

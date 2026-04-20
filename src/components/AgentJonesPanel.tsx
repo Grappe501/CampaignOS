@@ -6,7 +6,15 @@ import {
   scrollToDashboardId,
   type AgentJonesPrompt,
 } from '../lib/agentJonesGuidance'
-import { buildAgentJonesContextV2, type AgentJonesContextV2 } from '../lib/agentJonesContextV2'
+import {
+  buildAgentJonesContextV2,
+  type AgentJonesContextV2,
+  type AgentJonesRelationalPower5Context,
+  type AgentJonesVolunteerMissionContext,
+  type AgentJonesDailyActivationContext,
+  type AgentJonesInternLayerContext,
+  type AgentJonesCampaignGoalsContext,
+} from '../lib/agentJonesContextV2'
 import {
   AgentJonesApiError,
   callAgentJones,
@@ -23,24 +31,36 @@ import {
   saveAgentJonesPersisted,
 } from '../lib/agentJonesSessionStorage'
 import { supabase } from '../lib/supabaseClient'
-import type { MomentumAction } from '../lib/onboardingMomentum'
+import type { MomentumAction } from '../lib/onboardingEngine'
 import { isDevAuthBypassEnabled } from '../lib/devAuth'
 import { applyDevOnboardingMomentumAction } from '../lib/devOnboardingMomentum'
+
+function auditPatch(meta?: { lastPrompt?: string }) {
+  return {
+    onboarding_last_action_at: new Date().toISOString(),
+    ...(meta?.lastPrompt
+      ? { onboarding_last_prompt: meta.lastPrompt.slice(0, 160) }
+      : {}),
+  }
+}
 
 async function persistMomentumAction(
   profileId: string | undefined,
   action: MomentumAction,
+  meta?: { lastPrompt?: string },
 ): Promise<void> {
   if (isDevAuthBypassEnabled()) {
-    applyDevOnboardingMomentumAction(action)
+    applyDevOnboardingMomentumAction(action, meta)
     return
   }
   if (!profileId) return
+  const a = auditPatch(meta)
 
   if (action.type === 'set_direction') {
     const { error } = await supabase
       .from('campaign_profiles')
       .update({
+        ...a,
         onboarding_momentum_state: 'exploring',
         onboarding_direction_key: action.key,
       })
@@ -52,6 +72,7 @@ async function persistMomentumAction(
     const { error } = await supabase
       .from('campaign_profiles')
       .update({
+        ...a,
         onboarding_momentum_state: 'committed',
         onboarding_micro_commitment_key: action.key,
       })
@@ -63,6 +84,7 @@ async function persistMomentumAction(
     const { error } = await supabase
       .from('campaign_profiles')
       .update({
+        ...a,
         onboarding_momentum_state: 'engaged',
         onboarding_direction_key: null,
         onboarding_micro_commitment_key: null,
@@ -75,6 +97,7 @@ async function persistMomentumAction(
     const { error } = await supabase
       .from('campaign_profiles')
       .update({
+        ...a,
         onboarding_momentum_state: 'engaged',
         onboarding_micro_commitment_key: null,
       })
@@ -84,7 +107,7 @@ async function persistMomentumAction(
   }
   const { error } = await supabase
     .from('campaign_profiles')
-    .update({ onboarding_momentum_state: 'engaged' })
+    .update({ ...a, onboarding_momentum_state: 'engaged' })
     .eq('id', profileId)
   if (error) console.error('Momentum reinforce done:', error)
 }
@@ -110,6 +133,11 @@ export type AgentJonesPanelProps = {
   sectionClassName?: string
   /** After momentum DB updates, refresh parent profile (floating panel). */
   onProfileRefresh?: () => void | Promise<void>
+  relationalPower5?: AgentJonesRelationalPower5Context | null
+  volunteerMission?: AgentJonesVolunteerMissionContext | null
+  dailyActivation?: AgentJonesDailyActivationContext | null
+  internLayer?: AgentJonesInternLayerContext | null
+  campaignGoals?: AgentJonesCampaignGoalsContext | null
 }
 
 export default function AgentJonesPanel({
@@ -121,6 +149,11 @@ export default function AgentJonesPanel({
   persistSession = false,
   sectionClassName,
   onProfileRefresh,
+  relationalPower5,
+  volunteerMission,
+  dailyActivation,
+  internLayer,
+  campaignGoals,
 }: AgentJonesPanelProps) {
   const persisted = useMemo(() => loadAgentJonesPersisted(), [])
   const bundle = useMemo(
@@ -169,6 +202,11 @@ export default function AgentJonesPanel({
         voterMatched,
         progressSlice,
         voterLoading,
+        relationalPower5: relationalPower5 ?? null,
+        volunteerMission: volunteerMission ?? null,
+        dailyActivation: dailyActivation ?? null,
+        internLayer: internLayer ?? null,
+        campaignGoals: campaignGoals ?? null,
       })
       try {
         const campaign = await getRelevantCampaignContext({
@@ -202,7 +240,18 @@ export default function AgentJonesPanel({
     return () => {
       cancelled = true
     }
-  }, [profile, matchedVoter, voterMatched, progressSlice, voterLoading])
+  }, [
+    profile,
+    matchedVoter,
+    voterMatched,
+    progressSlice,
+    voterLoading,
+    relationalPower5,
+    volunteerMission,
+    dailyActivation,
+    internLayer,
+    campaignGoals,
+  ])
 
   const handleSelect = async (prompt: AgentJonesPrompt) => {
     setActivePromptId(prompt.id)
@@ -216,7 +265,9 @@ export default function AgentJonesPanel({
         profile?.id != null && profile.id !== ''
           ? String(profile.id)
           : undefined
-      await persistMomentumAction(pid, prompt.momentumAction)
+      await persistMomentumAction(pid, prompt.momentumAction, {
+        lastPrompt: prompt.id,
+      })
       await onProfileRefresh?.()
     }
 
@@ -262,6 +313,10 @@ export default function AgentJonesPanel({
             slice: progressSlice,
             profile,
             voterLoading,
+            volunteerMission: volunteerMission ?? null,
+            dailyActivation: dailyActivation ?? null,
+            internLayer: internLayer ?? null,
+            campaignGoals: campaignGoals ?? null,
           }),
         )
       }

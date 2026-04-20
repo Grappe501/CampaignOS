@@ -3,6 +3,103 @@ import type { DashboardProgressSlice } from './dashboardState'
 import { needsOnboardingPath } from './dashboardState'
 import type { MatchedVoterDisplayRow } from './voterMatch'
 
+/** Bounded relational organizing summary — no PII beyond counts and stage hints. */
+export type AgentJonesRelationalPower5Context = {
+  network_counts: {
+    identified_total: number
+    contacted: number
+    activated: number
+    roster_matched: number
+  }
+  early_stage_count: number
+  open_manual_relays: number
+  recommended_next: string | null
+}
+
+export function buildAgentJonesRelationalPower5Context(input: {
+  totalNodes: number
+  contacted: number
+  activated: number
+  rosterMatched: number
+  earlyStageCount: number
+  openManualRelays: number
+  recommendedNext: string | null
+}): AgentJonesRelationalPower5Context {
+  return {
+    network_counts: {
+      identified_total: input.totalNodes,
+      contacted: input.contacted,
+      activated: input.activated,
+      roster_matched: input.rosterMatched,
+    },
+    early_stage_count: input.earlyStageCount,
+    open_manual_relays: input.openManualRelays,
+    recommended_next: input.recommendedNext,
+  }
+}
+
+/** Bounded mission-task queue for coaching (no raw notes / PII). */
+/** Daily four-lane activation (UTC day) — safe counts + tier label only. */
+export type AgentJonesDailyActivationContext = {
+  completed_today: number
+  total_today: number
+  points_today: number
+  team_tier_label: string | null
+  next_task_title: string | null
+  total_points?: number
+  streak_days?: number
+  /** Adaptive intelligence (bounded, no PII). */
+  progression_stage?: 'new' | 'active' | 'advanced'
+  top_lane?: string | null
+  growth_lane?: string | null
+  lane_scores?: {
+    communications: number
+    voter: number
+    events: number
+    leadership: number
+  }
+  reliability_score?: number
+  consistency_score?: number
+  momentum_score?: number
+  assignment_hint?: string | null
+}
+
+/** Intern desk — counts and hints only (no volunteer PII). */
+export type AgentJonesInternLayerContext = {
+  assigned_pipeline_count: number
+  overdue_first_contact_count: number
+  next_follow_up_hint: string | null
+  leadership_task_title: string | null
+}
+
+/** Campaign KPIs — bounded counts for coaching (no financial detail beyond totals). */
+export type AgentJonesCampaignGoalsContext = {
+  kpis: {
+    slug: string
+    name: string
+    current: number
+    target: number
+    unit: string
+    pct: number
+  }[]
+  user_contribution_summary: { slug: string; contributed: number }[] | null
+}
+
+export type AgentJonesVolunteerMissionContext = {
+  active_summaries: {
+    title: string
+    status: string
+    templateKey: string
+    why_points: number
+  }[]
+  next_best_title: string | null
+  next_best_template_key: string | null
+  recent_completed: { title: string; completed_at: string }[]
+  stalled_titles: string[]
+  points?: number
+  streaks?: { active_days: number; completion_days: number }
+}
+
 export type AgentJonesContextV2 = {
   user: {
     role?: string | null
@@ -11,6 +108,8 @@ export type AgentJonesContextV2 = {
     onboarding_momentum_state?: string | null
     onboarding_direction_key?: string | null
     onboarding_micro_commitment_key?: string | null
+    onboarding_last_prompt?: string | null
+    onboarding_last_action_at?: string | null
     voterMatched: boolean
     precinct?: string | null
     county?: string | null
@@ -48,6 +147,11 @@ export type AgentJonesContextV2 = {
     voterLoading: boolean
     needsOnboardingPath: boolean
   }
+  relational_power5?: AgentJonesRelationalPower5Context
+  volunteer_mission?: AgentJonesVolunteerMissionContext
+  daily_activation?: AgentJonesDailyActivationContext
+  intern_layer?: AgentJonesInternLayerContext
+  campaign_goals?: AgentJonesCampaignGoalsContext
 }
 
 function trunc(s: unknown, max: number): string | null {
@@ -67,6 +171,11 @@ export function buildAgentJonesContextV2(input: {
   progressSlice: DashboardProgressSlice
   voterLoading: boolean
   campaign?: AgentJonesContextV2['campaign'] | null
+  relationalPower5?: AgentJonesRelationalPower5Context | null
+  volunteerMission?: AgentJonesVolunteerMissionContext | null
+  dailyActivation?: AgentJonesDailyActivationContext | null
+  internLayer?: AgentJonesInternLayerContext | null
+  campaignGoals?: AgentJonesCampaignGoalsContext | null
 }): AgentJonesContextV2 {
   const {
     profile,
@@ -75,6 +184,11 @@ export function buildAgentJonesContextV2(input: {
     progressSlice,
     voterLoading,
     campaign,
+    relationalPower5,
+    volunteerMission,
+    dailyActivation,
+    internLayer,
+    campaignGoals,
   } = input
 
   return {
@@ -88,6 +202,8 @@ export function buildAgentJonesContextV2(input: {
         profile?.onboarding_micro_commitment_key,
         64,
       ),
+      onboarding_last_prompt: trunc(profile?.onboarding_last_prompt, 160),
+      onboarding_last_action_at: trunc(profile?.onboarding_last_action_at, 48),
       voterMatched: safeBool(voterMatched),
       precinct: trunc(matchedVoter?.precinct_name, 140),
       county: trunc(matchedVoter?.county, 120),
@@ -104,6 +220,11 @@ export function buildAgentJonesContextV2(input: {
       voterLoading,
       needsOnboardingPath: needsOnboardingPath(profile),
     },
+    ...(relationalPower5 ? { relational_power5: relationalPower5 } : {}),
+    ...(volunteerMission ? { volunteer_mission: volunteerMission } : {}),
+    ...(dailyActivation ? { daily_activation: dailyActivation } : {}),
+    ...(internLayer ? { intern_layer: internLayer } : {}),
+    ...(campaignGoals ? { campaign_goals: campaignGoals } : {}),
   }
 }
 

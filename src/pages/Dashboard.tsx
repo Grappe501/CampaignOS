@@ -1,13 +1,29 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useHdWorkspace } from '../hooks/useHdWorkspace'
 import { useProfile } from '../hooks/useProfile'
+import { usePublicOfficials } from '../hooks/usePublicOfficials'
 import { useTasks } from '../hooks/useTasks'
 import { useTraining } from '../hooks/useTraining'
 import { useVoterMatch } from '../hooks/useVoterMatch'
+import { usePower5Workspace } from '../hooks/usePower5Workspace'
+import { usePower5Propagation } from '../hooks/usePower5Propagation'
+import { useVolunteerTasks } from '../hooks/useVolunteerTasks'
+import { useDailyMission } from '../hooks/useDailyMission'
+import { useInternLayer } from '../hooks/useInternLayer'
+import { useCampaignKpis } from '../hooks/useCampaignKpis'
 import {
   devBypassDisplayEmail,
   isDevAuthBypassEnabled,
 } from '../lib/devAuth'
 import { supabase } from '../lib/supabaseClient'
+import { buildExpandedOfficialsList } from '../lib/api/publicOfficials'
+import {
+  buildAgentJonesRelationalPower5Context,
+} from '../lib/agentJonesContextV2'
+import {
+  countEarlyStagePower5Nodes,
+  getPower5SuggestedNextLine,
+} from '../lib/power5DashboardHints'
 import {
   getDashboardProgressSlice,
   getFirstTaskCardModel,
@@ -26,15 +42,27 @@ import VoterMatchForm from '../components/VoterMatchForm'
 import VoterWidget from '../components/VoterWidget'
 import DashboardGrid from '../components/dashboard/DashboardGrid'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
+import DashboardPanelFrame from '../components/dashboard/DashboardPanelFrame'
 import ExceptionRequestCard from '../components/dashboard/ExceptionRequestCard'
 import FirstTaskCard from '../components/dashboard/FirstTaskCard'
 import NextStepCard from '../components/dashboard/NextStepCard'
+import OnboardingActivationCard from '../components/dashboard/OnboardingActivationCard'
 import OnboardingBranchCard from '../components/dashboard/OnboardingBranchCard'
 import PlaceholderCard from '../components/dashboard/PlaceholderCard'
 import StatusCard from '../components/dashboard/StatusCard'
 import TrainingCard from '../components/dashboard/TrainingCard'
+import OfficialContactModal from '../components/dashboard/OfficialContactModal'
+import PublicOfficialsCard from '../components/dashboard/PublicOfficialsCard'
+import type { PublicOfficialEntry } from '../lib/api/publicOfficials'
 import VoterStatusCard from '../components/dashboard/VoterStatusCard'
 import WorkspaceDock from '../components/WorkspaceDock'
+import Power5Workspace from '../components/power5/Power5Workspace'
+import Power5SummaryCard from '../components/dashboard/Power5SummaryCard'
+import TaskListCard from '../components/tasks/TaskListCard'
+import DailyMissionCard from '../components/daily/DailyMissionCard'
+import CampaignKpisCard from '../components/dashboard/CampaignKpisCard'
+import LeadershipKpiScaffold from '../components/dashboard/LeadershipKpiScaffold'
+import { Link } from 'react-router-dom'
 
 const VOTER_WORKSPACE_EXPANDED_KEY = 'campaignos-voter-workspace-expanded'
 
@@ -52,17 +80,68 @@ type DashboardProps = {
 }
 
 export default function Dashboard({ onDevSessionClear }: DashboardProps) {
+  const { hdWorkspace, setHdWorkspace } = useHdWorkspace()
   const { profile, loading, refetch } = useProfile()
   const profileId =
     profile?.id != null && profile.id !== '' ? String(profile.id) : undefined
+  const power5Workspace = usePower5Workspace(profileId)
+  const power5Propagation = usePower5Propagation(profileId)
   const onVoterMatchDone = useCallback(() => {
     void refetch()
   }, [refetch])
   const voterMatch = useVoterMatch(profileId, {
     onAfterMatch: onVoterMatchDone,
   })
+  const { officialsState, officialsLoading } = usePublicOfficials(
+    voterMatch.matched ?? null,
+  )
+  const headerOfficials = useMemo(
+    () =>
+      buildExpandedOfficialsList(
+        officialsState?.districtOfficials,
+        officialsState?.officials,
+      ),
+    [officialsState?.districtOfficials, officialsState?.officials],
+  )
+  const agentJonesRelationalPower5 = useMemo(
+    () =>
+      buildAgentJonesRelationalPower5Context({
+        totalNodes: power5Workspace.nodes.length,
+        contacted: power5Workspace.impact.contacted,
+        activated: power5Workspace.impact.activated,
+        rosterMatched: power5Workspace.impact.matched,
+        earlyStageCount: countEarlyStagePower5Nodes(power5Workspace.nodes),
+        openManualRelays: power5Propagation.openRelayCount,
+        recommendedNext: getPower5SuggestedNextLine(power5Workspace.nodes),
+      }),
+    [
+      power5Workspace.nodes,
+      power5Workspace.impact,
+      power5Propagation.openRelayCount,
+    ],
+  )
+  const [contactOfficial, setContactOfficial] = useState<PublicOfficialEntry | null>(
+    null,
+  )
   const tasks = useTasks(profileId)
   const training = useTraining(profileId)
+  const volunteerTasks = useVolunteerTasks(profileId)
+  const dailyMission = useDailyMission(profileId)
+  const internDesk = useInternLayer(
+    profileId,
+    profile?.primary_role != null ? String(profile.primary_role) : null,
+  )
+  const campaignKpis = useCampaignKpis(
+    profileId,
+    profile?.primary_role != null ? String(profile.primary_role) : null,
+  )
+  const agentJonesInternLayer = useMemo(() => {
+    if (!internDesk.isIntern || !internDesk.agentInternContext) return null
+    return {
+      ...internDesk.agentInternContext,
+      leadership_task_title: volunteerTasks.nextBest?.title ?? null,
+    }
+  }, [internDesk.isIntern, internDesk.agentInternContext, volunteerTasks.nextBest?.title])
   const [accountEmail, setAccountEmail] = useState<string | null>(() =>
     isDevAuthBypassEnabled() ? devBypassDisplayEmail() : null,
   )
@@ -128,9 +207,13 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
       void refetch()
       void tasks.refetch()
       void training.refetch()
+      void volunteerTasks.refetch()
+      void dailyMission.refetch()
+      void internDesk.refetch()
+      void campaignKpis.refetch()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only refetch when match flips; avoid tasks/training object identity churn
-  }, [voterMatched, refetch, tasks.refetch, training.refetch])
+  }, [voterMatched, refetch, tasks.refetch, training.refetch, volunteerTasks.refetch, dailyMission.refetch, internDesk.refetch, campaignKpis.refetch])
 
   useEffect(() => {
     if (voterMatch.matchedLoading) return
@@ -158,6 +241,21 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     }
     prevVoterMatchedRef.current = voterMatched
   }, [voterMatched, voterMatch.matchedLoading])
+
+  useEffect(() => {
+    if (isDevAuthBypassEnabled()) return
+    if (!profileId || !voterMatched) return
+    const rid = profile?.power5_recruiter_profile_id
+    if (rid == null || String(rid).trim() === '') return
+    void supabase
+      .rpc('power5_attach_recruit_membership', {
+        p_recruit_profile_id: profileId,
+        p_recruiter_profile_id: String(rid),
+      })
+      .then(({ error }) => {
+        if (error) console.warn('power5_attach_recruit_membership:', error.message)
+      })
+  }, [profileId, voterMatched, profile?.power5_recruiter_profile_id])
 
   const nextStep = getNextStep({
     profile,
@@ -199,7 +297,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
   if (loading) {
     return (
       <>
-        <AppHeader onSignOut={handleSignOut} />
+        <AppHeader onSignOut={handleSignOut} showInternDesk={internDesk.isIntern} />
         <main className="app-shell">
           <div className="loading-screen" role="status" aria-live="polite">
             Loading…
@@ -212,31 +310,175 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
 
   return (
     <>
-      <AppHeader onSignOut={handleSignOut} />
-      <main className="app-shell dashboard-workspace">
-        <WorkspaceDock onAgentOpen={() => setAgentJonesOpen(true)} />
+      <AppHeader onSignOut={handleSignOut} showInternDesk={internDesk.isIntern} />
+      <main
+        className={`app-shell dashboard-workspace${hdWorkspace ? ' dashboard-workspace--hd' : ''}`}
+      >
+        <WorkspaceDock
+          onAgentOpen={() => setAgentJonesOpen(true)}
+          hdWorkspace={hdWorkspace}
+          onHdWorkspaceChange={setHdWorkspace}
+        />
         <DashboardGrid>
-          <DashboardHeader
-            profile={profile}
-            email={accountEmail}
-            matchedVoter={voterMatch.matched}
-          />
+          <DashboardPanelFrame
+            storageKey="dash-identity"
+            labelCollapsed="Profile & header"
+            sectionGlyph="dash-identity-title"
+          >
+            <DashboardHeader
+              profile={profile}
+              email={accountEmail}
+              matchedVoter={voterMatch.matched}
+              onProfileRefresh={() => void refetch()}
+              hdWorkspace={hdWorkspace}
+              onHdWorkspaceChange={setHdWorkspace}
+              districtOfficials={officialsState?.districtOfficials ?? null}
+              headerOfficials={headerOfficials}
+              officialsLoading={officialsLoading}
+              onOpenOfficial={setContactOfficial}
+            />
+          </DashboardPanelFrame>
 
-          <NextStepCard step={nextStep} />
+          <DashboardPanelFrame
+            scrollId="next-step-card"
+            storageKey="dash-next-step"
+            labelCollapsed="Next step"
+            sectionGlyph="next-step-card"
+          >
+            <NextStepCard step={nextStep} />
+          </DashboardPanelFrame>
+
+          {internDesk.isIntern ? (
+            <DashboardPanelFrame
+              scrollId="intern-desk"
+              storageKey="dash-intern-desk"
+              labelCollapsed="Intern desk"
+              sectionGlyph="workspace-cards"
+            >
+              <section className="stack-section">
+                <p className="subtitle" style={{ margin: 0, fontWeight: 700 }}>
+                  Intern desk
+                </p>
+                <p className="subtitle" style={{ margin: '8px 0 0' }}>
+                  <Link to="/intern">Open intern workspace</Link>
+                  {internDesk.overdueCount > 0
+                    ? ` · ${internDesk.overdueCount} overdue first contact`
+                    : ''}
+                </p>
+              </section>
+            </DashboardPanelFrame>
+          ) : null}
+
+          <DashboardPanelFrame
+            scrollId="mission-tasks"
+            storageKey="dash-mission-tasks"
+            labelCollapsed="Mission"
+            sectionGlyph="mission-tasks"
+            defaultExpanded
+          >
+            <TaskListCard
+              active={volunteerTasks.active}
+              engagement={volunteerTasks.engagement}
+              loading={volunteerTasks.loading}
+              error={volunteerTasks.error}
+              nextBest={volunteerTasks.nextBest}
+              onClaim={volunteerTasks.claim}
+              onComplete={async (id) => {
+                const ok = await volunteerTasks.complete(id)
+                if (ok) await campaignKpis.refetch()
+                return ok
+              }}
+              onSkip={volunteerTasks.skip}
+              onChecklistSave={volunteerTasks.saveChecklist}
+              refetch={volunteerTasks.refetch}
+            />
+          </DashboardPanelFrame>
+
+          <DashboardPanelFrame
+            scrollId="daily-activation"
+            storageKey="dash-daily-activation"
+            labelCollapsed="Daily"
+            sectionGlyph="daily-activation"
+            defaultExpanded
+          >
+            <DailyMissionCard
+              tasks={dailyMission.tasks}
+              scores={dailyMission.scores}
+              tier={dailyMission.tier}
+              activationInsight={dailyMission.activationInsight}
+              loading={dailyMission.loading}
+              error={dailyMission.error}
+              onComplete={dailyMission.complete}
+              onSkip={dailyMission.skip}
+            />
+          </DashboardPanelFrame>
+
+          <DashboardPanelFrame
+            scrollId="campaign-kpis"
+            storageKey="dash-campaign-kpis"
+            labelCollapsed="Campaign goals"
+            sectionGlyph="campaign-kpis"
+          >
+            <CampaignKpisCard
+              kpis={campaignKpis.kpis}
+              contributions={campaignKpis.contributions}
+              loading={campaignKpis.loading}
+              error={campaignKpis.error}
+            />
+            {campaignKpis.isLeadership ? (
+              <LeadershipKpiScaffold
+                key={campaignKpis.kpis
+                  .map((k) => `${k.id}:${k.target_value}`)
+                  .join('|')}
+                kpis={campaignKpis.kpis}
+                missions={campaignKpis.missions}
+                onUpdated={() => campaignKpis.refetch()}
+              />
+            ) : null}
+          </DashboardPanelFrame>
+
+          <DashboardPanelFrame
+            scrollId="onboarding-activation"
+            storageKey="dash-onboarding-activation"
+            labelCollapsed="Get started"
+            sectionGlyph="onboarding-activation"
+          >
+            <OnboardingActivationCard profile={profile} />
+          </DashboardPanelFrame>
 
           {!branchSet ? (
-            <OnboardingBranchCard
-              profileId={profileId}
-              currentBranch={profile?.onboarding_branch}
-              onSaved={() => void refetch()}
-            />
+            <DashboardPanelFrame
+              scrollId="onboarding-branch"
+              storageKey="dash-onboarding-branch"
+              labelCollapsed="Volunteer path"
+              sectionGlyph="onboarding-branch"
+            >
+              <OnboardingBranchCard
+                profileId={profileId}
+                currentBranch={profile?.onboarding_branch}
+                onSaved={() => void refetch()}
+              />
+            </DashboardPanelFrame>
           ) : null}
 
           <div
             className={`dash-two-col dash-two-col--compact${voterMatched ? ' dash-two-col--post-match' : ''}`}
           >
-            <VoterStatusCard profile={profile} voterMatched={voterMatched} />
-            <StatusCard title="Workspace snapshot" id="workspace-summary">
+            <DashboardPanelFrame
+              scrollId="voter-status-card"
+              storageKey="dash-voter-status"
+              labelCollapsed="Voter status"
+              sectionGlyph="voter-status-card"
+            >
+              <VoterStatusCard profile={profile} voterMatched={voterMatched} />
+            </DashboardPanelFrame>
+            <DashboardPanelFrame
+              scrollId="workspace-summary"
+              storageKey="dash-workspace-summary"
+              labelCollapsed="Workspace snapshot"
+              sectionGlyph="workspace-summary"
+            >
+              <StatusCard title="Workspace snapshot">
               <dl className="summary-grid">
                 <dt>Volunteer path</dt>
                 <dd>
@@ -281,11 +523,76 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
                   {gate}
                 </p>
               ) : null}
-            </StatusCard>
+              </StatusCard>
+            </DashboardPanelFrame>
           </div>
 
-          <section
-            id="voter-workspace"
+          {voterMatch.matched ? (
+            <DashboardPanelFrame
+              scrollId="public-officials-card"
+              storageKey="dash-public-officials"
+              labelCollapsed="Public officials"
+              sectionGlyph="public-officials-card"
+            >
+              <PublicOfficialsCard
+                matchedVoter={voterMatch.matched}
+                officialsState={officialsState}
+                officialsLoading={officialsLoading}
+                onOpenOfficial={setContactOfficial}
+              />
+            </DashboardPanelFrame>
+          ) : null}
+
+          <DashboardPanelFrame
+            scrollId="power5-summary"
+            storageKey="dash-power5-summary"
+            labelCollapsed="Power of 5 summary"
+            sectionGlyph="power5-summary"
+          >
+            <Power5SummaryCard
+              loading={power5Workspace.loading}
+              impact={power5Workspace.impact}
+              nodes={power5Workspace.nodes}
+              openRelays={power5Propagation.openRelayCount}
+              onOpenWorkspace={() =>
+                document.getElementById('power5-workspace')?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                })
+              }
+            />
+          </DashboardPanelFrame>
+
+          <div className="power5-voter-split">
+            <DashboardPanelFrame
+              scrollId="power5-workspace"
+              storageKey="dash-power5"
+              labelCollapsed="Power of 5"
+              sectionGlyph="power5-workspace"
+            >
+              <Power5Workspace
+                profileId={profileId}
+                homeTeamId={
+                  profile?.power5_home_team_id
+                    ? String(profile.power5_home_team_id)
+                    : undefined
+                }
+                matchedVoterId={
+                  voterMatch.matched?.voter_id != null
+                    ? String(voterMatch.matched.voter_id)
+                    : undefined
+                }
+                workspace={power5Workspace}
+                propagation={power5Propagation}
+              />
+            </DashboardPanelFrame>
+            <DashboardPanelFrame
+              scrollId="voter-workspace"
+              storageKey="dash-voter-workspace"
+              labelCollapsed="Voter lookup"
+              sectionGlyph="voter-workspace"
+            >
+              <section
             className={`voter-workspace-section stack-section${
               voterMatched && !voterWorkspaceExpanded
                 ? ' voter-workspace-section--collapsed'
@@ -357,6 +664,8 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               </div>
             )}
           </section>
+            </DashboardPanelFrame>
+          </div>
 
           <ExceptionRequestCard
             profileId={profileId}
@@ -366,8 +675,13 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             onSubmitted={() => void refetch()}
           />
 
-          <section
-            id="workspace-cards"
+          <DashboardPanelFrame
+            scrollId="workspace-cards"
+            storageKey="dash-workspace-cards"
+            labelCollapsed="Tasks & training"
+            sectionGlyph="workspace-cards"
+          >
+            <section
             className="workspace-cards-section stack-section"
             aria-labelledby="workspace-cards-title"
           >
@@ -398,9 +712,14 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               />
             </div>
           </section>
+          </DashboardPanelFrame>
 
           <div id="agent-jones" className="agent-jones-anchor" aria-hidden="true" />
         </DashboardGrid>
+        <OfficialContactModal
+          official={contactOfficial}
+          onClose={() => setContactOfficial(null)}
+        />
         <FloatingAgentJones
           key={`${progressSlice}-${voterMatch.matchedLoading}-${normalizeKey(
             profile?.onboarding_branch,
@@ -408,7 +727,15 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             progressSlice === 'matched_ready' && needsOnboardingPath(profile)
               ? 'orient'
               : 'x'
-          }-${tasks.structured?.title ?? ''}-${training.structured?.title ?? ''}`}
+          }-${tasks.structured?.title ?? ''}-${training.structured?.title ?? ''}-${
+            power5Workspace.nodes.length
+          }-${power5Propagation.openRelayCount}-${
+            volunteerTasks.nextBest?.title ?? ''
+          }-${volunteerTasks.active.length}-${dailyMission.completedCount}-${
+            dailyMission.totalCount
+          }-${internDesk.overdueCount}-${internDesk.pipelines.length}-${
+            campaignKpis.kpis[0]?.current_value ?? 0
+          }-${campaignKpis.contributions.length}`}
           open={agentJonesOpen}
           onOpenChange={setAgentJonesOpen}
           progressSlice={progressSlice}
@@ -416,7 +743,18 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           voterLoading={voterMatch.matchedLoading}
           voterMatched={voterMatched}
           matchedVoter={voterMatch.matched}
-          onProfileRefresh={() => void refetch()}
+          onProfileRefresh={async () => {
+            await refetch()
+            await volunteerTasks.refetch()
+            await dailyMission.refetch()
+            await internDesk.refetch()
+            await campaignKpis.refetch()
+          }}
+          relationalPower5={agentJonesRelationalPower5}
+          volunteerMission={volunteerTasks.agentMissionContext}
+          dailyActivation={profileId ? dailyMission.agentDailyContext : null}
+          internLayer={agentJonesInternLayer}
+          campaignGoals={campaignKpis.agentCampaignGoals}
         />
       </main>
       <AppFooter />

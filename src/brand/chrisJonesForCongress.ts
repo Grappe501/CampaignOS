@@ -163,8 +163,8 @@ export const CHRIS_JONES_FOR_CONGRESS_PUBLIC: CampaignPublicKnowledge = {
       'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Jones-Logo-H-Orange-White.svg',
     logoAltUrl:
       'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Jones-Logo-V-Blue-Orange.svg',
-    candidateHeadshotUrl:
-      'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/jones-headshot-2-scaled.png',
+    /** Vendored from campaign site `chris-footer` portrait (683×1024) for balanced head-and-shoulders crop in-app. */
+    candidateHeadshotUrl: '/brand/chris-jones-head-and-shoulders.jpg',
     heroImageUrl:
       'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Mobile-Hero-Image.png',
     ogImageUrl:

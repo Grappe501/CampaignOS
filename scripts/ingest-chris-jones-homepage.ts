@@ -192,7 +192,10 @@ function extractHomepagePieces(html: string) {
   const ogImage = pickFirstMatch(/property="og:image"\s+content="([^"]+)"/i, html)
   const twitterSite = pickFirstMatch(/name="twitter:site"\s+content="([^"]+)"/i, html)
   const logoPrimaryUrl = pickFirstMatch(/src="([^"]+Jones-Logo-H-Orange-White\.svg)"/i, html)
-  const headshot = pickFirstMatch(/src="([^"]+jones-headshot[^"]+\.png)"/i, html)
+  const headshot =
+    pickFirstMatch(/src="([^"]+chris-footer-683x1024\.jpg)"/i, html) ||
+    pickFirstMatch(/src="([^"]+chris-footer\.jpg)"/i, html) ||
+    pickFirstMatch(/src="([^"]+jones-headshot[^"]+\.png)"/i, html)
   const heroImage = pickFirstMatch(/src="([^"]+Mobile-Hero-Image\.png)"/i, html)
   const addressLabel = pickFirstMatch(/>(P\.O\.\s*Box\s*21803,\s*Little Rock,\s*AR\s*72221)</i, html)
   const addressUrl = pickFirstMatch(/href="([^"]+\/contact-us\/)"/i, html)

@@ -5,9 +5,15 @@ import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 /** Dashboard sections the model may suggest scrolling to — keep in sync with `netlify/functions/agent-jones.ts` SCROLL_IDS. */
 export const AGENT_JONES_SCROLL_TARGET_IDS = [
   'voter-workspace',
+  'power5-workspace',
   'exception-request',
   'onboarding-branch',
+  'onboarding-activation',
   'workspace-cards',
+  'mission-tasks',
+  'daily-activation',
+  'intern-desk',
+  'campaign-kpis',
   'agent-jones',
 ] as const
 

@@ -7,6 +7,7 @@
 
 import type { AgentJonesContextV2 } from '../agentJonesContextV2'
 import { isAgentJonesScrollTargetId } from '../agentJonesContext'
+import { ONBOARDING_DIRECTION_SLUGS } from '../onboardingEngine'
 
 export type AgentJonesRequest = {
   context: AgentJonesContextV2
@@ -26,6 +27,11 @@ export type AgentJonesResponse = {
     type: 'campaign_context' | 'user_context' | 'strategy'
     message: string
   }
+  /** Optional onboarding engine hints (additive contract). */
+  onboardingPrompt?: string
+  selectedDirection?: string
+  suggestedMicroCommitment?: { id: string; title: string }
+  reinforcementMessage?: string
 }
 
 export type AgentJonesErrorBody = {
@@ -109,6 +115,41 @@ function sanitizeReply(data: unknown): AgentJonesResponse | null {
       }
     }
     if (actions.length) reply.recommendedActions = actions.slice(0, 3)
+  }
+
+  const dirSlugs = new Set<string>([...ONBOARDING_DIRECTION_SLUGS])
+  const op =
+    typeof o.onboardingPrompt === 'string' ? o.onboardingPrompt.trim() : ''
+  if (op && op.length <= 64 && !/[<>\\]/.test(op)) {
+    reply.onboardingPrompt = op
+  }
+  const sd =
+    typeof o.selectedDirection === 'string' ? o.selectedDirection.trim() : ''
+  if (sd && sd.length <= 64 && dirSlugs.has(sd) && !/[<>\\]/.test(sd)) {
+    reply.selectedDirection = sd
+  }
+  const smRaw = o.suggestedMicroCommitment
+  if (smRaw && typeof smRaw === 'object') {
+    const sm = smRaw as Record<string, unknown>
+    const mid = typeof sm.id === 'string' ? sm.id.trim() : ''
+    const mt = typeof sm.title === 'string' ? sm.title.trim() : ''
+    if (
+      mid &&
+      mid.length <= 80 &&
+      mt &&
+      mt.length <= 160 &&
+      !/[<>\\]/.test(mid) &&
+      !/[<>\\]/.test(mt)
+    ) {
+      reply.suggestedMicroCommitment = { id: mid, title: mt }
+    }
+  }
+  const rm =
+    typeof o.reinforcementMessage === 'string'
+      ? o.reinforcementMessage.trim()
+      : ''
+  if (rm && rm.length <= 400 && !/[<>\\]/.test(rm)) {
+    reply.reinforcementMessage = rm
   }
 
   if (o.insight && typeof o.insight === 'object') {

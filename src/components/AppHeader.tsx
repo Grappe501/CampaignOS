@@ -8,9 +8,11 @@ const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
 type AppHeaderProps = {
   /** When set, shows nav + sign out (dashboard shell). */
   onSignOut?: () => void | Promise<void>
+  /** Show link to intern desk (middle operational tier). */
+  showInternDesk?: boolean
 }
 
-export default function AppHeader({ onSignOut }: AppHeaderProps) {
+export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps) {
   const location = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -26,6 +28,7 @@ export default function AppHeader({ onSignOut }: AppHeaderProps) {
   }, [drawerOpen, closeDrawer])
 
   const isDashboard = location.pathname.startsWith('/dashboard')
+  const isInternDesk = location.pathname.startsWith('/intern')
 
   return (
     <header className="app-topbar">
@@ -88,6 +91,11 @@ export default function AppHeader({ onSignOut }: AppHeaderProps) {
             >
               Dashboard
             </Link>
+            {showInternDesk ? (
+              <Link to="/intern" aria-current={isInternDesk ? 'page' : undefined}>
+                Intern desk
+              </Link>
+            ) : null}
           </nav>
 
           <button
@@ -176,6 +184,16 @@ export default function AppHeader({ onSignOut }: AppHeaderProps) {
                 >
                   Dashboard
                 </Link>
+                {showInternDesk ? (
+                  <Link
+                    to="/intern"
+                    className="drawer-nav-link"
+                    aria-current={isInternDesk ? 'page' : undefined}
+                    onClick={closeDrawer}
+                  >
+                    Intern desk
+                  </Link>
+                ) : null}
                 <button
                   type="button"
                   className="btn-touch btn-primary drawer-signout"

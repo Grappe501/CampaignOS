@@ -2,6 +2,13 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from '../lib/dashboardState'
 import type { MatchedVoterDisplayRow } from '../lib/voterMatch'
+import type {
+  AgentJonesRelationalPower5Context,
+  AgentJonesVolunteerMissionContext,
+  AgentJonesDailyActivationContext,
+  AgentJonesInternLayerContext,
+  AgentJonesCampaignGoalsContext,
+} from '../lib/agentJonesContextV2'
 import AgentJonesPanel from './AgentJonesPanel'
 
 export type FloatingAgentJonesProps = {
@@ -13,6 +20,11 @@ export type FloatingAgentJonesProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onProfileRefresh?: () => void | Promise<void>
+  relationalPower5?: AgentJonesRelationalPower5Context | null
+  volunteerMission?: AgentJonesVolunteerMissionContext | null
+  dailyActivation?: AgentJonesDailyActivationContext | null
+  internLayer?: AgentJonesInternLayerContext | null
+  campaignGoals?: AgentJonesCampaignGoalsContext | null
 }
 
 export default function FloatingAgentJones({
@@ -24,6 +36,11 @@ export default function FloatingAgentJones({
   open: controlledOpen,
   onOpenChange,
   onProfileRefresh,
+  relationalPower5,
+  volunteerMission,
+  dailyActivation,
+  internLayer,
+  campaignGoals,
 }: FloatingAgentJonesProps) {
   const panelId = useId()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
@@ -106,6 +123,11 @@ export default function FloatingAgentJones({
                 persistSession
                 sectionClassName="agent-jones-floating-surface stack-section"
                 onProfileRefresh={onProfileRefresh}
+                relationalPower5={relationalPower5}
+                volunteerMission={volunteerMission}
+                dailyActivation={dailyActivation}
+                internLayer={internLayer}
+                campaignGoals={campaignGoals}
               />
             </div>
           </div>

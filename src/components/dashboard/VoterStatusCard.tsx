@@ -27,7 +27,6 @@ export default function VoterStatusCard({
   return (
     <StatusCard
       title="Voter status"
-      id="voter-status-card"
       compact
       className={voterMatched ? 'voter-status-card--matched' : undefined}
     >

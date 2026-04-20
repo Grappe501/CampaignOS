@@ -14,6 +14,7 @@ import {
   isDevAuthBypassEnabled,
 } from './lib/devAuth'
 import Dashboard from './pages/Dashboard'
+import InternDesk from './pages/InternDesk'
 import Login from './pages/Login'
 
 export default function App() {
@@ -68,6 +69,22 @@ export default function App() {
           element={
             session ? (
               <Dashboard
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/intern"
+          element={
+            session ? (
+              <InternDesk
                 onDevSessionClear={
                   isDevAuthBypassEnabled()
                     ? () => setSession(null)

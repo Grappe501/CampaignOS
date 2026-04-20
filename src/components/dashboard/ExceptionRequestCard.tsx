@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { normalizeKey } from '../../lib/dashboardState'
 import { useExceptionRequest } from '../../hooks/useExceptionRequest'
+import DashboardPanelFrame from './DashboardPanelFrame'
 
 export default function ExceptionRequestCard({
   profileId,
@@ -25,36 +26,34 @@ export default function ExceptionRequestCard({
     return null
   }
 
-  if (st === 'approved' && !voterMatched) {
-    return (
-      <section
-        id="exception-request"
-        className="card stack-section"
-        aria-label="Roster exception"
-      >
-        <h2
-          className="page-title"
-          style={{
-            fontSize: 'clamp(1.1rem, 2.5vw + 0.45rem, 1.45rem)',
-            margin: 0,
-          }}
-        >
-          Roster exception approved
-        </h2>
-        <p className="subtitle" style={{ margin: 0 }}>
-          Coordinators approved your path without a voter-file self-match. Continue
-          with workspace orientation and training cards below.
-        </p>
-      </section>
-    )
-  }
-
   return (
-    <section
-      id="exception-request"
-      className="card stack-section"
-      aria-labelledby="exception-request-title"
+    <DashboardPanelFrame
+      scrollId="exception-request"
+      storageKey="dash-exception"
+      labelCollapsed="Roster exception"
+      sectionGlyph="exception-request"
     >
+      {st === 'approved' && !voterMatched ? (
+        <section className="card stack-section" aria-label="Roster exception">
+          <h2
+            className="page-title"
+            style={{
+              fontSize: 'clamp(1.1rem, 2.5vw + 0.45rem, 1.45rem)',
+              margin: 0,
+            }}
+          >
+            Roster exception approved
+          </h2>
+          <p className="subtitle" style={{ margin: 0 }}>
+            Coordinators approved your path without a voter-file self-match. Continue
+            with workspace orientation and training cards below.
+          </p>
+        </section>
+      ) : (
+        <section
+          className="card stack-section"
+          aria-labelledby="exception-request-title"
+        >
       <h2
         id="exception-request-title"
         className="page-title"
@@ -130,6 +129,8 @@ export default function ExceptionRequestCard({
           </button>
         </>
       ) : null}
-    </section>
+        </section>
+      )}
+    </DashboardPanelFrame>
   )
 }

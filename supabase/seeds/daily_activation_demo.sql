@@ -1,0 +1,12 @@
+-- Adaptive engine (20260420120000_adaptive_daily_activation.sql): lane scores and
+-- supervisor_activation_insights(team_id) power the assignment mix — no extra seed required.
+--
+-- Optional QA: opt a volunteer into social platforms so communications templates
+-- with a non-null platform_hint (future) filter correctly. Templates in
+-- 20260429160000_daily_activation_engine.sql currently use platform_hint = null.
+--
+-- Replace :profile_id with a real campaign_profiles.id in dev:
+--
+-- INSERT INTO public.user_social_platforms (campaign_profile_id, platform, is_active)
+-- VALUES (:profile_id, 'facebook', true)
+-- ON CONFLICT (campaign_profile_id, platform) DO UPDATE SET is_active = EXCLUDED.is_active;

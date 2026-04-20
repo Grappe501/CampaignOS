@@ -4,12 +4,12 @@ import {
   isRegisteredArkansasVoterBranch,
   needsOnboardingPath,
 } from './dashboardState'
-import type { MomentumAction } from './onboardingMomentum'
+import type { MomentumAction } from './onboardingEngine'
 import {
   findMicroCommitment,
   getMicroCommitmentsForDirection,
   getMomentumGuidancePhase,
-} from './onboardingMomentum'
+} from './onboardingEngine'
 
 export type AgentJonesPrompt = {
   id: string
@@ -72,7 +72,7 @@ function buildMomentumOnboardingBundle(
           label: 'Help behind the scenes',
           response:
             'Quiet work keeps the field loud — data, calls, finance, event prep. Reliability beats heroics.',
-          momentumAction: { type: 'set_direction', key: 'help_behind_scenes' },
+          momentumAction: { type: 'set_direction', key: 'help_behind_the_scenes' },
         },
         {
           id: 'mom-dir-spread',
@@ -96,10 +96,11 @@ function buildMomentumOnboardingBundle(
     const dir = String(profile?.onboarding_direction_key ?? '').trim()
     const micros = getMicroCommitmentsForDirection(dir)
     const prompts: AgentJonesPrompt[] = micros.map((m) => ({
-      id: `mom-micro-${m.key}`,
-      label: m.label,
+      id: `mom-micro-${m.id}`,
+      label: m.title,
       response: m.response,
-      momentumAction: { type: 'set_micro', key: m.key },
+      scrollToId: m.targetSectionId,
+      momentumAction: { type: 'set_micro', key: m.id },
     }))
     prompts.push({
       id: 'mom-micro-skip',
@@ -119,11 +120,13 @@ function buildMomentumOnboardingBundle(
   const dir = String(profile?.onboarding_direction_key ?? '').trim()
   const microKey = String(profile?.onboarding_micro_commitment_key ?? '').trim()
   const picked = findMicroCommitment(dir, microKey)
-  const label = picked?.label ?? 'your step'
+  const reinforce =
+    picked?.followUpReinforcementCopy ??
+    `${picked?.title ?? 'Your step'} — keep it human, keep it honest.`
 
   return {
     greeting: 'You chose a real-world step — that is the whole game.',
-    stateExplanation: `${label} — keep it human, keep it honest. Small promises kept beat big promises broken.`,
+    stateExplanation: `${reinforce} Small promises kept beat big promises broken.`,
     prompts: [
       {
         id: 'mom-ref-why',

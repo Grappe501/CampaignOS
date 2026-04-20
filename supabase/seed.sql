@@ -59,7 +59,7 @@ INSERT INTO public.campaign_brand_assets (campaign_slug, asset_key, asset_kind, 
 VALUES
   ('chris-jones-for-congress', 'logo.primary', 'logo', 'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Jones-Logo-H-Orange-White.svg', 'Chris Jones for Congress logo', 'https://chrisjonesforcongress.com/'),
   ('chris-jones-for-congress', 'logo.alt', 'logo', 'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Jones-Logo-V-Blue-Orange.svg', 'Chris Jones for Congress logo (alt)', 'https://chrisjonesforcongress.com/'),
-  ('chris-jones-for-congress', 'image.headshot', 'image', 'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/jones-headshot-2-scaled.png', 'Chris Jones headshot', 'https://chrisjonesforcongress.com/'),
+  ('chris-jones-for-congress', 'image.headshot', 'image', 'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/chris-footer-683x1024.jpg', 'Chris Jones head and shoulders', 'https://chrisjonesforcongress.com/'),
   ('chris-jones-for-congress', 'image.hero.mobile', 'image', 'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Mobile-Hero-Image.png', 'Homepage hero image', 'https://chrisjonesforcongress.com/'),
   ('chris-jones-for-congress', 'image.og', 'image', 'https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Jones_SocialShare_OG.png', 'Social share image', 'https://chrisjonesforcongress.com/')
 ON CONFLICT (campaign_slug, asset_key) DO UPDATE SET

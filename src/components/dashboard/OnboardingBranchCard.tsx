@@ -28,7 +28,6 @@ export default function OnboardingBranchCard({
 
   return (
     <section
-      id="onboarding-branch"
       className="card stack-section onboarding-branch-card"
       aria-labelledby="onboarding-branch-title"
     >

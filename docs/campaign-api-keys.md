@@ -76,6 +76,61 @@ Your dashboard already has **precinct, county, and districts** from the voter fi
 2. **Cache** results in Postgres (`profile_civic_cache` with TTL) to respect quotas.
 3. **Volunteer UI** shows read-only summary; **manager UI** adds bill/news panels using the same backend.
 
+## Keys in `.env.example` (quick map)
+
+| Variable | Role |
+|----------|------|
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Browser Supabase client (RLS-scoped). **Not** secret in the same way as service role — still don’t commit prod abuse. |
+| `VITE_ENABLE_DEV_AUTH_BYPASS` | Local-only fake sign-in for UI work. **Never** in production. |
+| `VITE_DEV_MOCK_DASHBOARD_STATE` | Dev bypass: which dashboard fixture to show. |
+| `VITE_NETLIFY_FUNCTIONS_ORIGIN` | When the UI runs on Vite alone (`npm run dev`), base URL for Netlify functions (e.g. `http://localhost:8888` while `netlify dev` runs). |
+| `OPENAI_API_KEY` | Server-side LLM (e.g. Agent Jones Netlify function). Never `VITE_`. |
+| `GOOGLE_CIVIC_API_KEY` | **Elected officials** for an address (`representatives` API) — used by `public-officials` function. |
+| `GOOGLE_API_KEY` | Maps / Geocoding / Places (depending on enabled APIs). |
+| `OPENCAGE_API_KEY` | Geocoding alternative. |
+| `API_DOT_GOV_KEY` | data.gov gateway key for APIs like OpenFEC (per-service docs). |
+| `OPENSTATES_API_KEY` | State legislators, bills (future enrichment). |
+| `FOURSQUARE_API_KEY` | Venues / field ops (optional). |
+| `NEWSAPI_API_KEY` | Headlines / search (optional monitoring). |
+| `GUARDIAN_API_KEY` | Guardian Open Platform (optional news). |
+| `CONGRESS_GOV_API_KEY` | Congress.gov member and bill metadata (optional federal layer). |
+| `SENDGRID_API_KEY` | Transactional email from Netlify/Edge (invites, alerts). |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` | SMS/voice (2FA, reminders) — server-only. |
+| `GITHUB_PAT` | Automation against your repo (CI, scripts) — not required for civics UI. |
+| `NETLIFY_AUTH_TOKEN` / `NETLIFY_SITE_ID` | CLI / deploy automation; optional for local app behavior. |
+
+### `OPENAI_API_KEY`
+
+- **What it is:** Access to OpenAI (or compatible) chat/completions used in **Netlify Functions**.
+- **Use here:** Agent Jones and other server-side assistants.
+- **Notes:** Keep off the client; rotate if leaked.
+
+### `SENDGRID_API_KEY`
+
+- **What it is:** SendGrid HTTP API for outbound email.
+- **Use here:** Welcome mail, recruitment invites, coordinator alerts — call from a function, not the browser.
+- **Notes:** Domain authentication (SPF/DKIM) required for deliverability.
+
+### `TWILIO_*`
+
+- **What they are:** Twilio REST credentials and sender number for SMS (and optionally voice).
+- **Use here:** Opt-in texts, verification codes, field reminders.
+- **Notes:** TCPA/consent rules apply; never expose `TWILIO_AUTH_TOKEN` to the client.
+
+### `GITHUB_PAT`
+
+- **What it is:** Personal access token for GitHub API (repo, Actions, etc.).
+- **Use here:** Optional scripts or CI that open PRs, read checks, or manage issues — not part of the volunteer dashboard.
+
+### `NETLIFY_AUTH_TOKEN` / `NETLIFY_SITE_ID`
+
+- **What they are:** Netlify CLI / API identifiers for deploys and site configuration.
+- **Use here:** Local or CI deploy pipelines; the running app does not need them for civics features.
+
+## Dashboard: public officials
+
+With **`GOOGLE_CIVIC_API_KEY`** set on Netlify (and locally for `netlify dev`), the dashboard **`PublicOfficialsCard`** calls **`/.netlify/functions/public-officials`**, which queries Google’s **`representatives`** endpoint using the matched voter’s **city, state, and ZIP**. No street address is sent unless you extend the payload later.
+
 ## Storing keys locally
 
 Run:

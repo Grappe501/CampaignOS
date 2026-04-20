@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /**
- * Merge optional campaign / civics API keys into `.env` (gitignored).
- * All keys are server-only — never add VITE_ variants.
+ * Merge CampaignOS env keys into `.env` (gitignored). Covers everything in `.env.example`.
  *
  * Usage:
  *   npm run ingest:api-keys
- *   node scripts/ingest-api-keys.mjs --merge ./keys.env
- *   node scripts/ingest-api-keys.mjs --print-keys
+ *   npm run ingest:api-keys -- --dry-run
+ *   npm run ingest:api-keys -- --print-keys
+ *   npm run ingest:api-keys -- --merge ./keys.env
+ *   npm run ingest:api-keys -- --set GOOGLE_CIVIC_API_KEY=your_key --set OPENAI_API_KEY=sk-...
  *
- * --merge <file>   Append/update keys from KEY=value lines (ignores comments)
- * --print-keys     List supported keys and exit
- * --dry-run        Show what would be written without saving
+ * --merge <file>     KEY=value lines (comments ignored); only known keys are applied
+ * --set KEY=value    Set one key (repeatable). Value may be quoted.
+ * --print-keys       List keys + hints, then exit
+ * --dry-run          Print resulting .env without writing
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -21,31 +23,61 @@ const root = path.resolve(import.meta.dirname, '..')
 const envPath = path.join(root, '.env')
 
 /** @type {{ key: string, label: string, hint: string }[]} */
-const CAMPAIGN_API_KEYS = [
+const ENV_INGEST_SPEC = [
+  {
+    key: 'VITE_SUPABASE_URL',
+    label: 'Supabase project URL',
+    hint: 'Supabase → Project Settings → API → Project URL',
+  },
+  {
+    key: 'VITE_SUPABASE_ANON_KEY',
+    label: 'Supabase anon (public) key',
+    hint: 'Supabase → Project Settings → API → anon public',
+  },
+  {
+    key: 'VITE_ENABLE_DEV_AUTH_BYPASS',
+    label: 'Dev auth bypass (local only)',
+    hint: 'true | empty — never use in production',
+  },
+  {
+    key: 'VITE_DEV_MOCK_DASHBOARD_STATE',
+    label: 'Dev mock dashboard state',
+    hint: 'unmatched | matched_no_branch | exception_pending | matched_ready',
+  },
+  {
+    key: 'VITE_NETLIFY_FUNCTIONS_ORIGIN',
+    label: 'Netlify functions origin (local)',
+    hint: 'e.g. http://localhost:8888 when using netlify dev + Vite',
+  },
+  {
+    key: 'OPENAI_API_KEY',
+    label: 'OpenAI',
+    hint: 'platform.openai.com — server-only; never VITE_',
+  },
   {
     key: 'GOOGLE_CIVIC_API_KEY',
     label: 'Google Civic Information API',
-    hint: 'Google Cloud → enable Civic Information API → credentials',
+    hint: 'Google Cloud → enable Civic Information API → API key',
   },
   {
     key: 'GOOGLE_API_KEY',
-    label: 'Google API key (Geocoding / Maps / Places as enabled)',
-    hint: 'Restrict to only the APIs you turn on',
+    label: 'Google Cloud API key (Maps / Geocoding / Places)',
+    hint: 'Restrict key to APIs you enable',
   },
   {
     key: 'OPENCAGE_API_KEY',
-    hint: 'opencagedata.com → API keys',
     label: 'OpenCage Geocoding',
+    hint: 'opencagedata.com → API keys',
   },
   {
     key: 'API_DOT_GOV_KEY',
-    label: 'api.data.gov key',
-    hint: 'api.data.gov → sign up (FEC and other federal APIs)',
+    label: 'api.data.gov',
+    hint: 'api.data.gov signup (FEC etc. per service docs)',
   },
   {
     key: 'OPENSTATES_API_KEY',
     label: 'Open States / Plural',
-    hint: 'openstates.org / pluralpolicy.com API',
+    hint: 'openstates.org / Plural API',
   },
   {
     key: 'FOURSQUARE_API_KEY',
@@ -55,7 +87,7 @@ const CAMPAIGN_API_KEYS = [
   {
     key: 'NEWSAPI_API_KEY',
     label: 'NewsAPI.org',
-    hint: 'newsapi.org API key',
+    hint: 'newsapi.org',
   },
   {
     key: 'GUARDIAN_API_KEY',
@@ -64,12 +96,47 @@ const CAMPAIGN_API_KEYS = [
   },
   {
     key: 'CONGRESS_GOV_API_KEY',
-    label: 'Congress.gov API (v3)',
-    hint: 'api.congress.gov → sign up',
+    label: 'Congress.gov API v3',
+    hint: 'api.congress.gov',
+  },
+  {
+    key: 'SENDGRID_API_KEY',
+    label: 'SendGrid',
+    hint: 'SendGrid → Settings → API Keys',
+  },
+  {
+    key: 'TWILIO_ACCOUNT_SID',
+    label: 'Twilio Account SID',
+    hint: 'Twilio Console → Account Info',
+  },
+  {
+    key: 'TWILIO_AUTH_TOKEN',
+    label: 'Twilio Auth Token',
+    hint: 'Twilio Console — keep server-only',
+  },
+  {
+    key: 'TWILIO_PHONE_NUMBER',
+    label: 'Twilio sending number',
+    hint: 'E.164 e.g. +15555555555',
+  },
+  {
+    key: 'GITHUB_PAT',
+    label: 'GitHub personal access token',
+    hint: 'GitHub → Settings → Developer settings → PATs',
+  },
+  {
+    key: 'NETLIFY_AUTH_TOKEN',
+    label: 'Netlify personal access token',
+    hint: 'Netlify → User → Applications → Personal access tokens',
+  },
+  {
+    key: 'NETLIFY_SITE_ID',
+    label: 'Netlify site / project ID',
+    hint: 'Site → Project configuration → General',
   },
 ]
 
-const KEY_SET = new Set(CAMPAIGN_API_KEYS.map((k) => k.key))
+const KEY_SET = new Set(ENV_INGEST_SPEC.map((k) => k.key))
 
 function parseEnvFile(text) {
   /** @type {Map<string, string>} */
@@ -136,7 +203,7 @@ function formatEnvPreservingOrder(originalText, map) {
   const newKeys = [...map.keys()].filter((k) => !seen.has(k))
   if (newKeys.length) {
     if (out.length && out[out.length - 1] !== '') out.push('')
-    out.push('# Campaign / civics API keys (ingest-api-keys.mjs)')
+    out.push('# Keys merged via scripts/ingest-api-keys.mjs')
     for (const k of newKeys.sort()) {
       out.push(`${k}=${escapeEnvValue(map.get(k) ?? '')}`)
     }
@@ -156,30 +223,64 @@ function parseMergeFile(filePath) {
   return picked
 }
 
+/** @type {Record<string, string>} */
+function parseSetArgs(argv) {
+  const out = {}
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--set' && argv[i + 1]) {
+      const raw = String(argv[i + 1])
+      const eq = raw.indexOf('=')
+      if (eq === -1) {
+        console.error(`--set expects KEY=value, got: ${raw}`)
+        process.exit(1)
+      }
+      const key = raw.slice(0, eq).trim()
+      let val = raw.slice(eq + 1)
+      if (
+        (val.startsWith('"') && val.endsWith('"')) ||
+        (val.startsWith("'") && val.endsWith("'"))
+      ) {
+        val = val.slice(1, -1)
+      }
+      if (!KEY_SET.has(key)) {
+        console.error(`Unknown key: ${key}. Use --print-keys for the list.`)
+        process.exit(1)
+      }
+      out[key] = val
+      i++
+    }
+  }
+  return out
+}
+
 const args = process.argv.slice(2)
 const dryRun = args.includes('--dry-run')
 const printKeys = args.includes('--print-keys')
 const mergeIdx = args.indexOf('--merge')
 const mergeFile = mergeIdx !== -1 ? args[mergeIdx + 1] : null
+const setPairs = parseSetArgs(args)
 
 if (printKeys) {
-  output.write('Server-only keys (merge into .env / Netlify secrets):\n\n')
-  for (const row of CAMPAIGN_API_KEYS) {
-    output.write(`  ${row.key}\n    ${row.label}\n    ${row.hint}\n\n`)
+  output.write('Known keys (from .env.example scope — safe to merge into .env):\n\n')
+  let lastPrefix = ''
+  for (const row of ENV_INGEST_SPEC) {
+    const prefix = row.key.startsWith('VITE_') ? 'Client (Vite)' : row.key === 'OPENAI_API_KEY' ? 'AI' : row.key.startsWith('GOOGLE') || row.key === 'OPENCAGE_API_KEY' || row.key === 'API_DOT_GOV_KEY' || row.key === 'OPENSTATES_API_KEY' || row.key === 'FOURSQUARE_API_KEY' || row.key === 'NEWSAPI_API_KEY' || row.key === 'GUARDIAN_API_KEY' || row.key === 'CONGRESS_GOV_API_KEY' ? 'Civics / data' : row.key.startsWith('TWILIO') || row.key === 'SENDGRID_API_KEY' ? 'Comms' : row.key.startsWith('NETLIFY') || row.key === 'GITHUB_PAT' ? 'DevOps' : 'Other'
+    if (prefix !== lastPrefix) {
+      output.write(`\n── ${prefix} ──\n`)
+      lastPrefix = prefix
+    }
+    output.write(`  ${row.key}\n    ${row.label}\n    ${row.hint}\n`)
   }
+  output.write(
+    '\nCommands: npm run ingest:api-keys  |  --merge file.env  |  --set KEY=val\n',
+  )
   process.exit(0)
 }
 
-if (mergeFile) {
-  const mergePath = path.resolve(process.cwd(), mergeFile)
-  if (!fs.existsSync(mergePath)) {
-    console.error(`File not found: ${mergePath}`)
-    process.exit(1)
-  }
-  const merged = parseMergeFile(mergePath)
-  const count = Object.keys(merged).length
+function applyUpdates(/** @type {Record<string, string>} */ updates, label) {
+  const count = Object.keys(updates).length
   if (count === 0) {
-    console.error('No recognized CAMPAIGN_API_KEYS found in merge file.')
+    console.error(`No keys to apply (${label}).`)
     process.exit(1)
   }
   let existingText = ''
@@ -190,19 +291,38 @@ if (mergeFile) {
       '# CampaignOS — local environment (gitignored)\n\n'
   }
   const map = parseEnvFile(existingText)
-  for (const [k, v] of Object.entries(merged)) {
+  for (const [k, v] of Object.entries(updates)) {
     map.set(k, v)
   }
   const next = formatEnvPreservingOrder(existingText || '\n', map)
   if (dryRun) {
+    output.write(`[dry-run] Would write ${count} key(s) to ${envPath}:\n---\n`)
     output.write(next)
     process.exit(0)
   }
   fs.writeFileSync(envPath, next, 'utf8')
   output.write(`Merged ${count} key(s) into ${envPath}\n`)
-  for (const k of Object.keys(merged).sort()) {
-    output.write(`  ${k}: ${mask(merged[k])}\n`)
+  for (const k of Object.keys(updates).sort()) {
+    output.write(`  ${k}: ${mask(updates[k])}\n`)
   }
+  output.write(
+    '\nReminder: mirror server-only secrets in Netlify → Site → Environment variables.\n',
+  )
+}
+
+if (mergeFile) {
+  const mergePath = path.resolve(process.cwd(), mergeFile)
+  if (!fs.existsSync(mergePath)) {
+    console.error(`File not found: ${mergePath}`)
+    process.exit(1)
+  }
+  const merged = parseMergeFile(mergePath)
+  applyUpdates(merged, 'merge file')
+  process.exit(0)
+}
+
+if (Object.keys(setPairs).length > 0) {
+  applyUpdates(setPairs, '--set')
   process.exit(0)
 }
 
@@ -213,21 +333,23 @@ function ask(q) {
 }
 
 async function interactive() {
-  output.write('\nCampaignOS — ingest API keys (server-only, writes .env)\n')
+  output.write('\nCampaignOS — ingest environment keys (writes .env)\n')
   output.write(`File: ${envPath}\n`)
-  output.write('Enter to skip a key; paste value to set/update.\n\n')
+  output.write(
+    'Enter to skip each key (keeps existing). Paste to set/update. Ctrl+C to abort.\n\n',
+  )
 
   let existingText = ''
   if (fs.existsSync(envPath)) {
     existingText = fs.readFileSync(envPath, 'utf8')
   } else {
     existingText =
-      '# CampaignOS — local environment (gitignored). Add Supabase via npm run setup:env\n\n'
+      '# CampaignOS — local environment (gitignored). See also: npm run setup:env\n\n'
     output.write(`(New file) Creating ${envPath} with header comment.\n`)
   }
   const map = parseEnvFile(existingText)
 
-  for (const row of CAMPAIGN_API_KEYS) {
+  for (const row of ENV_INGEST_SPEC) {
     const cur = map.get(row.key) ?? ''
     output.write(`${'─'.repeat(56)}\n`)
     output.write(`${row.label}\n${row.key}\n${row.hint}\n`)
@@ -252,7 +374,9 @@ async function interactive() {
 
   fs.writeFileSync(envPath, next, 'utf8')
   output.write(`\nSaved ${envPath}\n`)
-  output.write('Reminder: add the same keys to Netlify → Site → Environment variables for functions.\n')
+  output.write(
+    'Next: npm run check:env   |   Netlify: copy server-only keys to site env\n',
+  )
   rl.close()
 }
 
