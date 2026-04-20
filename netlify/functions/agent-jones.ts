@@ -20,6 +20,10 @@ type AgentJonesSafeContext = {
     exception_request_status?: string
     voter_status?: string
   }
+  currentTaskTitle?: string
+  currentTaskStatus?: string
+  currentTrainingTitle?: string
+  currentTrainingStatus?: string
 }
 
 type RequestBody = {
@@ -99,6 +103,14 @@ function validateProfileHints(
   return Object.keys(out).length ? out : undefined
 }
 
+function validateSummaryLine(raw: unknown, max: number): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const t = raw.trim()
+  if (!t || t.length > max) return undefined
+  if (/[<>\\]/.test(t)) return undefined
+  return t
+}
+
 function validateContext(raw: unknown): AgentJonesSafeContext | null {
   if (!isRecord(raw)) return null
   const slice = raw.progressSlice
@@ -106,10 +118,18 @@ function validateContext(raw: unknown): AgentJonesSafeContext | null {
   if (typeof slice !== 'string' || !SLICES.has(slice)) return null
   if (typeof voterLoading !== 'boolean') return null
   const hints = validateProfileHints(raw.profileHints)
+  const currentTaskTitle = validateSummaryLine(raw.currentTaskTitle, 120)
+  const currentTaskStatus = validateSummaryLine(raw.currentTaskStatus, 64)
+  const currentTrainingTitle = validateSummaryLine(raw.currentTrainingTitle, 120)
+  const currentTrainingStatus = validateSummaryLine(raw.currentTrainingStatus, 64)
   return {
     progressSlice: slice as AgentJonesSafeContext['progressSlice'],
     voterLoading,
     ...(hints ? { profileHints: hints } : {}),
+    ...(currentTaskTitle ? { currentTaskTitle } : {}),
+    ...(currentTaskStatus ? { currentTaskStatus } : {}),
+    ...(currentTrainingTitle ? { currentTrainingTitle } : {}),
+    ...(currentTrainingStatus ? { currentTrainingStatus } : {}),
   }
 }
 
@@ -119,6 +139,7 @@ function buildSystemPrompt(context: AgentJonesSafeContext): string {
 Rules:
 - You ONLY reason about the volunteer using the JSON "dashboardContext" below. Do not claim you queried a database, opened Supabase, or accessed tools beyond this context.
 - Progress is exactly one of: unmatched, matched_no_branch, exception_pending, matched_ready. voterLoading means roster/voter linkage is still loading — treat UI as cautious/verification-first.
+- Optional fields currentTaskTitle, currentTaskStatus, currentTrainingTitle, currentTrainingStatus are short labels only (no secrets); if absent, do not invent assignments.
 - Stay practical, supportive, and brief (mobile screens). No legal/medical advice. Do not ask for passwords, SSNs, or full document uploads.
 - If profileHints are missing, do not invent values.
 

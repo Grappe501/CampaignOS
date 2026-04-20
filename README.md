@@ -12,8 +12,18 @@ Vite + React + TypeScript campaign app with Supabase. This repo is set up for **
 - Node.js 20+ (matches Netlify `NODE_VERSION` in `netlify.toml`)
 - npm
 - A Supabase project (URL + anon key)
+- Optional: [Supabase CLI](https://supabase.com/docs/guides/cli) for `db push`, and [Netlify CLI](https://docs.netlify.com/cli/get-started/) for `netlify dev` (functions + frontend)
 
-## Local setup
+## Stack from the bottom (migrations → env → verify → launch)
+
+1. **Database** — Apply SQL in `supabase/migrations/` in filename order (see `supabase/README.md`). With the CLI: `npx supabase@latest link --project-ref <ref>` then `npx supabase@latest db push`. Optional dev rows: edit `supabase/seed.sql`, then `supabase db reset` (local stack only) or run seed SQL manually.
+2. **Environment** — `npm run setup:env` (or copy `.env.example` → `.env`), then `npm run check:env`.
+3. **One-shot lift** — `npm run launch` runs `npm install`, `check:env`, `lint`, `build`, and prints migration order + run commands.
+4. **Run the app** — `npm run dev` (Vite only) or `netlify dev` (site + functions). If the app runs on Vite alone, set `VITE_NETLIFY_FUNCTIONS_ORIGIN` (e.g. `http://localhost:8888`) so Agent Jones can reach functions.
+
+Working against the **live** Supabase project is normal: use the same project URL/anon key in `.env` as in production, and rely on **RLS** so the anon key remains safe.
+
+## Local setup (quick path)
 
 1. Clone the repo (when hosted on GitHub):
 
@@ -22,37 +32,19 @@ Vite + React + TypeScript campaign app with Supabase. This repo is set up for **
    cd CampaignOS
    ```
 
-2. Install dependencies:
+2. **Bootstrap** (install + env check):
 
    ```bash
-   npm install
+   npm run bootstrap
    ```
 
-3. Create a local `.env` from prompts (values are **not** printed back in full after save):
+   Or step-by-step: `npm install` → create `.env` (`npm run setup:env` or `cp .env.example .env`) → `npm run check:env`.
 
-   ```bash
-   npm run setup:env
-   ```
-
-   Or copy manually:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-4. Verify required variables (fails if Supabase client vars are missing or still placeholders):
-
-   ```bash
-   npm run check:env
-   ```
-
-5. Start the dev server:
+3. Start the dev server:
 
    ```bash
    npm run dev
    ```
-
-Working against the **live** Supabase project is normal: use the same project URL/anon key in `.env` as in production, and rely on **RLS** so the anon key remains safe.
 
 ## GitHub workflow
 
@@ -87,14 +79,18 @@ You must type `YES` to confirm. Prefer setting sensitive values directly in the 
 
 ## Project scripts
 
-| Script            | Purpose                                      |
-|-------------------|----------------------------------------------|
-| `npm run setup:env` | Interactive `.env` bootstrap               |
-| `npm run check:env` | Validate env (required client vars)        |
-| `npm run dev`     | Vite dev server                               |
-| `npm run build`   | Typecheck + production build → `dist/`       |
-| `npm run netlify:env:push` | Optional CLI import to Netlify site   |
+| Script | Purpose |
+|--------|---------|
+| `npm run setup:env` | Interactive `.env` bootstrap |
+| `npm run check:env` | Validate env (required client vars) |
+| `npm run bootstrap` | `npm install` + `check:env` |
+| `npm run verify` | `lint` + production `build` |
+| `npm run db:list` | Print `supabase/migrations` apply order |
+| `npm run launch` | Install, env check, lint, build, then print DB + run hints |
+| `npm run dev` | Vite dev server |
+| `npm run build` | Production build → `dist/` |
+| `npm run netlify:env:push` | Optional CLI import to Netlify site |
 
-## Netlify Functions (future)
+## Netlify Functions
 
-`netlify.toml` sets `[functions] directory = "netlify/functions"`. Add server handlers there when needed; keep OpenAI and other secrets in server code + Netlify env, not in the client.
+`netlify.toml` sets `[functions] directory = "netlify/functions"`. **`agent-jones`** calls OpenAI server-side (`OPENAI_API_KEY` on Netlify, never `VITE_*`). Keep other secrets in Functions or server-only env, not in the client bundle.

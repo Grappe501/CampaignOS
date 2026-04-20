@@ -30,11 +30,19 @@ export type AgentJonesSafeProfileHints = {
 /**
  * Explicit, bounded context the Netlify function is allowed to use — no DB reads there.
  */
+/** Optional summaries only (no raw rows or IDs beyond titles/status labels). */
+export type AgentJonesTaskTrainingSummaries = {
+  currentTaskTitle?: string
+  currentTaskStatus?: string
+  currentTrainingTitle?: string
+  currentTrainingStatus?: string
+}
+
 export type AgentJonesSafeContext = {
   progressSlice: DashboardProgressSlice
   voterLoading: boolean
   profileHints?: AgentJonesSafeProfileHints
-}
+} & AgentJonesTaskTrainingSummaries
 
 function trunc(s: unknown, max: number): string | null {
   const t = String(s ?? '').trim()
@@ -42,16 +50,36 @@ function trunc(s: unknown, max: number): string | null {
   return t.length > max ? t.slice(0, max) : t
 }
 
-/** Build a server-safe snapshot: only progression slice, loading flag, and whitelisted profile fields. */
+function truncSummary(s: string | null | undefined, max: number): string | undefined {
+  const t = trunc(s, max)
+  return t ?? undefined
+}
+
+/** Build a server-safe snapshot: only progression slice, loading flag, whitelisted profile fields, and optional task/training summaries. */
 export function buildAgentJonesSafeContext(input: {
   progressSlice: DashboardProgressSlice
   voterLoading: boolean
   profile: CampaignProfile | null
+  summaries?: AgentJonesTaskTrainingSummaries | null
 }): AgentJonesSafeContext {
-  const { progressSlice, voterLoading, profile } = input
+  const { progressSlice, voterLoading, profile, summaries } = input
+
+  const taskTraining: AgentJonesTaskTrainingSummaries = {}
+  const ctt = truncSummary(summaries?.currentTaskTitle, 120)
+  const cts = truncSummary(summaries?.currentTaskStatus, 64)
+  const ctrt = truncSummary(summaries?.currentTrainingTitle, 120)
+  const ctrs = truncSummary(summaries?.currentTrainingStatus, 64)
+  if (ctt) taskTraining.currentTaskTitle = ctt
+  if (cts) taskTraining.currentTaskStatus = cts
+  if (ctrt) taskTraining.currentTrainingTitle = ctrt
+  if (ctrs) taskTraining.currentTrainingStatus = ctrs
 
   if (!profile) {
-    return { progressSlice, voterLoading }
+    return {
+      progressSlice,
+      voterLoading,
+      ...taskTraining,
+    }
   }
 
   const hints: AgentJonesSafeProfileHints = {}
@@ -70,5 +98,6 @@ export function buildAgentJonesSafeContext(input: {
     progressSlice,
     voterLoading,
     ...(Object.keys(hints).length > 0 ? { profileHints: hints } : {}),
+    ...taskTraining,
   }
 }

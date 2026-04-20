@@ -1,0 +1,36 @@
+-- Optional dev data (runs with `supabase db reset` / seed when enabled in config.toml).
+-- Uncomment after migrations are applied and you want a deterministic test voter row.
+-- Do not load real PII from production into seed files.
+
+-- INSERT INTO public.raw_vr (
+--     voter_id,
+--     name_last,
+--     name_first,
+--     date_of_birth,
+--     county,
+--     registrant_status,
+--     res_city,
+--     res_state,
+--     res_zip5,
+--     precinct_name,
+--     congressional_district,
+--     state_senate_district,
+--     state_representative_district
+-- )
+-- VALUES (
+--     'DEV-VR-0001',
+--     'Sample',
+--     'Volunteer',
+--     '1995-06-15',
+--     'Pulaski',
+--     'active',
+--     'Little Rock',
+--     'AR',
+--     '72201',
+--     'Sample Precinct',
+--     '2',
+--     '34',
+--     '89'
+-- );
+
+SELECT 1;

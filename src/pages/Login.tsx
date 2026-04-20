@@ -1,80 +1,123 @@
-import { useCallback, useEffect, useState } from 'react'
+/**
+ * Real auth: email + password only (signInWithPassword / signUp).
+ * Do not use signInWithOtp here — that was the old magic-link path.
+ */
+import { useState } from 'react'
 import type { AuthError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 import AppHeader from '../components/AppHeader'
 
-const COOLDOWN_AFTER_SUCCESS_SEC = 45
-const COOLDOWN_AFTER_RATE_LIMIT_SEC = 90
-
 function isRateLimitError(error: AuthError): boolean {
   if (error.status === 429) return true
-  return /\b429\b|rate\s*limit|too many requests|email rate limit/i.test(
-    error.message,
-  )
+  return /\b429\b|rate\s*limit|too many requests/i.test(error.message)
 }
 
 export default function Login() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  /** Drives password autocomplete: sign-in vs new account (no guessing which flow). */
+  const [authIntent, setAuthIntent] = useState<'signin' | 'signup'>('signin')
   const [message, setMessage] = useState<string | null>(null)
   const [messageTone, setMessageTone] = useState<'success' | 'error' | 'info'>(
     'info',
   )
   const [busy, setBusy] = useState(false)
-  const [cooldownLeft, setCooldownLeft] = useState(0)
 
-  useEffect(() => {
-    if (cooldownLeft <= 0) return
-    const id = window.setInterval(() => {
-      setCooldownLeft((s) => (s <= 1 ? 0 : s - 1))
-    }, 1000)
-    return () => window.clearInterval(id)
-  }, [cooldownLeft])
+  const trimmedEmail = email.trim()
+  const canSubmit = trimmedEmail.length > 0 && password.length > 0 && !busy
 
-  const startCooldown = useCallback((seconds: number) => {
-    setCooldownLeft(seconds)
-  }, [])
+  const handleSignIn = async () => {
+    setAuthIntent('signin')
 
-  const signIn = async () => {
-    const trimmed = email.trim()
-    if (!trimmed) {
+    if (!canSubmit) {
       setMessageTone('error')
-      setMessage('Enter your email.')
+      setMessage('Enter email and password.')
       return
     }
-
-    if (cooldownLeft > 0 || busy) return
 
     setBusy(true)
     setMessage(null)
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: trimmed,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password,
       })
 
       if (error) {
         setMessageTone('error')
-        if (isRateLimitError(error)) {
-          setMessage(
-            'Too many sign-in emails were sent recently. Please wait a minute before trying again so your inbox (and our server) get a short break.',
-          )
-          startCooldown(COOLDOWN_AFTER_RATE_LIMIT_SEC)
-        } else {
-          setMessage(error.message)
-        }
+        setMessage(
+          isRateLimitError(error)
+            ? 'Too many attempts. Wait a moment and try again.'
+            : error.message,
+        )
+        return
+      }
+
+      if (!data.session) {
+        setMessageTone('error')
+        setMessage(
+          'Sign-in succeeded but no session was returned. Check Supabase Auth settings.',
+        )
         return
       }
 
       setMessageTone('success')
-      setMessage('Check your email for the magic link.')
-      startCooldown(COOLDOWN_AFTER_SUCCESS_SEC)
+      setMessage('Signed in. Loading your workspace…')
     } finally {
       setBusy(false)
     }
   }
 
-  const trimmed = email.trim()
-  const submitDisabled = busy || cooldownLeft > 0 || !trimmed
+  const handleSignUp = async () => {
+    setAuthIntent('signup')
+
+    if (!canSubmit) {
+      setMessageTone('error')
+      setMessage('Enter email and password to create an account.')
+      return
+    }
+
+    if (password.length < 6) {
+      setMessageTone('error')
+      setMessage('Password must be at least 6 characters (Supabase default).')
+      return
+    }
+
+    setBusy(true)
+    setMessage(null)
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+      })
+
+      if (error) {
+        setMessageTone('error')
+        setMessage(
+          isRateLimitError(error)
+            ? 'Too many attempts. Wait a moment and try again.'
+            : error.message,
+        )
+        return
+      }
+
+      if (data.session) {
+        setMessageTone('success')
+        setMessage('Account ready. Loading your workspace…')
+        return
+      }
+
+      setMessageTone('info')
+      setMessage(
+        'Account created. Check your email to confirm before signing in.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const msgColor =
     messageTone === 'success'
@@ -83,13 +126,18 @@ export default function Login() {
         ? '#b91c1c'
         : 'var(--text-h)'
 
+  const passwordAutoComplete =
+    authIntent === 'signin' ? 'current-password' : 'new-password'
+
   return (
     <>
       <AppHeader />
       <main className="app-shell">
         <h1 className="page-title">Login</h1>
-        <p className="subtitle" style={{ marginBottom: 20 }}>
-          Sign in with a one-time link sent to your email. No password required.
+        <p className="subtitle" style={{ marginBottom: 16 }}>
+          Use your email and password below. Choose <strong>Sign in</strong> if
+          you already have an account, or <strong>Create account</strong> if you
+          are new. (Magic link or Google can be added later.)
         </p>
 
         <form
@@ -97,17 +145,18 @@ export default function Login() {
           style={{ maxWidth: '480px' }}
           onSubmit={(e) => {
             e.preventDefault()
-            void signIn()
+            void handleSignIn()
           }}
         >
           <div className="field-block">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="login-email">Email</label>
             <input
-              id="email"
+              id="login-email"
+              name="email"
               type="email"
               autoComplete="email"
               inputMode="email"
-              enterKeyHint="send"
+              enterKeyHint="next"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={busy}
@@ -115,20 +164,57 @@ export default function Login() {
             />
           </div>
 
-          <button
-            type="submit"
-            className="btn-touch btn-primary"
-            disabled={submitDisabled}
-          >
-            {busy ? 'Sending…' : 'Sign in with email'}
-          </button>
-        </form>
+          <div className="field-block">
+            <label htmlFor="login-password">Password</label>
+            <div className="login-password-row">
+              <input
+                id="login-password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete={passwordAutoComplete}
+                enterKeyHint="go"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={busy}
+                className="input-stretch"
+              />
+              <button
+                type="button"
+                className="login-password-toggle"
+                disabled={busy}
+                aria-pressed={showPassword}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword((v) => !v)}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+          </div>
 
-        {cooldownLeft > 0 ? (
-          <p className="subtitle" style={{ marginTop: 12 }}>
-            You can request another link in {cooldownLeft}s.
-          </p>
-        ) : null}
+          <div className="login-action-section">
+            <p className="login-action-heading">Already have an account?</p>
+            <button
+              type="submit"
+              className="btn-touch btn-primary"
+              disabled={!canSubmit}
+              onClick={() => setAuthIntent('signin')}
+            >
+              {busy && authIntent === 'signin' ? 'Working…' : 'Sign in'}
+            </button>
+          </div>
+
+          <div className="login-action-section">
+            <p className="login-action-heading">New here?</p>
+            <button
+              type="button"
+              className="btn-touch"
+              disabled={!canSubmit}
+              onClick={() => void handleSignUp()}
+            >
+              {busy && authIntent === 'signup' ? 'Working…' : 'Create account'}
+            </button>
+          </div>
+        </form>
 
         {message ? (
           <p

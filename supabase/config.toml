@@ -1,0 +1,24 @@
+# Supabase CLI (https://supabase.com/docs/guides/cli)
+# Remote: `npx supabase@latest link --project-ref <ref>` then `npx supabase@latest db push`
+# Local stack (optional): `npx supabase@latest start`
+
+project_id = "campaignos"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+major_version = 15
+
+[db.migrations]
+enabled = true
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+port = 54323

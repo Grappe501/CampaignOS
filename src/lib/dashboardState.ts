@@ -1,5 +1,6 @@
 import type { CampaignProfile } from '../hooks/useProfile'
 import type { DevMockDashboardState } from './devAuth'
+import type { StructuredWorkspaceRecord } from './workspaceStructured'
 
 /** Same four buckets as dev mock dashboard presets — derived from live profile + voter match. */
 export type DashboardProgressSlice = DevMockDashboardState
@@ -9,6 +10,27 @@ export type WorkspaceCardModel = {
   explanation: string
   primaryCta?: { label: string; targetId: string }
   statusLabel?: string
+  /** Optional line under title (e.g. structured workspace record status). */
+  metaLine?: string
+}
+
+function mergeStructuredWorkspaceCard(
+  base: WorkspaceCardModel,
+  structured: StructuredWorkspaceRecord | null | undefined,
+): WorkspaceCardModel {
+  if (!structured?.title?.trim()) return base
+  const title = structured.title.trim()
+  const metaLine = `Record: ${structured.status}`
+  const parts = [structured.description?.trim() || null, base.explanation.trim()].filter(
+    Boolean,
+  ) as string[]
+  return {
+    title,
+    metaLine,
+    explanation: parts.join('\n\n'),
+    ...(base.primaryCta ? { primaryCta: base.primaryCta } : {}),
+    ...(base.statusLabel ? { statusLabel: base.statusLabel } : {}),
+  }
 }
 
 export const ONBOARDING_BRANCH_OPTIONS = [
@@ -232,8 +254,10 @@ export function getFirstTaskCardModel(input: {
   slice: DashboardProgressSlice
   profile: CampaignProfile | null
   voterLoading: boolean
+  /** When set (non-null object), title/body prefer DB-backed task; CTAs stay from deterministic slice. */
+  structured?: StructuredWorkspaceRecord | null
 }): WorkspaceCardModel {
-  const { slice, profile, voterLoading } = input
+  const { slice, profile, voterLoading, structured } = input
 
   if (voterLoading) {
     return {
@@ -245,55 +269,67 @@ export function getFirstTaskCardModel(input: {
   }
 
   if (slice === 'exception_pending') {
-    return {
-      title: 'First task after roster clearance',
-      explanation:
-        'While your exception is reviewed, task routing stays paused so assignments are not sent to the wrong queue.',
-      primaryCta: {
-        label: 'View exception status',
-        targetId: 'exception-request',
+    return mergeStructuredWorkspaceCard(
+      {
+        title: 'First task after roster clearance',
+        explanation:
+          'While your exception is reviewed, task routing stays paused so assignments are not sent to the wrong queue.',
+        primaryCta: {
+          label: 'View exception status',
+          targetId: 'exception-request',
+        },
       },
-    }
+      structured,
+    )
   }
 
   if (slice === 'unmatched') {
-    return {
-      title: 'Verify identity to receive tasks',
-      explanation:
-        'Self-match or an approved roster exception unlocks canvass, phone bank, and data tasks tied to your precinct.',
-      primaryCta: {
-        label: 'Go to verification',
-        targetId: 'voter-workspace',
+    return mergeStructuredWorkspaceCard(
+      {
+        title: 'Verify identity to receive tasks',
+        explanation:
+          'Self-match or an approved roster exception unlocks canvass, phone bank, and data tasks tied to your precinct.',
+        primaryCta: {
+          label: 'Go to verification',
+          targetId: 'voter-workspace',
+        },
       },
-    }
+      structured,
+    )
   }
 
   if (slice === 'matched_no_branch') {
-    return {
-      title: 'Choose your path before task routing',
-      explanation:
-        'Your branch tells the campaign which playbooks and captains to use — one quick selection unlocks the right task queue.',
-      primaryCta: {
-        label: 'Open branch selector',
-        targetId: 'onboarding-branch',
+    return mergeStructuredWorkspaceCard(
+      {
+        title: 'Choose your path before task routing',
+        explanation:
+          'Your branch tells the campaign which playbooks and captains to use — one quick selection unlocks the right task queue.',
+        primaryCta: {
+          label: 'Open branch selector',
+          targetId: 'onboarding-branch',
+        },
       },
-    }
+      structured,
+    )
   }
 
   const orientationLeft = needsOnboardingPath(profile)
   if (orientationLeft) {
-    return {
-      title: 'Finish orientation — then your first assignment',
-      explanation:
-        'Confirm your active space and onboarding check-ins with your captain so tasks land in the correct pod.',
-      primaryCta: {
-        label: 'Open workspace orientation',
-        targetId: 'workspace-cards',
+    return mergeStructuredWorkspaceCard(
+      {
+        title: 'Finish orientation — then your first assignment',
+        explanation:
+          'Confirm your active space and onboarding check-ins with your captain so tasks land in the correct pod.',
+        primaryCta: {
+          label: 'Open workspace orientation',
+          targetId: 'workspace-cards',
+        },
       },
-    }
+      structured,
+    )
   }
 
-  return {
+  const ready: WorkspaceCardModel = {
     title: 'Stand-by: first field task',
     explanation:
       'You are cleared. When routing goes live, your captain will drop canvass or phone tasks here — for now, use Agent Jones for practice.',
@@ -302,14 +338,16 @@ export function getFirstTaskCardModel(input: {
       targetId: 'agent-jones',
     },
   }
+  return mergeStructuredWorkspaceCard(ready, structured)
 }
 
 export function getTrainingCardModel(input: {
   slice: DashboardProgressSlice
   profile: CampaignProfile | null
   voterLoading: boolean
+  structured?: StructuredWorkspaceRecord | null
 }): WorkspaceCardModel {
-  const { slice, profile, voterLoading } = input
+  const { slice, profile, voterLoading, structured } = input
 
   if (voterLoading) {
     return {
@@ -321,58 +359,73 @@ export function getTrainingCardModel(input: {
   }
 
   if (slice === 'exception_pending') {
-    return {
-      title: 'Training preview while you wait',
-      explanation:
-        'You can skim evergreen content now; role-specific tracks and attestations unlock after match or approved exception.',
-      statusLabel: 'Partial access — verification pending',
-    }
+    return mergeStructuredWorkspaceCard(
+      {
+        title: 'Training preview while you wait',
+        explanation:
+          'You can skim evergreen content now; role-specific tracks and attestations unlock after match or approved exception.',
+        statusLabel: 'Partial access — verification pending',
+      },
+      structured,
+    )
   }
 
   if (slice === 'unmatched') {
-    return {
-      title: 'Training unlocks with roster clearance',
-      explanation:
-        'Volunteer Basics and compliance modules open once we know you are an approved volunteer or an approved exception.',
-      primaryCta: {
-        label: 'Start verification',
-        targetId: 'voter-workspace',
+    return mergeStructuredWorkspaceCard(
+      {
+        title: 'Training unlocks with roster clearance',
+        explanation:
+          'Volunteer Basics and compliance modules open once we know you are an approved volunteer or an approved exception.',
+        primaryCta: {
+          label: 'Start verification',
+          targetId: 'voter-workspace',
+        },
       },
-    }
+      structured,
+    )
   }
 
   if (slice === 'matched_no_branch') {
-    return {
-      title: 'Pick a branch for tailored training',
-      explanation:
-        'Canvass, remote, and youth tracks differ — select your onboarding branch so the right modules surface next.',
-      primaryCta: {
-        label: 'Select your branch',
-        targetId: 'onboarding-branch',
+    return mergeStructuredWorkspaceCard(
+      {
+        title: 'Pick a branch for tailored training',
+        explanation:
+          'Canvass, remote, and youth tracks differ — select your onboarding branch so the right modules surface next.',
+        primaryCta: {
+          label: 'Select your branch',
+          targetId: 'onboarding-branch',
+        },
       },
-    }
+      structured,
+    )
   }
 
   const orientationLeft = needsOnboardingPath(profile)
   if (orientationLeft) {
-    return {
-      title: 'Core modules after orientation',
-      explanation:
-        'Finish the workspace orientation cards below — then Volunteer Basics and tool walkthroughs will show as your assigned path.',
-      primaryCta: {
-        label: 'Go to orientation cards',
-        targetId: 'workspace-cards',
+    return mergeStructuredWorkspaceCard(
+      {
+        title: 'Core modules after orientation',
+        explanation:
+          'Finish the workspace orientation cards below — then Volunteer Basics and tool walkthroughs will show as your assigned path.',
+        primaryCta: {
+          label: 'Go to orientation cards',
+          targetId: 'workspace-cards',
+        },
       },
-    }
+      structured,
+    )
   }
 
-  return {
-    title: 'Volunteer Basics — start here',
-    explanation:
-      'Complete the intro track, then branch into canvass or phone scripts. Articulate embeds wire up in a later slice.',
-    primaryCta: {
-      label: 'Jump to Agent Jones',
-      targetId: 'agent-jones',
+  return mergeStructuredWorkspaceCard(
+    {
+      title: 'Volunteer Basics — start here',
+      explanation:
+        'Complete the intro track, then branch into canvass or phone scripts. Articulate embeds wire up in a later slice.',
+      primaryCta: {
+        label: 'Jump to Agent Jones',
+        targetId: 'agent-jones',
+      },
     },
-  }
+    structured,
+  )
 }

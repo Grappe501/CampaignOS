@@ -47,3 +47,7 @@ credentials.json
 
 # Local Netlify folder
 .netlify
+
+# Supabase CLI local artifacts
+supabase/.temp
+supabase/.branches

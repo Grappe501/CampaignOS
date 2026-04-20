@@ -6,7 +6,10 @@ import {
   scrollToDashboardId,
   type AgentJonesPrompt,
 } from '../lib/agentJonesGuidance'
-import { buildAgentJonesSafeContext } from '../lib/agentJonesContext'
+import {
+  buildAgentJonesSafeContext,
+  type AgentJonesTaskTrainingSummaries,
+} from '../lib/agentJonesContext'
 import {
   AgentJonesApiError,
   callAgentJones,
@@ -29,10 +32,12 @@ export default function AgentJones({
   progressSlice,
   profile,
   voterLoading,
+  summaries,
 }: {
   progressSlice: DashboardProgressSlice
   profile: CampaignProfile | null
   voterLoading: boolean
+  summaries?: AgentJonesTaskTrainingSummaries | null
 }) {
   const bundle = useMemo(
     () =>
@@ -61,8 +66,9 @@ export default function AgentJones({
         progressSlice,
         voterLoading,
         profile,
+        summaries: summaries ?? undefined,
       }),
-    [progressSlice, voterLoading, profile],
+    [progressSlice, voterLoading, profile, summaries],
   )
 
   const handleSelect = async (prompt: AgentJonesPrompt) => {

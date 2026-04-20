@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useProfile } from '../hooks/useProfile'
+import { useTasks } from '../hooks/useTasks'
+import { useTraining } from '../hooks/useTraining'
 import { useVoterMatch } from '../hooks/useVoterMatch'
 import {
   devBypassDisplayEmail,
   isDevAuthBypassEnabled,
 } from '../lib/devAuth'
 import { supabase } from '../lib/supabaseClient'
+import type { AgentJonesTaskTrainingSummaries } from '../lib/agentJonesContext'
 import {
   getDashboardProgressSlice,
   getFirstTaskCardModel,
@@ -41,6 +44,8 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
   const profileId =
     profile?.id != null && profile.id !== '' ? String(profile.id) : undefined
   const voterMatch = useVoterMatch(profileId)
+  const tasks = useTasks(profileId)
+  const training = useTraining(profileId)
   const [accountEmail, setAccountEmail] = useState<string | null>(() =>
     isDevAuthBypassEnabled() ? devBypassDisplayEmail() : null,
   )
@@ -70,8 +75,13 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
   const branchSet = Boolean(normalizeKey(profile?.onboarding_branch))
 
   useEffect(() => {
-    if (voterMatched) void refetch()
-  }, [voterMatched, refetch])
+    if (voterMatched) {
+      void refetch()
+      void tasks.refetch()
+      void training.refetch()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refetch when match flips; avoid tasks/training object identity churn
+  }, [voterMatched, refetch, tasks.refetch, training.refetch])
 
   const nextStep = getNextStep({
     profile,
@@ -85,17 +95,46 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     voterLoading: voterMatch.matchedLoading,
   })
 
+  const structuredTask =
+    voterMatch.matchedLoading || tasks.loading ? null : tasks.structured
+  const structuredTraining =
+    voterMatch.matchedLoading || training.loading ? null : training.structured
+
   const firstTaskModel = getFirstTaskCardModel({
     slice: progressSlice,
     profile,
     voterLoading: voterMatch.matchedLoading,
+    structured: structuredTask,
   })
 
   const trainingModel = getTrainingCardModel({
     slice: progressSlice,
     profile,
     voterLoading: voterMatch.matchedLoading,
+    structured: structuredTraining,
   })
+
+  const agentJonesSummaries = useMemo((): AgentJonesTaskTrainingSummaries | null => {
+    if (voterMatch.matchedLoading || tasks.loading || training.loading) {
+      return null
+    }
+    const s: AgentJonesTaskTrainingSummaries = {}
+    if (tasks.structured?.title) s.currentTaskTitle = tasks.structured.title
+    if (tasks.structured?.status) s.currentTaskStatus = tasks.structured.status
+    if (training.structured?.title) {
+      s.currentTrainingTitle = training.structured.title
+    }
+    if (training.structured?.status) {
+      s.currentTrainingStatus = training.structured.status
+    }
+    return Object.keys(s).length > 0 ? s : null
+  }, [
+    voterMatch.matchedLoading,
+    tasks.loading,
+    training.loading,
+    tasks.structured,
+    training.structured,
+  ])
 
   const gate = progressionGateMessage(
     voterMatched,
@@ -248,10 +287,11 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
                 needsOnboardingPath(profile)
                   ? 'orient'
                   : 'x'
-              }`}
+              }-${tasks.structured?.title ?? ''}-${training.structured?.title ?? ''}`}
               progressSlice={progressSlice}
               profile={profile}
               voterLoading={voterMatch.matchedLoading}
+              summaries={agentJonesSummaries}
             />
           </div>
         </DashboardGrid>

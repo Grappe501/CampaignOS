@@ -11,6 +11,11 @@ const envPath = path.join(root, '.env')
 
 const requiredClient = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
 
+const optionalClient = [
+  /** Local: point Vite at `netlify dev` functions origin */
+  'VITE_NETLIFY_FUNCTIONS_ORIGIN',
+]
+
 const optionalServer = [
   'OPENAI_API_KEY',
   'SENDGRID_API_KEY',
@@ -22,7 +27,7 @@ const optionalServer = [
   'NETLIFY_SITE_ID',
 ]
 
-const allKeys = [...requiredClient, ...optionalServer]
+const allKeys = [...requiredClient, ...optionalClient, ...optionalServer]
 
 function parseEnvFile(text) {
   /** @type {Record<string, string>} */
@@ -74,6 +79,16 @@ for (const key of requiredClient) {
   if (isBadClientValue(key, value)) {
     console.error(`✗ ${key} missing or placeholder`)
     failed = true
+  } else {
+    console.log(`✓ ${key}`)
+  }
+}
+
+console.log('\nOptional client variables:')
+for (const key of optionalClient) {
+  const value = env[key]
+  if (!value || !String(value).trim()) {
+    console.log(`• ${key} empty`)
   } else {
     console.log(`✓ ${key}`)
   }

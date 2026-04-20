@@ -41,6 +41,11 @@ export default function TrainingCard({
       >
         {model.title}
       </h3>
+      {model.metaLine ? (
+        <p className="subtitle" style={{ margin: '6px 0 0', fontWeight: 600 }}>
+          {model.metaLine}
+        </p>
+      ) : null}
       <p className="subtitle" style={{ margin: 0 }}>
         {model.explanation}
       </p>
