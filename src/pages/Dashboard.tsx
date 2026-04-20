@@ -20,7 +20,7 @@ import {
 } from '../lib/dashboardState'
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
-import AgentJones from '../components/AgentJones'
+import FloatingAgentJones from '../components/FloatingAgentJones'
 import VoterMatchForm from '../components/VoterMatchForm'
 import VoterWidget from '../components/VoterWidget'
 import DashboardGrid from '../components/dashboard/DashboardGrid'
@@ -55,6 +55,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
   const [accountEmail, setAccountEmail] = useState<string | null>(() =>
     isDevAuthBypassEnabled() ? devBypassDisplayEmail() : null,
   )
+  const [agentJonesOpen, setAgentJonesOpen] = useState(false)
 
   useEffect(() => {
     if (isDevAuthBypassEnabled()) {
@@ -149,7 +150,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     <>
       <AppHeader onSignOut={handleSignOut} />
       <main className="app-shell dashboard-workspace">
-        <WorkspaceDock />
+        <WorkspaceDock onAgentOpen={() => setAgentJonesOpen(true)} />
         <DashboardGrid>
           <DashboardHeader
             profile={profile}
@@ -289,24 +290,24 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             </div>
           </section>
 
-          <div id="agent-jones" className="agent-jones-anchor">
-            <AgentJones
-              key={`${progressSlice}-${voterMatch.matchedLoading}-${normalizeKey(
-                profile?.onboarding_branch,
-              )}-${normalizeKey(profile?.exception_request_status)}-${
-                progressSlice === 'matched_ready' &&
-                needsOnboardingPath(profile)
-                  ? 'orient'
-                  : 'x'
-              }-${tasks.structured?.title ?? ''}-${training.structured?.title ?? ''}`}
-              progressSlice={progressSlice}
-              profile={profile}
-              voterLoading={voterMatch.matchedLoading}
-              voterMatched={voterMatched}
-              matchedVoter={voterMatch.matched}
-            />
-          </div>
+          <div id="agent-jones" className="agent-jones-anchor" aria-hidden="true" />
         </DashboardGrid>
+        <FloatingAgentJones
+          key={`${progressSlice}-${voterMatch.matchedLoading}-${normalizeKey(
+            profile?.onboarding_branch,
+          )}-${normalizeKey(profile?.exception_request_status)}-${
+            progressSlice === 'matched_ready' && needsOnboardingPath(profile)
+              ? 'orient'
+              : 'x'
+          }-${tasks.structured?.title ?? ''}-${training.structured?.title ?? ''}`}
+          open={agentJonesOpen}
+          onOpenChange={setAgentJonesOpen}
+          progressSlice={progressSlice}
+          profile={profile}
+          voterLoading={voterMatch.matchedLoading}
+          voterMatched={voterMatched}
+          matchedVoter={voterMatch.matched}
+        />
       </main>
       <AppFooter />
     </>

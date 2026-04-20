@@ -3,6 +3,8 @@
  * Do not use signInWithOtp here — that was the old magic-link path.
  */
 import { useState } from 'react'
+import ApplicationUseNotice from '../components/ApplicationUseNotice'
+import { runPostSignInAudit } from '../lib/postAuthAudit'
 import type { AuthError } from '@supabase/supabase-js'
 import { ensureCampaignProfile } from '../lib/ensureCampaignProfile'
 import { supabase } from '../lib/supabaseClient'
@@ -61,6 +63,7 @@ export default function Login() {
     'info',
   )
   const [busy, setBusy] = useState(false)
+  const [rememberDevice, setRememberDevice] = useState(false)
 
   const passwordAutoComplete =
     authIntent === 'signin' ? 'current-password' : 'new-password'
@@ -102,6 +105,12 @@ export default function Login() {
       }
 
       await ensureCampaignProfile()
+
+      try {
+        await runPostSignInAudit({ rememberDevice: rememberDevice })
+      } catch {
+        /* audit is additive; never block sign-in */
+      }
 
       setMessageTone('success')
       setMessage('Signed in. Loading your workspace…')
@@ -151,6 +160,11 @@ export default function Login() {
 
       if (data.session) {
         await ensureCampaignProfile()
+        try {
+          await runPostSignInAudit({ rememberDevice: rememberDevice })
+        } catch {
+          /* additive */
+        }
         setMessageTone('success')
         setMessage('Account ready. Loading your workspace…')
         window.location.replace('/dashboard')
@@ -186,6 +200,7 @@ export default function Login() {
         </header>
 
         <h2 className="login-section-heading">Account access</h2>
+        <ApplicationUseNotice variant="compact" />
         <p className="subtitle" style={{ marginBottom: 16 }}>
           Use your email and password below. Choose <strong>Sign in</strong> if
           you already have an account, or <strong>Create account</strong> if you
@@ -243,6 +258,22 @@ export default function Login() {
                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
+          </div>
+
+          <div className="field-block login-remember-row">
+            <label className="login-remember-label">
+              <input
+                type="checkbox"
+                checked={rememberDevice}
+                onChange={(e) => setRememberDevice(e.target.checked)}
+                disabled={busy}
+                className="login-remember-check"
+              />
+              <span>
+                Remember this device (trusted-device record for future UX; you
+                still sign in with email and password)
+              </span>
+            </label>
           </div>
 
           <div className="login-action-section">

@@ -14,7 +14,12 @@ function scrollToId(id: string) {
   el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-export default function WorkspaceDock() {
+export default function WorkspaceDock({
+  onAgentOpen,
+}: {
+  /** Opens floating Agent Jones (large screens). */
+  onAgentOpen?: () => void
+}) {
   return (
     <nav
       className="workspace-dock"
@@ -25,7 +30,13 @@ export default function WorkspaceDock() {
           key={item.id}
           type="button"
           className="workspace-dock-btn"
-          onClick={() => scrollToId(item.id)}
+          onClick={() => {
+            if (item.id === 'agent-jones') {
+              onAgentOpen?.()
+              return
+            }
+            scrollToId(item.id)
+          }}
         >
           {item.label}
         </button>

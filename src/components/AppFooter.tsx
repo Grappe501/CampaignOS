@@ -1,8 +1,15 @@
+import { useCampaignFooter } from '../hooks/useCampaignFooter'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
+import {
+  APPLICATION_USE_NOTICE,
+  CAMPAIGN_PAID_FOR,
+} from '../brand/compliance'
 
 const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
 
 export default function AppFooter() {
+  const footer = useCampaignFooter()
+
   return (
     <footer className="app-site-footer">
       <div className="app-site-footer-inner app-shell">
@@ -16,11 +23,11 @@ export default function AppFooter() {
             loading="lazy"
             decoding="async"
           />
-          <p className="app-site-footer-tagline">{brand.slogan}</p>
+          <p className="app-site-footer-tagline">{footer.slogan}</p>
         </div>
 
         <nav className="app-site-footer-social" aria-label="Campaign social media">
-          {brand.social.map((s) => (
+          {footer.social.map((s) => (
             <a
               key={s.platform}
               href={s.url}
@@ -33,16 +40,22 @@ export default function AppFooter() {
           ))}
         </nav>
 
-        <p className="app-site-footer-contact">
-          <a
-            href={brand.contact.addressUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="app-site-footer-contact-link"
-          >
-            {brand.contact.addressLabel}
-          </a>
-        </p>
+        {footer.contactLabel ? (
+          <p className="app-site-footer-contact">
+            {footer.contactUrl ? (
+              <a
+                href={footer.contactUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="app-site-footer-contact-link"
+              >
+                {footer.contactLabel}
+              </a>
+            ) : (
+              footer.contactLabel
+            )}
+          </p>
+        ) : null}
 
         <nav className="app-site-footer-links" aria-label="Campaign website">
           {brand.siteChrome.footerNav.map((item) => (
@@ -57,6 +70,10 @@ export default function AppFooter() {
             </a>
           ))}
         </nav>
+
+        <p className="app-site-footer-disclaimer">{CAMPAIGN_PAID_FOR}</p>
+
+        <p className="app-site-footer-use-notice">{APPLICATION_USE_NOTICE}</p>
 
         <div className="app-site-footer-bottom">
           <p className="app-site-footer-app-line">
