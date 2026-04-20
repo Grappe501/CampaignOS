@@ -1,11 +1,20 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CAMPAIGN_EVENT_NEW_RECORD_SLUG, campaignEventRecordPath } from '../../../lib/campaignEventSystem'
 import type { CampaignEventTypeKey } from '../../../lib/campaignEventTypeMatrix'
-import { createEventFromTemplate } from '../../../lib/campaignEventDomainServices'
+import {
+  buildVolunteerEventSubmissionPayload,
+  createEventFromTemplate,
+} from '../../../lib/campaignEventDomainServices'
 import { getEventTypeTemplate } from '../../../lib/event-types.config'
 import { EVENT_OBJECTIVES } from '../../../lib/campaignEventDomain'
 import type { EventObjective } from '../../../lib/campaignEventDomain'
+import { useProfile } from '../../../hooks/useProfile'
+import { canAccessEventCoordinatorDesk } from '../../../lib/eventCoordinatorDeskAccess'
+import {
+  insertCampaignEventFromTemplate,
+  insertVolunteerEventSubmission,
+} from '../../../lib/campaignEventsFromSupabase'
 
 const NEIGHBORHOOD_PRESETS: { id: string; key: CampaignEventTypeKey; label: string; hint: string }[] = [
   { id: 'house', key: 'house_party_intro_candidate', label: 'House meeting', hint: 'Introduce the campaign locally' },
@@ -18,6 +27,11 @@ const NEIGHBORHOOD_PRESETS: { id: string; key: CampaignEventTypeKey; label: stri
 ]
 
 export default function NeighborhoodEventHubContent() {
+  const { profile } = useProfile()
+  const navigate = useNavigate()
+  const profileId = profile?.id != null && profile.id !== '' ? String(profile.id) : null
+  const isDeskEditor = canAccessEventCoordinatorDesk(profile?.primary_role)
+
   const [step, setStep] = useState<0 | 1 | 2>(0)
   const [preset, setPreset] = useState<(typeof NEIGHBORHOOD_PRESETS)[number] | null>(null)
   const [objective, setObjective] = useState<EventObjective>('listening')
@@ -27,6 +41,8 @@ export default function NeighborhoodEventHubContent() {
   const [host, setHost] = useState('')
   const [expected, setExpected] = useState(15)
   const [support, setSupport] = useState('')
+  const [submitBusy, setSubmitBusy] = useState(false)
+  const [submitErr, setSubmitErr] = useState<string | null>(null)
 
   const preview = useMemo(() => {
     if (!preset) return null
@@ -40,9 +56,10 @@ export default function NeighborhoodEventHubContent() {
         event_objective: objective,
         goals_summary: `${support || 'Support TBD'} — host: ${host || 'TBD'}`,
         venue_name: where || null,
+        expected_audience_size: expected,
       },
     })
-  }, [preset, title, when, objective, support, host, where])
+  }, [preset, title, when, objective, support, host, where, expected])
 
   const miniChecklist = useMemo(() => {
     if (!preset) return []
@@ -59,8 +76,8 @@ export default function NeighborhoodEventHubContent() {
         <p className="event-coordinator-desk__eyebrow">Neighborhood activation</p>
         <h1 className="event-coordinator-desk__title">Local event launcher</h1>
         <p className="event-coordinator-desk__lede">
-          Precinct captains and hosts: spin up a small event with guided prompts. Saving to Supabase is
-          next — preview shows the insert payload the domain layer will use.
+          Precinct captains and hosts: spin up a small event with guided prompts. Volunteers submit a
+          request for coordinator approval; staff with event desk access can publish drafts directly.
         </p>
         <div className="event-coordinator-desk__quick-actions">
           <Link to="/events/county-ops" className="btn-touch btn-touch--ghost">
@@ -177,15 +194,84 @@ export default function NeighborhoodEventHubContent() {
             ))}
           </ul>
           <details className="event-coordinator-desk__details">
-            <summary>Insert payload (dev)</summary>
+            <summary>Insert payload (debug)</summary>
             <pre className="neighborhood-json">{JSON.stringify(preview, null, 2)}</pre>
           </details>
+          {submitErr ? (
+            <p className="event-coordinator-desk__placeholder" role="alert">
+              {submitErr}
+            </p>
+          ) : null}
           <div className="neighborhood-form-actions">
-            <Link
+            <button
+              type="button"
               className="btn-touch"
+              disabled={submitBusy || !profileId}
+              onClick={() => {
+                if (!preset || !profileId) return
+                setSubmitBusy(true)
+                setSubmitErr(null)
+                void (async () => {
+                  const startAt = when ? new Date(when).toISOString() : new Date().toISOString()
+                  try {
+                    if (isDeskEditor) {
+                      const payload = createEventFromTemplate(preset.key, {
+                        startAt,
+                        title: title || preset.label,
+                        countyId: null,
+                        precinctId: 'local-precinct',
+                        overrides: {
+                          event_objective: objective,
+                          goals_summary: `${support || 'Support TBD'} — host: ${host || 'TBD'}`,
+                          venue_name: where || null,
+                          expected_audience_size: expected,
+                        },
+                      })
+                      const { id, error } = await insertCampaignEventFromTemplate({
+                        templateKey: preset.key,
+                        payload,
+                      })
+                      if (error) setSubmitErr(error.message)
+                      else if (id) void navigate(campaignEventRecordPath(id))
+                    } else {
+                      const payload = buildVolunteerEventSubmissionPayload(preset.key, {
+                        startAt,
+                        title: title || preset.label,
+                        countyId: null,
+                        precinctId: 'local-precinct',
+                        requesterProfileId: profileId,
+                        overrides: {
+                          event_objective: objective,
+                          goals_summary: `${support || 'Support TBD'} — host: ${host || 'TBD'}`,
+                          venue_name: where || null,
+                          expected_audience_size: expected,
+                          notes_internal: `Host: ${host || 'TBD'}\nSupport: ${support || ''}`,
+                        },
+                      })
+                      const { id, error } = await insertVolunteerEventSubmission({
+                        templateKey: preset.key,
+                        payload,
+                      })
+                      if (error) setSubmitErr(error.message)
+                      else if (id) void navigate(campaignEventRecordPath(id))
+                    }
+                  } finally {
+                    setSubmitBusy(false)
+                  }
+                })()
+              }}
+            >
+              {!profileId
+                ? 'Sign in to save'
+                : isDeskEditor
+                  ? 'Save event (staff)'
+                  : 'Submit for approval'}
+            </button>
+            <Link
+              className="btn-touch btn-touch--ghost"
               to={`${campaignEventRecordPath(CAMPAIGN_EVENT_NEW_RECORD_SLUG)}?type=${preset.key}`}
             >
-              Open full event scaffold
+              Open full scaffold
             </Link>
             <button type="button" className="btn-touch btn-touch--ghost" onClick={() => setStep(1)}>
               Edit

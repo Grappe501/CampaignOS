@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { PipelineRow } from '../../hooks/useInternLayer'
 import type { VolunteerTaskRow } from '../../hooks/useVolunteerTasks'
 import type { ContactMethod, ContactOutcome } from '../../lib/internPipelineEngine'
@@ -69,7 +70,8 @@ export default function InternDeskContent({
         <p className="subtitle intern-desk-intro">
           Work assigned volunteers first (queue below), then your own mission tasks. Every
           action uses live campaign data; if something fails, the error line names the layer
-          (assignments vs tasks).
+          (assignments vs tasks).{' '}
+          <Link to="/ops/signup-sheets">Signup sheet ingestion →</Link>
         </p>
       </header>
 

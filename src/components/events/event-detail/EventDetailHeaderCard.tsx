@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom'
 import type { CampaignCalendarEventRecord } from '../../../lib/campaignCalendarArchitecture'
+import { collectOperationsGapsForEvent } from '../../../lib/campaignEventCoordinatorOperations'
+import { computeEventHealthScore, healthStatusToUiModifier } from '../../../lib/eventHealthScoreService'
 import { campaignEventRecordSectionPath } from '../../../lib/campaignEventSystem'
+import { eventIsPendingVolunteerRequest } from '../../../lib/eventSubmissionApproval'
+import EventHealthDrillDown from './EventHealthDrillDown'
 
 type EventDetailHeaderCardProps = {
   eventId: string
@@ -25,10 +29,42 @@ export default function EventDetailHeaderCard({
       ? record.venue_name
       : '—'
 
+  const pendingApproval = record ? eventIsPendingVolunteerRequest(record) : false
+
+  const health =
+    record && isUuid && !isNew
+      ? computeEventHealthScore({
+          record,
+          gaps: collectOperationsGapsForEvent(record),
+        })
+      : null
+  const healthMod = health ? healthStatusToUiModifier(health.status) : null
+
   return (
     <header className="event-detail-header event-coordinator-desk__command" id="event-record-command">
       <p className="event-coordinator-desk__eyebrow">Event command</p>
+      {pendingApproval ? (
+        <p className="seg-cal__banner" role="status" style={{ marginBottom: 10 }}>
+          <strong>Pending coordinator approval</strong> — this event is not live on the volunteer
+          calendar until an events coordinator or manager approves it.
+        </p>
+      ) : null}
       <h1 className="event-coordinator-desk__title">{title}</h1>
+
+      {health ? (
+        <>
+          <p className="event-detail-header__health" role="status">
+            <span className={`event-health-pill event-health-pill--${healthMod}`}>
+              Command health {health.score}
+            </span>
+            <span className="subtitle" style={{ marginLeft: 10 }}>
+              {health.status === 'AT_RISK' ? 'AT RISK' : health.status} ·{' '}
+              {health.reasonCodes.slice(0, 3).join(' · ') || 'No extra reason codes'}
+            </span>
+          </p>
+          {record ? <EventHealthDrillDown record={record} priorScore={null} /> : null}
+        </>
+      ) : null}
 
       <dl className="event-detail-header__meta">
         <div>

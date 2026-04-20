@@ -1,4 +1,9 @@
 import type { MatchedVoterDisplayRow } from '../lib/voterMatch'
+import {
+  formatArkansasStateHouseDistrict,
+  formatArkansasStateSenateDistrict,
+  formatArkansasUsHouseCode,
+} from '../lib/electedOfficialsDisplay'
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -20,11 +25,11 @@ function DetailBody({ voter }: { voter: MatchedVoterDisplayRow }) {
       <Row label="State / ZIP" value={stateZip} />
       <Row label="Precinct" value={voter.precinct_name ?? '—'} />
       <Row label="Registration" value={voter.registrant_status ?? '—'} />
-      <Row label="Congressional" value={voter.congressional_district ?? '—'} />
-      <Row label="State Senate" value={voter.state_senate_district ?? '—'} />
+      <Row label="Congressional" value={formatArkansasUsHouseCode(voter.congressional_district)} />
+      <Row label="State Senate" value={formatArkansasStateSenateDistrict(voter.state_senate_district)} />
       <Row
         label="State House"
-        value={voter.state_representative_district ?? '—'}
+        value={formatArkansasStateHouseDistrict(voter.state_representative_district)}
       />
       <Row label="Match" value={voter.match_status ?? '—'} />
     </div>

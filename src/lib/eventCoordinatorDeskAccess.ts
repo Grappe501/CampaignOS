@@ -15,6 +15,7 @@ export function canAccessEventCoordinatorDesk(
   if (!k) return false
   if (k === 'admin' || k === 'staff') return true
   if (k === 'coordinator' || k === 'volunteer_coordinator') return true
+  if (k === 'event_coordinator' || k === 'campaign_manager') return true
   if (k === 'candidate') return true
   if (
     (k.includes('assistant') || k.includes('deputy')) &&

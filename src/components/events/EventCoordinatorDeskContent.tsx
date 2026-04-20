@@ -24,6 +24,9 @@ import CandidateScheduleFocusCard from './widgets/CandidateScheduleFocusCard'
 import EventPressureSummaryCard from './widgets/EventPressureSummaryCard'
 import MobilizeQueueSummaryCard from './widgets/MobilizeQueueSummaryCard'
 import UpcomingCampaignStrip from './widgets/UpcomingCampaignStrip'
+import EventApprovalQueue from './command/EventApprovalQueue'
+import TodayCommandPanel from './command/TodayCommandPanel'
+import { buildTodayCommandSnapshot } from '../../lib/todayCommandService'
 
 export default function EventCoordinatorDeskContent({
   profile,
@@ -35,7 +38,7 @@ export default function EventCoordinatorDeskContent({
     profile?.email?.split('@')[0]?.trim() ||
     'Coordinator'
 
-  const { events: queueEvents } = useCampaignEventsContext()
+  const { events: queueEvents, refetch: refetchEvents } = useCampaignEventsContext()
   const coordinatorPressure = useMemo(
     () =>
       collectOperationsGapsForDesk(queueEvents, (e) =>
@@ -59,6 +62,8 @@ export default function EventCoordinatorDeskContent({
   const calendarPersona = mapProfileRoleToCalendarWidgetPersona(profile?.primary_role)
   const mobilizePromotion = useMobilizePromotionSummary(calendarPersona)
 
+  const deskSnapshot = useMemo(() => buildTodayCommandSnapshot(queueEvents), [queueEvents])
+
   return (
     <div className="event-coordinator-desk" id="event-coordinator-desk">
       <header className="event-coordinator-desk__command" id="event-coordinator-command">
@@ -67,14 +72,27 @@ export default function EventCoordinatorDeskContent({
             <p className="event-coordinator-desk__eyebrow">Event operations</p>
             <h1 className="event-coordinator-desk__title">Event Coordinator Desk</h1>
             <p className="event-coordinator-desk__lede">
-              Hello, {displayName}. This desk will centralize intake, approvals, calendar
-              publishing, staffing, Mobilize sync, and follow-up — wired to live data in upcoming
-              iterations.
+              Hello, {displayName}. Below, your campaign event list powers the command snapshot,
+              approval queue, and calendar widgets in one place.
             </p>
           </div>
           <div className="event-coordinator-desk__week-summary" role="status">
-            <p className="event-coordinator-desk__week-k">This week · next 14 days</p>
-            <p className="event-coordinator-desk__week-v">Summary will populate from campaign events.</p>
+            <p className="event-coordinator-desk__week-k">Command overview</p>
+            <p className="event-coordinator-desk__week-v">
+              {deskSnapshot.empty ? (
+                <>No events loaded yet.</>
+              ) : (
+                <>
+                  Today: <strong>{deskSnapshot.digest.eventsTodayCount}</strong>
+                  {' · '}
+                  Next 72h (needs attention): <strong>{deskSnapshot.digest.eventsNext72hCount}</strong>
+                  {' · '}
+                  Critical: <strong>{deskSnapshot.digest.criticalIssuesCount}</strong>
+                  {' · '}
+                  Approvals: <strong>{deskSnapshot.digest.pendingApprovalsCount}</strong>
+                </>
+              )}
+            </p>
           </div>
         </div>
         <div className="event-coordinator-desk__quick-actions" aria-label="Quick actions">
@@ -97,13 +115,10 @@ export default function EventCoordinatorDeskContent({
             Review requests
           </Link>
           <Link to="/events/calendar" className="btn-touch">
-            Open calendar view
+            Calendar
           </Link>
-          <Link
-            to={campaignEventRecordPath(CAMPAIGN_EVENT_NEW_RECORD_SLUG)}
-            className="btn-touch btn-touch--ghost"
-          >
-            New event record
+          <Link to="/ops/signup-sheets" className="btn-touch">
+            Signup sheets
           </Link>
           <Link to="/events/promotion" className="btn-touch">
             Publish to Mobilize
@@ -111,26 +126,26 @@ export default function EventCoordinatorDeskContent({
         </div>
       </header>
 
+      <TodayCommandPanel events={queueEvents} />
+
+      <EventApprovalQueue events={queueEvents} profile={profile} onRefetch={() => void refetchEvents()} />
+
       <section className="event-coordinator-desk__section" aria-labelledby="ec-attn-heading">
         <h2 id="ec-attn-heading" className="event-coordinator-desk__h2">
-          Needs attention now
+          What to open first
         </h2>
-        <ul className="event-coordinator-desk__needs">
-          <li>Pending approvals</li>
-          <li>Events missing venue or time</li>
-          <li>Staffing gaps</li>
-          <li>
-            Mobilize: {mobilizePromotion.summary.attentionCount} need attention (persona-scoped pool)
-            — {mobilizePromotion.summary.syncErrorCount} sync_error,{' '}
-            {mobilizePromotion.summary.updateRequiredCount} update/drift
-          </li>
-          <li>Post-event follow-up overdue</li>
-        </ul>
-        <p className="event-coordinator-desk__placeholder" role="status">
-          Mobilize counts above use the same filtered pool as leadership widgets (persona rules).
-          Full desk queue (all fixtures) is summarized in{' '}
-          <a href="#mobilize-queue-summary-card">Mobilize promotion health</a> and{' '}
-          <a href="#mobilize-promotion-queue">Mobilize promotion queue</a>.
+        <p className="event-coordinator-desk__meta" role="navigation">
+          <strong>
+            <a href="#today-command-heading">Today&apos;s command panel</a>
+          </strong>{' '}
+          for timing, health, and prioritized issues.{' '}
+          <strong>
+            <a href="#event-approval-queue-heading">Approval queue</a>
+          </strong>{' '}
+          for volunteer or neighborhood requests. Mobilize:{' '}
+          <a href="#mobilize-queue-summary-card">{mobilizePromotion.summary.attentionCount} need attention</a>
+          {' — '}
+          <a href="#mobilize-promotion-queue">promotion queue</a> for the full list.
         </p>
       </section>
 

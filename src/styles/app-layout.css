@@ -47,6 +47,18 @@
   min-width: 0;
 }
 
+/* Dashboard main: full viewport width — no centered 1126px gutter on large monitors */
+.app-shell.dashboard-workspace {
+  max-width: none;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+  padding-top: clamp(10px, 2.2vw, 22px);
+  padding-bottom: max(clamp(14px, 3.5vw, 28px), env(safe-area-inset-bottom));
+}
+
 .topbar-end {
   display: flex;
   align-items: center;
@@ -1974,21 +1986,90 @@
   width: 100%;
 }
 
+/* Dense dashboard: single right dock + full-width canvas; tighter panel gutters */
+.dashboard-workspace--dense {
+  padding-left: max(0px, env(safe-area-inset-left));
+  padding-right: max(0px, env(safe-area-inset-right));
+}
+
+.dashboard-workspace--dense .dashboard-workspace-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+}
+
+.dashboard-workspace--dense .dashboard-page-grid {
+  gap: clamp(8px, 1.4vw, 12px);
+}
+
+.dashboard-workspace--dense .dashboard-panel-frame__body > * {
+  padding-inline-end: max(8px, 16px);
+}
+
+/** Optional navigation rails (if mounted outside dashboard) — see `DashboardNavigationRails.tsx` */
+@media (min-width: 1280px) {
+  .workspace-rail {
+    box-sizing: border-box;
+    background: rgba(1, 3, 35, 0.92);
+    border-color: rgba(236, 239, 249, 0.2);
+    z-index: 24;
+  }
+
+  .workspace-rail--top {
+    flex-shrink: 0;
+    width: 100%;
+    border-bottom: 1px solid rgba(236, 239, 249, 0.2);
+    padding: 4px max(6px, env(safe-area-inset-right));
+  }
+
+  .workspace-rail__inner--top {
+    max-width: none;
+    width: 100%;
+  }
+
+  .workspace-rail--left {
+    flex-shrink: 0;
+    width: 56px;
+    align-self: stretch;
+    border-right: 1px solid rgba(236, 239, 249, 0.2);
+    padding: 8px 4px;
+  }
+
+  .workspace-rail__inner--side {
+    position: sticky;
+    top: min(96px, 18vh);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    max-height: min(72dvh, 720px);
+    overflow-y: auto;
+  }
+
+  .workspace-rail .workspace-dock-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .workspace-rail .workspace-dock-grid--vertical {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 100%;
+    min-height: unset;
+    align-items: center;
+  }
+}
+
 /**
- * HD / wide workspace: use the full viewport width (edge-to-edge canvas).
- * Standard mode keeps the reading-width shell; HD drops the cap and stretches the feed grid.
+ * HD toggle: grid stretch on wide screens (width comes from `.app-shell.dashboard-workspace` above).
  */
 .app-shell.dashboard-workspace--hd {
-  max-width: none;
-  width: 100%;
-  margin-left: 0;
-  margin-right: 0;
-  /* Tighter horizontal inset; keep right gutter from .dashboard-workspace @1280px for dock */
   padding-left: max(10px, env(safe-area-inset-left));
 }
 
 @media (min-width: 1280px) {
-  .dashboard-workspace--hd .dashboard-page-grid {
+  .dashboard-workspace .dashboard-page-grid {
     align-items: stretch;
     width: 100%;
     max-width: none;
@@ -2196,6 +2277,14 @@
   width: max-content;
   padding: 2px 0;
   min-height: 44px;
+}
+
+.workspace-dock-grid--vertical {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: 100%;
+  min-height: auto;
 }
 
 .workspace-dock-icon-btn {
@@ -9528,6 +9617,138 @@ a.power5-secondary-btn {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.county-ops-card__actions--wrap {
+  gap: 6px;
+}
+
+.county-ops-card__actions--wrap .btn-touch {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  min-height: 40px;
+}
+
+.county-ops-filters--wrap {
+  align-items: flex-end;
+}
+
+.county-ops-filter input[type='date'] {
+  min-width: 140px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background: #fff;
+  font-size: 0.85rem;
+}
+
+.county-ops-filter-presets {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.county-ops-type-chips {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  color: #475569;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.county-ops-type-chips__label {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.county-ops-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.08);
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.county-ops-chip:hover {
+  background: rgba(59, 130, 246, 0.16);
+}
+
+.county-ops-fortnight {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.county-ops-fortnight__day {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.county-ops-fortnight__day-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.county-ops-fortnight__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  min-height: 1.5rem;
+}
+
+.county-ops-fortnight__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: rgba(59, 130, 246, 0.2);
+  color: #1e40af;
+  text-decoration: none;
+}
+
+.county-ops-fortnight__chip:hover {
+  background: rgba(59, 130, 246, 0.35);
+}
+
+.county-ops-fortnight__empty {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.county-ops-fortnight__more {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.county-ops-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .county-ops-split {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
 }
 
 .county-ops-density {

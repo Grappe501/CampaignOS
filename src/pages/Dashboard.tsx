@@ -48,7 +48,7 @@ import PlaceholderCard from '../components/dashboard/PlaceholderCard'
 import StatusCard from '../components/dashboard/StatusCard'
 import TrainingCard from '../components/dashboard/TrainingCard'
 import OfficialContactModal from '../components/dashboard/OfficialContactModal'
-import PublicOfficialsCard from '../components/dashboard/PublicOfficialsCard'
+import ElectedOfficialsWidget from '../components/dashboard/ElectedOfficialsWidget'
 import type { PublicOfficialEntry } from '../lib/api/publicOfficials'
 import VoterStatusCard from '../components/dashboard/VoterStatusCard'
 import WorkspaceDock from '../components/WorkspaceDock'
@@ -383,20 +383,24 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     )
   }
 
+  const workspaceDockProps = {
+    onAgentOpen: () =>
+      window.dispatchEvent(new CustomEvent('campaignos:open-agent-jones')),
+    hdWorkspace,
+    onHdWorkspaceChange: setHdWorkspace,
+    visibleSectionIds: workspaceDockVisibleIds,
+  }
+
   return (
     <>
       <AppHeader onSignOut={handleSignOut} />
       <main
-        className={`app-shell dashboard-workspace${hdWorkspace ? ' dashboard-workspace--hd' : ''}`}
+        className={`app-shell dashboard-workspace dashboard-workspace--dense${
+          hdWorkspace ? ' dashboard-workspace--hd' : ''
+        }`}
       >
-        <WorkspaceDock
-          onAgentOpen={() =>
-            window.dispatchEvent(new CustomEvent('campaignos:open-agent-jones'))
-          }
-          hdWorkspace={hdWorkspace}
-          onHdWorkspaceChange={setHdWorkspace}
-          visibleSectionIds={workspaceDockVisibleIds}
-        />
+        <WorkspaceDock {...workspaceDockProps} />
+        <div className="dashboard-workspace-canvas">
         <DashboardGrid>
           <DashboardPanelFrame
             storageKey="dash-identity"
@@ -685,10 +689,11 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               labelCollapsed="Public officials"
               sectionGlyph="public-officials-card"
             >
-              <PublicOfficialsCard
+              <ElectedOfficialsWidget
                 matchedVoter={voterMatch.matched}
                 officialsState={officialsState}
                 officialsLoading={officialsLoading}
+                districtOfficials={officialsState?.districtOfficials}
                 onOpenOfficial={setContactOfficial}
               />
             </DashboardPanelFrame>
@@ -842,6 +847,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
 
           <div id="agent-jones" className="agent-jones-anchor" aria-hidden="true" />
         </DashboardGrid>
+        </div>
         <OfficialContactModal
           official={contactOfficial}
           onClose={() => setContactOfficial(null)}

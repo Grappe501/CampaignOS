@@ -80,6 +80,28 @@ export function createEventFromTemplate(
   return { ...base, ...input.overrides }
 }
 
+/**
+ * Volunteer / neighborhood submission — not live until a coordinator approves (RLS + `approval_required`).
+ */
+export function buildVolunteerEventSubmissionPayload(
+  templateKey: CampaignEventTypeKey,
+  input: CreateEventFromTemplateInput & { requesterProfileId: string },
+): Record<string, unknown> {
+  const { requesterProfileId, overrides, ...rest } = input
+  return createEventFromTemplate(templateKey, {
+    ...rest,
+    overrides: {
+      ...overrides,
+      status: 'submitted',
+      operational_status: 'approval_needed',
+      approval_required: true,
+      requester_user_id: requesterProfileId,
+      submitted_for_review_at: new Date().toISOString(),
+      visibility_scope: 'internal_staff',
+    },
+  })
+}
+
 export type EventReadinessCalculationInput = {
   operationalStatus: EventOperationalStatus
   /** Share of critical / required tasks completed (0–1). */

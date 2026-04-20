@@ -2,9 +2,11 @@
 
 **Security:** Treat every key below as **server-only**. Call these APIs from **Netlify Functions** (or Supabase Edge Functions), not from the React app. Never prefix them with `VITE_`.
 
-## Header: “public officials” for a matched volunteer
+## Header & widget: “public officials” for a matched volunteer
 
-Your dashboard already has **precinct, county, and districts** from the voter file. To add **named officeholders** (who holds each seat today):
+Your dashboard already has **precinct, county, and districts** from the voter file (`congressional_district`, `state_senate_district`, `state_representative_district`). The **profile header** shows compact labels (**AR-02**, **SD 18**, **HD 57**-style) next to the current incumbent name when the **`public-officials`** Netlify function returns a match. The **Elected officials (Arkansas)** dashboard widget groups the same Civic/Open States payload into **Federal (Congress)**, **Arkansas statewide & constitutional**, **General Assembly**, etc. We do **not** scrape the open web; configure server keys below.
+
+To add **named officeholders** (who holds each seat today):
 
 | Priority | Key / API | Why |
 |----------|-----------|-----|

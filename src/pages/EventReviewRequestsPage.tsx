@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
@@ -10,6 +10,10 @@ import {
   campaignEventRecordSectionPath,
 } from '../lib/campaignEventSystem'
 import { listEventsNeedingCoordinatorReview } from '../lib/eventCoordinatorManagementQueues'
+import {
+  approveCampaignEventRequestRpc,
+  rejectCampaignEventRequestRpc,
+} from '../lib/campaignEventsFromSupabase'
 import { supabase } from '../lib/supabaseClient'
 
 type EventReviewRequestsPageProps = {
@@ -27,8 +31,10 @@ export default function EventReviewRequestsPage({ onDevSessionClear }: EventRevi
     void supabase.auth.signOut()
   }
 
-  const { events: queue } = useCampaignEventsContext()
+  const { events: queue, refetch } = useCampaignEventsContext()
   const reviewRows = useMemo(() => listEventsNeedingCoordinatorReview(queue), [queue])
+  const [actionBusyId, setActionBusyId] = useState<string | null>(null)
+  const [actionErr, setActionErr] = useState<string | null>(null)
 
   if (!loading && profile && !canAccessEventCoordinatorDesk(profile.primary_role)) {
     return <Navigate to="/dashboard" replace />
@@ -66,6 +72,11 @@ export default function EventReviewRequestsPage({ onDevSessionClear }: EventRevi
               <h2 id="review-queue-heading" className="event-coordinator-desk__h2">
                 Queue ({reviewRows.length})
               </h2>
+              {actionErr ? (
+                <p className="event-coordinator-desk__placeholder" role="alert">
+                  {actionErr}
+                </p>
+              ) : null}
               {reviewRows.length === 0 ? (
                 <p className="event-coordinator-desk__meta" role="status">
                   No draft or submitted events in the current source list.
@@ -78,6 +89,51 @@ export default function EventReviewRequestsPage({ onDevSessionClear }: EventRevi
                       <Link to={campaignEventRecordPath(e.event_id)}>{e.title}</Link>
                       {' · '}
                       <Link to={campaignEventRecordSectionPath(e.event_id, 'tasks')}>Tasks</Link>
+                      {e.approval_required && e.operational_status === 'approval_needed' ? (
+                        <>
+                          {' · '}
+                          <button
+                            type="button"
+                            className="btn-touch btn-touch--ghost"
+                            style={{ display: 'inline', minHeight: 'auto', padding: '2px 8px' }}
+                            disabled={actionBusyId === e.event_id}
+                            onClick={() => {
+                              setActionBusyId(e.event_id)
+                              setActionErr(null)
+                              void (async () => {
+                                const { error } = await approveCampaignEventRequestRpc(e.event_id)
+                                if (error) setActionErr(error.message)
+                                await refetch()
+                                setActionBusyId(null)
+                              })()
+                            }}
+                          >
+                            Approve
+                          </button>
+                          {' '}
+                          <button
+                            type="button"
+                            className="btn-touch btn-touch--ghost"
+                            style={{ display: 'inline', minHeight: 'auto', padding: '2px 8px' }}
+                            disabled={actionBusyId === e.event_id}
+                            onClick={() => {
+                              setActionBusyId(e.event_id)
+                              setActionErr(null)
+                              void (async () => {
+                                const { error } = await rejectCampaignEventRequestRpc(
+                                  e.event_id,
+                                  'Rejected from review queue',
+                                )
+                                if (error) setActionErr(error.message)
+                                await refetch()
+                                setActionBusyId(null)
+                              })()
+                            }}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

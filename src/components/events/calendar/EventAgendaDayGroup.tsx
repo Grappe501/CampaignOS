@@ -8,6 +8,7 @@ import {
   campaignEventRecordPath,
   campaignEventRecordSectionPath,
 } from '../../../lib/campaignEventSystem'
+import EventHealthChip from '../command/EventHealthChip'
 
 function formatSegmentLabel(s: string): string {
   return s.replace(/_/g, ' ')
@@ -57,6 +58,7 @@ export default function EventAgendaDayGroup({ dayKey, events }: EventAgendaDayGr
               </div>
             </div>
             <p className="seg-cal__agenda-chips">
+              <EventHealthChip record={e} />
               <span className="seg-cal__chip">{formatSegmentLabel(e.visibility_scope)}</span>
               <span className="seg-cal__chip">{formatSegmentLabel(inferFunctionSegment(e))}</span>
               <span className="seg-cal__chip">{formatSegmentLabel(inferGeoScope(e))}</span>

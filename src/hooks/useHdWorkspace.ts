@@ -4,9 +4,11 @@ const STORAGE_KEY = 'campaignos-dashboard-hd'
 
 function readHd(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === '1'
+    const v = localStorage.getItem(STORAGE_KEY)
+    if (v === '0') return false
+    return true
   } catch {
-    return false
+    return true
   }
 }
 

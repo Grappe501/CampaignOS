@@ -6,6 +6,11 @@ import type {
 } from '../../lib/api/publicOfficials'
 import type { MatchedVoterDisplayRow } from '../../lib/voterMatch'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../../brand/chrisJonesForCongress'
+import {
+  formatArkansasStateHouseDistrict,
+  formatArkansasStateSenateDistrict,
+  formatArkansasUsHouseCode,
+} from '../../lib/electedOfficialsDisplay'
 import ProfilePhotoUpload from './ProfilePhotoUpload'
 
 function display(val: unknown, fallback: string) {
@@ -261,23 +266,22 @@ export default function DashboardHeader({
             <>
               <DistrictOfficialLine
                 label="Congressional"
-                districtText={display(matchedVoter.congressional_district, '—')}
+                districtText={formatArkansasUsHouseCode(matchedVoter.congressional_district)}
                 official={districtOfficials?.usHouse}
                 officialsLoading={officialsLoading}
                 onOpenOfficial={onOpenOfficial}
               />
               <DistrictOfficialLine
                 label="State Senate"
-                districtText={display(matchedVoter.state_senate_district, '—')}
+                districtText={formatArkansasStateSenateDistrict(matchedVoter.state_senate_district)}
                 official={districtOfficials?.stateSenate}
                 officialsLoading={officialsLoading}
                 onOpenOfficial={onOpenOfficial}
               />
               <DistrictOfficialLine
                 label="State House"
-                districtText={display(
+                districtText={formatArkansasStateHouseDistrict(
                   matchedVoter.state_representative_district,
-                  '—',
                 )}
                 official={districtOfficials?.stateHouse}
                 officialsLoading={officialsLoading}

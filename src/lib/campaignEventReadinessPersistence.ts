@@ -20,6 +20,11 @@ async function attendanceCountForEvent(eventId: string): Promise<number> {
 }
 import type { CampaignEventTypeKey } from './campaignEventTypeMatrix'
 import { getStaffingMatrixForEventType } from './eventStaffingMatrix'
+import { CAMPAIGN_EVENT_LIST_SELECT } from './campaignEventsColumns'
+import { mapCampaignEventRowToCalendarRecord } from './campaignEventRowMapper'
+import { collectOperationsGapsForEvent } from './campaignEventCoordinatorOperations'
+import { computeEventHealthScoreV2 } from './eventHealthScoreV2'
+import { fetchLatestHealthScoreForEvent, insertEventHealthHistorySnapshot } from './eventHealthHistoryDb'
 
 async function staffingCoverageRatio(eventId: string, typeKey: CampaignEventTypeKey): Promise<number> {
   const { data, error } = await supabase
@@ -120,6 +125,46 @@ export async function recomputeAndPersistEventReadiness(
     .eq('id', eventId)
 
   if (error) throw error
+
+  try {
+    const prevReady =
+      input.row.readiness_score != null && input.row.readiness_score !== ''
+        ? Number(input.row.readiness_score)
+        : null
+    const readinessChanged =
+      prevReady == null ||
+      Number.isNaN(prevReady) ||
+      Math.abs(prevReady - model.readinessScore) >= 0.75
+    const statusChanged = nextOp !== op
+    if (readinessChanged || statusChanged) {
+      const { data: fullRow } = await supabase
+        .from('campaign_events')
+        .select(CAMPAIGN_EVENT_LIST_SELECT)
+        .eq('id', eventId)
+        .maybeSingle()
+      if (fullRow && typeof fullRow === 'object') {
+        const record = mapCampaignEventRowToCalendarRecord(fullRow as Record<string, unknown>)
+        const prior = await fetchLatestHealthScoreForEvent(eventId)
+        const gaps = collectOperationsGapsForEvent(record)
+        const v2 = computeEventHealthScoreV2({
+          record,
+          gaps,
+          nowMs: Date.now(),
+          prior_score: prior,
+        })
+        await insertEventHealthHistorySnapshot({
+          eventId,
+          result: v2,
+          changedFactors: [
+            readinessChanged ? 'readiness_delta' : '',
+            statusChanged ? 'operational_status' : '',
+          ].filter(Boolean),
+        })
+      }
+    }
+  } catch {
+    /* history is best-effort */
+  }
 
   return { readinessPct: model.readinessScore, operationalStatus: nextOp }
 }

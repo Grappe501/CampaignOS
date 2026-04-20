@@ -37,6 +37,15 @@ export function mapCampaignEventRowToCalendarRecord(row: Record<string, unknown>
     event_id: id,
     campaign_id: row.campaign_id != null ? String(row.campaign_id) : 'default',
     operational_status: row.operational_status != null ? String(row.operational_status) : null,
+    event_objective: row.event_objective != null ? String(row.event_objective) : null,
+    volunteer_outcome:
+      row.volunteer_outcome != null && row.volunteer_outcome !== ''
+        ? Number(row.volunteer_outcome)
+        : null,
+    voter_contact_outcome:
+      row.voter_contact_outcome != null && row.voter_contact_outcome !== ''
+        ? Number(row.voter_contact_outcome)
+        : null,
     readiness_score: readiness != null && !Number.isNaN(readiness) ? readiness : null,
     title: String(row.title ?? 'Untitled event'),
     event_type: String(row.event_type ?? 'coffee_meeting'),
@@ -87,5 +96,34 @@ export function mapCampaignEventRowToCalendarRecord(row: Record<string, unknown>
     notes: row.notes_internal != null ? String(row.notes_internal) : null,
     created_at: String(row.created_at ?? new Date().toISOString()),
     updated_at: String(row.updated_at ?? new Date().toISOString()),
+    requester_user_id:
+      row.requester_user_id != null ? String(row.requester_user_id) : null,
+    approval_required:
+      row.approval_required === true || row.approval_required === false
+        ? Boolean(row.approval_required)
+        : null,
+    submitted_for_review_at:
+      row.submitted_for_review_at != null ? String(row.submitted_for_review_at) : null,
+    approved_by_user_id:
+      row.approved_by_user_id != null ? String(row.approved_by_user_id) : null,
+    approved_at: row.approved_at != null ? String(row.approved_at) : null,
+    rejected_by_user_id:
+      row.rejected_by_user_id != null ? String(row.rejected_by_user_id) : null,
+    rejected_at: row.rejected_at != null ? String(row.rejected_at) : null,
+    approval_notes: row.approval_notes != null ? String(row.approval_notes) : null,
+    approval_review_state:
+      row.approval_review_state != null ? String(row.approval_review_state) : null,
+    approval_risk_level:
+      row.approval_risk_level != null ? String(row.approval_risk_level) : null,
+    approval_residual_conditions:
+      row.approval_residual_conditions != null ? String(row.approval_residual_conditions) : null,
+    approval_followup_required:
+      row.approval_followup_required === true || row.approval_followup_required === false
+        ? Boolean(row.approval_followup_required)
+        : null,
+    request_origin_surface:
+      row.request_origin_surface != null ? String(row.request_origin_surface) : null,
+    last_operational_touch_at:
+      row.last_operational_touch_at != null ? String(row.last_operational_touch_at) : null,
   }
 }

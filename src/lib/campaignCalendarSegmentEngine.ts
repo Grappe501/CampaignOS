@@ -11,7 +11,7 @@ import type {
   CampaignCalendarEventRecord,
 } from './campaignCalendarArchitecture'
 
-export type CampaignCalendarViewMode = 'agenda' | 'month'
+export type CampaignCalendarViewMode = 'agenda' | 'month' | 'week'
 
 export type CampaignCalendarSegmentFilters = {
   visibility: CalendarVisibilitySegment | ''

@@ -36,6 +36,8 @@ import VolunteerCommandCoordinatorPage from './pages/VolunteerCommandCoordinator
 import VolunteerCommandTeamLeadPage from './pages/VolunteerCommandTeamLeadPage'
 import VolunteerSelfServicePage from './pages/VolunteerSelfServicePage'
 import OpportunityMarketplacePage from './pages/OpportunityMarketplacePage'
+import SignupSheetIngestionPage from './pages/SignupSheetIngestionPage'
+import SignupSheetBatchPage from './pages/SignupSheetBatchPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(() =>
@@ -394,6 +396,38 @@ export default function App() {
           element={
             session ? (
               <OpportunityMarketplacePage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/ops/signup-sheets/:batchId"
+          element={
+            session ? (
+              <SignupSheetBatchPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/ops/signup-sheets"
+          element={
+            session ? (
+              <SignupSheetIngestionPage
                 onDevSessionClear={
                   isDevAuthBypassEnabled()
                     ? () => setSession(null)

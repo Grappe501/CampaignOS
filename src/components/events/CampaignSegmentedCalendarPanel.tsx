@@ -22,6 +22,9 @@ import {
   weekdayMondayZero,
 } from '../../lib/campaignCalendarSegmentEngine'
 import { campaignEventRecordPath } from '../../lib/campaignEventSystem'
+import EventHealthChip from './command/EventHealthChip'
+import { collectOperationsGapsForEvent } from '../../lib/campaignEventCoordinatorOperations'
+import { computeEventHealthScore, healthStatusToUiModifier } from '../../lib/eventHealthScoreService'
 
 const EMPTY_FILTERS: CampaignCalendarSegmentFilters = {
   visibility: '',
@@ -285,6 +288,7 @@ export default function CampaignSegmentedCalendarPanel() {
                         <span className="seg-cal__agenda-time">{formatEventTime(e.start_at)}</span>
                       </div>
                       <p className="seg-cal__agenda-chips">
+                        <EventHealthChip record={e} />
                         <span className="seg-cal__chip">{formatSegmentLabel(e.visibility_scope)}</span>
                         <span className="seg-cal__chip">{formatSegmentLabel(inferFunctionSegment(e))}</span>
                         <span className="seg-cal__chip">{formatSegmentLabel(inferGeoScope(e))}</span>
@@ -316,17 +320,22 @@ export default function CampaignSegmentedCalendarPanel() {
                 <div key={cell.day} className="seg-cal__cell">
                   <span className="seg-cal__cell-day">{cell.day}</span>
                   <ul className="seg-cal__cell-events">
-                    {evs.map((e) => (
-                      <li key={e.event_id}>
-                        <Link
-                          to={campaignEventRecordPath(e.event_id)}
-                          className="seg-cal__cell-link"
-                          title={e.title}
-                        >
-                          {e.title.length > 22 ? `${e.title.slice(0, 20)}…` : e.title}
-                        </Link>
-                      </li>
-                    ))}
+                    {evs.map((e) => {
+                      const gaps = collectOperationsGapsForEvent(e)
+                      const health = computeEventHealthScore({ record: e, gaps })
+                      const hm = healthStatusToUiModifier(health.status)
+                      return (
+                        <li key={e.event_id}>
+                          <Link
+                            to={campaignEventRecordPath(e.event_id)}
+                            className={`seg-cal__cell-link seg-cal__cell-link--health seg-cal__cell-link--health-${hm}`}
+                            title={`${e.title} · health ${health.score}`}
+                          >
+                            {e.title.length > 22 ? `${e.title.slice(0, 20)}…` : e.title}
+                          </Link>
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
               )

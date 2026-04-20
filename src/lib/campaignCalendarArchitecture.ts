@@ -139,7 +139,28 @@ export type CampaignCalendarEventRecord = {
   /** Present when loaded from `campaign_events` operational domain. */
   campaign_id?: string
   operational_status?: string | null
+  /** When set on the row, overrides template default for dashboards and filters. */
+  event_objective?: string | null
+  /** Captured outcomes (operational domain); null until field teams enter them. */
+  volunteer_outcome?: number | null
+  voter_contact_outcome?: number | null
   readiness_score?: number | null
+  /** `campaign_profiles.id` for volunteer/neighborhood submissions awaiting approval. */
+  requester_user_id?: string | null
+  approval_required?: boolean | null
+  submitted_for_review_at?: string | null
+  approved_by_user_id?: string | null
+  approved_at?: string | null
+  rejected_by_user_id?: string | null
+  rejected_at?: string | null
+  approval_notes?: string | null
+  /** Governance UX — Step 3.1B */
+  approval_review_state?: string | null
+  approval_risk_level?: 'low' | 'medium' | 'high' | string | null
+  approval_residual_conditions?: string | null
+  approval_followup_required?: boolean | null
+  request_origin_surface?: string | null
+  last_operational_touch_at?: string | null
 }
 
 export type CalendarViewPresetId =

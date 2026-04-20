@@ -204,6 +204,13 @@ export function filterEventsForCalendarPersona(
       return vis !== 'leadership_only'
     }
     if (
+      persona === 'volunteer' &&
+      e.approval_required &&
+      String(e.operational_status ?? '') === 'approval_needed'
+    ) {
+      return false
+    }
+    if (
       vis === 'internal_staff' ||
       vis === 'finance_private' ||
       vis === 'leadership_only'

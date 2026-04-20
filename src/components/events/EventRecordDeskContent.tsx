@@ -10,6 +10,7 @@ import {
   CAMPAIGN_EVENT_NEW_RECORD_SLUG,
   EVENT_RECORD_DETAIL_SECTION_DOM_IDS,
   campaignEventRecordPath,
+  campaignEventRecordSectionPath,
   hasInvalidEventRecordDetailSectionSuffix,
   isAllowedEventRecordRouteParam,
   isUuidParam,
@@ -39,6 +40,7 @@ import {
 } from '../../lib/mobilizePublishEligibility'
 import EventCalendarVisibilityCard from './event-detail/EventCalendarVisibilityCard'
 import EventDetailHeaderCard from './event-detail/EventDetailHeaderCard'
+import EventReadinessTimelineStrip from './command/EventReadinessTimelineStrip'
 import EventDetailSectionNav from './event-detail/EventDetailSectionNav'
 import EventFollowupCard from './event-detail/EventFollowupCard'
 import EventHealthFlags from './event-detail/EventHealthFlags'
@@ -232,6 +234,10 @@ export default function EventRecordDeskContent({
     return <Navigate to={campaignEventRecordPath(eventId)} replace />
   }
 
+  if (isUuid && location.pathname === `/events/${eventId}`) {
+    return <Navigate to={campaignEventRecordSectionPath(eventId, 'command')} replace />
+  }
+
   const missingFixturePanel =
     isUuid && eventLoading ? (
       <div className="event-detail-not-found" role="status" aria-live="polite" id="event-detail-loading">
@@ -291,7 +297,17 @@ export default function EventRecordDeskContent({
         typeLabel={typeLabel}
       />
 
+      <EventReadinessTimelineStrip record={displayRecord} />
+
       <EventDetailSectionNav eventId={eventId} />
+
+      {isUuid ? (
+        <p className="event-detail-page__intro" style={{ marginTop: '-0.5rem' }}>
+          <Link to={`/ops/signup-sheets?eventId=${encodeURIComponent(eventId)}`}>
+            Signup sheet ingestion for this event →
+          </Link>
+        </p>
+      ) : null}
 
       {showOperationalBody ? (
         <>

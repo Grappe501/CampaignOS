@@ -5,61 +5,19 @@
 import { supabase } from './supabaseClient'
 import type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture'
 import { mapCampaignEventRowToCalendarRecord } from './campaignEventRowMapper'
-import { createEventFromTemplate } from './campaignEventDomainServices'
+import {
+  buildVolunteerEventSubmissionPayload,
+  createEventFromTemplate,
+} from './campaignEventDomainServices'
 import type { CampaignEventTypeKey } from './campaignEventTypeMatrix'
 import { isCampaignEventTypeKey } from './eventStaffingMatrix'
 import { seedEventTasksIfEmpty } from './campaignEventTasksDb'
 import { recomputeAndPersistEventReadiness } from './campaignEventReadinessPersistence'
+import { CAMPAIGN_EVENT_LIST_SELECT } from './campaignEventsColumns'
 
-const EVENT_SELECT = [
-  'id',
-  'campaign_id',
-  'title',
-  'event_type',
-  'event_subtype',
-  'status',
-  'operational_status',
-  'readiness_score',
-  'staffing_state',
-  'followup_state',
-  'visibility_scope',
-  'public_publish_state',
-  'mobilize_publish_state',
-  'mobilize_event_id',
-  'mobilize_last_synced_at',
-  'mobilize_last_error',
-  'mobilize_public_url',
-  'mobilize_tags_synced',
-  'mobilize_sync_hash',
-  'mobilize_update_needed',
-  'mobilize_published_by_user_id',
-  'candidate_involved',
-  'finance_related',
-  'county_party_flag',
-  'county_id',
-  'precinct_id',
-  'district_id',
-  'venue_name',
-  'address_line_1',
-  'address_line_2',
-  'city',
-  'state',
-  'postal_code',
-  'virtual_url',
-  'timezone',
-  'start_at',
-  'end_at',
-  'owner_user_id',
-  'public_title',
-  'public_description',
-  'public_instructions',
-  'public_location_notes',
-  'public_contact_name',
-  'public_contact_email',
-  'notes_internal',
-  'created_at',
-  'updated_at',
-].join(',')
+export { CAMPAIGN_EVENT_LIST_SELECT }
+
+const EVENT_SELECT = CAMPAIGN_EVENT_LIST_SELECT
 
 export type FetchCampaignEventsResult = {
   events: CampaignCalendarEventRecord[]
@@ -163,6 +121,49 @@ export async function insertCampaignEventFromTemplate(input: {
   }
 
   return { id: row.id, error: null }
+}
+
+export async function insertVolunteerEventSubmission(input: {
+  templateKey: CampaignEventTypeKey
+  payload: ReturnType<typeof buildVolunteerEventSubmissionPayload>
+}): Promise<{ id: string | null; error: Error | null }> {
+  const { data, error } = await supabase
+    .from('campaign_events')
+    .insert(input.payload)
+    .select('id')
+    .single()
+
+  if (error) {
+    return { id: null, error: new Error(error.message) }
+  }
+  const row = data as { id: string }
+  return { id: row.id, error: null }
+}
+
+export async function approveCampaignEventRequestRpc(
+  eventId: string,
+  notes?: string | null,
+  conditions?: string | null,
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase.rpc('approve_campaign_event_request', {
+    p_event_id: eventId,
+    p_notes: notes ?? null,
+    p_conditions: conditions != null && String(conditions).trim() !== '' ? conditions : null,
+  })
+  if (error) return { error: new Error(error.message) }
+  return { error: null }
+}
+
+export async function rejectCampaignEventRequestRpc(
+  eventId: string,
+  notes?: string | null,
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase.rpc('reject_campaign_event_request', {
+    p_event_id: eventId,
+    p_notes: notes ?? null,
+  })
+  if (error) return { error: new Error(error.message) }
+  return { error: null }
 }
 
 export type CheckInAttendeeInput = {

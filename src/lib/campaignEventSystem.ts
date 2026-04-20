@@ -257,7 +257,7 @@ export {
   buildCountyOperationsRows,
   filterCountyRows,
 } from './eventOperationsSelectors'
-export type { CountyOperationsEventRow } from './eventOperationsSelectors'
+export type { CountyOperationsEventRow, CountyOpsFilters } from './eventOperationsSelectors'
 
 export {
   buildEventAnalyticsSnapshot,

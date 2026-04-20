@@ -374,3 +374,155 @@ code {
   align-self: center;
   font-style: italic;
 }
+
+/* —— Event command visibility (health score + approval queue) —— */
+.event-health-pill {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+.event-health-pill--ready {
+  background: rgba(45, 138, 92, 0.15);
+  border-color: rgba(45, 138, 92, 0.45);
+  color: #1a5c3a;
+}
+.event-health-pill--risk {
+  background: rgba(201, 138, 44, 0.18);
+  border-color: rgba(201, 138, 44, 0.5);
+  color: #7a4a0a;
+}
+.event-health-pill--critical {
+  background: rgba(192, 57, 43, 0.14);
+  border-color: rgba(192, 57, 43, 0.45);
+  color: #8c1f14;
+}
+
+.seg-cal__chip--health {
+  font-weight: 800;
+  font-size: 0.68rem;
+}
+.seg-cal__chip--health-ready {
+  background: rgba(45, 138, 92, 0.2);
+  color: #14532d;
+}
+.seg-cal__chip--health-risk {
+  background: rgba(201, 138, 44, 0.22);
+  color: #6b4200;
+}
+.seg-cal__chip--health-critical {
+  background: rgba(192, 57, 43, 0.2);
+  color: #7a1f18;
+}
+
+.seg-cal__cell-link--health {
+  border-radius: 4px;
+  padding-left: 4px;
+  margin-left: -4px;
+}
+.seg-cal__cell-link--health-ready {
+  border-left: 3px solid rgba(45, 138, 92, 0.85);
+}
+.seg-cal__cell-link--health-risk {
+  border-left: 3px solid rgba(201, 138, 44, 0.9);
+}
+.seg-cal__cell-link--health-critical {
+  border-left: 3px solid rgba(192, 57, 43, 0.9);
+}
+
+.event-detail-header__health {
+  margin: 0 0 12px;
+}
+
+/* Elected officials widget (Civic API grouping) */
+.elected-officials-widget__pathway code {
+  font-size: 0.85em;
+}
+.elected-officials-widget__section {
+  margin: 14px 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.elected-officials-widget__h3 {
+  font-size: 0.95rem;
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+.elected-officials-widget__district {
+  display: grid;
+  grid-template-columns: minmax(100px, 120px) auto 1fr;
+  gap: 8px 12px;
+  align-items: baseline;
+  font-size: 0.9rem;
+  margin: 6px 0;
+}
+.elected-officials-widget__district-label {
+  font-weight: 600;
+  color: var(--text-h);
+}
+.elected-officials-widget__district-code {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  color: var(--accent);
+}
+.elected-officials-widget__district-incumbent {
+  font-weight: 600;
+}
+.elected-officials-widget__district-incumbent.muted {
+  opacity: 0.55;
+}
+.elected-officials-widget__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.elected-officials-widget__row {
+  margin-bottom: 10px;
+}
+.elected-officials-widget__line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+}
+.elected-officials-widget__office {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-h);
+  flex: 1 1 100%;
+}
+.elected-officials-widget__name {
+  font-weight: 700;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: var(--cj-primary);
+  text-decoration: underline;
+  font: inherit;
+}
+.elected-officials-widget__nameText {
+  font-weight: 700;
+}
+.elected-officials-widget__party {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+.elected-officials-widget__url {
+  font-size: 0.85rem;
+  margin-left: 0;
+}
+.elected-officials-widget__note {
+  margin-top: 12px !important;
+  font-size: 0.82rem !important;
+}
+.subtitle.small {
+  font-size: 0.86rem;
+}
