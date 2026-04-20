@@ -18,18 +18,28 @@ export default function VoterStatusCard({
 }) {
   const raw = profile?.voter_status
   const label =
-    raw != null && String(raw).trim() !== '' ? String(raw) : 'Not set in profile'
+    raw != null && String(raw).trim() !== '' ? String(raw) : '—'
   const ex = normalizeKey(profile?.exception_request_status) || 'none'
+  const vid = profile?.linked_voter_id
+    ? String(profile.linked_voter_id).trim()
+    : ''
 
   return (
-    <StatusCard title="Voter status" id="voter-status-card">
-      <dl className="summary-grid">
-        <dt>Profile field</dt>
+    <StatusCard title="Voter status" id="voter-status-card" compact>
+      <p className="voter-status-strip">
+        <strong>{voterMatched ? 'Verified' : 'Not verified'}</strong>
+        {vid ? (
+          <>
+            <span className="voter-status-sep">·</span>
+            <span className="voter-status-mono">{vid}</span>
+          </>
+        ) : null}
+        <span className="voter-status-sep">·</span>
+        <span>Exception: {humanException(ex)}</span>
+      </p>
+      <dl className="summary-grid voter-status-dl">
+        <dt>Profile note</dt>
         <dd>{label}</dd>
-        <dt>Voter file link</dt>
-        <dd>{voterMatched ? 'Linked (self-match)' : 'Not linked yet'}</dd>
-        <dt>Roster exception</dt>
-        <dd>{humanException(ex)}</dd>
       </dl>
     </StatusCard>
   )

@@ -9,6 +9,9 @@ export type CampaignProfile = {
   id?: string
   primary_role?: string | null
   primary_team?: string | null
+  /** Arkansas voter file id when linked (mirrors voter_match_links). */
+  linked_voter_id?: string | null
+  voter_registration_verified_at?: string | null
   voter_status?: string | null
   active_space?: string | null
   onboarding_status?: string | null
@@ -51,6 +54,7 @@ export function useProfile() {
     const { data, error } = await supabase
       .from('campaign_profiles')
       .select('*')
+      .eq('user_id', user.id)
       .maybeSingle()
 
     if (error) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useProfile } from '../hooks/useProfile'
 import { useTasks } from '../hooks/useTasks'
 import { useTraining } from '../hooks/useTraining'
@@ -33,6 +33,7 @@ import PlaceholderCard from '../components/dashboard/PlaceholderCard'
 import StatusCard from '../components/dashboard/StatusCard'
 import TrainingCard from '../components/dashboard/TrainingCard'
 import VoterStatusCard from '../components/dashboard/VoterStatusCard'
+import WorkspaceDock from '../components/WorkspaceDock'
 
 type DashboardProps = {
   /** Clears the dev-only React session in App (Supabase sign-out alone is not enough). */
@@ -43,7 +44,12 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
   const { profile, loading, refetch } = useProfile()
   const profileId =
     profile?.id != null && profile.id !== '' ? String(profile.id) : undefined
-  const voterMatch = useVoterMatch(profileId)
+  const onVoterMatchDone = useCallback(() => {
+    void refetch()
+  }, [refetch])
+  const voterMatch = useVoterMatch(profileId, {
+    onAfterMatch: onVoterMatchDone,
+  })
   const tasks = useTasks(profileId)
   const training = useTraining(profileId)
   const [accountEmail, setAccountEmail] = useState<string | null>(() =>
@@ -67,7 +73,12 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     void supabase.auth.signOut()
   }
 
-  const voterMatched = Boolean(voterMatch.matched)
+  const voterLinked =
+    Boolean(voterMatch.matched) ||
+    Boolean(
+      profile?.linked_voter_id != null && String(profile.linked_voter_id).trim() !== '',
+    )
+  const voterMatched = voterLinked
   const identity = hasProgressIdentity(
     voterMatched,
     profile?.exception_request_status,
@@ -137,7 +148,8 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
   return (
     <>
       <AppHeader onSignOut={handleSignOut} />
-      <main className="app-shell">
+      <main className="app-shell dashboard-workspace">
+        <WorkspaceDock />
         <DashboardGrid>
           <DashboardHeader
             profile={profile}
@@ -147,7 +159,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
 
           <NextStepCard step={nextStep} />
 
-          <div className="dash-two-col">
+          <div className="dash-two-col dash-two-col--compact">
             <VoterStatusCard profile={profile} voterMatched={voterMatched} />
             <StatusCard title="Workspace snapshot" id="workspace-summary">
               <dl className="summary-grid">
@@ -200,13 +212,29 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           <section
             id="voter-workspace"
             className="voter-workspace-section stack-section"
-            aria-label="Voter verification"
+            aria-label="Voter look up"
           >
-            <h2 className="sr-only">Voter verification</h2>
+            <h2 className="sr-only">Voter look up</h2>
             {voterMatch.matchedLoading ? (
               <p className="subtitle">Loading voter match…</p>
             ) : voterMatch.matched ? (
               <VoterWidget voter={voterMatch.matched} />
+            ) : profile?.linked_voter_id ? (
+              <div className="card voter-resync-hint">
+                <p className="subtitle" style={{ margin: 0 }}>
+                  Voter link saved to your profile (
+                  <code>{String(profile.linked_voter_id)}</code>). Loading full
+                  record…
+                </p>
+                <button
+                  type="button"
+                  className="btn-touch"
+                  style={{ marginTop: 10 }}
+                  onClick={() => void voterMatch.reloadMatched()}
+                >
+                  Refresh voter display
+                </button>
+              </div>
             ) : (
               <VoterMatchForm vm={voterMatch} campaignProfileId={profileId} />
             )}

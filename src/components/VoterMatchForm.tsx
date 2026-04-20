@@ -105,17 +105,17 @@ export default function VoterMatchForm({
   }
 
   return (
-    <section className="stack-section" aria-label="Voter match">
-      <h2 className="page-title" style={{ fontSize: 'clamp(1.35rem, 3vw + 0.5rem, 1.75rem)' }}>
-        Verify your voter registration
+    <section className="stack-section voter-lookup-form-section" aria-label="Voter look up">
+      <h2 className="page-title" style={{ fontSize: 'clamp(1.2rem, 2.5vw + 0.5rem, 1.5rem)', marginBottom: 6 }}>
+        Voter look up
       </h2>
-      <p className="subtitle">
-        Enter your legal name and date of birth as they appear on Arkansas voter
-        records. County is optional at first; if several people match, you can
-        narrow by county.
+      <p className="subtitle" style={{ marginBottom: 10 }}>
+        Verify your registration (same lookup we use for filed canvassers). Enter
+        your legal name and date of birth as on Arkansas voter records. Add
+        county if several people match.
       </p>
 
-      <form className="card stack-section" onSubmit={onSubmit}>
+      <form className="card stack-section voter-lookup-form" onSubmit={onSubmit}>
         <div className="field-block">
           <label htmlFor="vm-last">Last name</label>
           <input

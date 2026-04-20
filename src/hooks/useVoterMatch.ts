@@ -13,7 +13,16 @@ import {
   searchVoterCandidates,
 } from '../lib/voterMatch'
 
-export function useVoterMatch(campaignProfileId: string | undefined) {
+type UseVoterMatchOptions = {
+  /** Called after a successful self-match so profile (linked_voter_id, etc.) can refresh. */
+  onAfterMatch?: () => void | Promise<void>
+}
+
+export function useVoterMatch(
+  campaignProfileId: string | undefined,
+  options?: UseVoterMatchOptions,
+) {
+  const onAfterMatch = options?.onAfterMatch
   const { mockState } = useDevMockDashboard()
   const [matched, setMatched] = useState<MatchedVoterDisplayRow | null>(null)
   const [matchedLoading, setMatchedLoading] = useState(true)
@@ -40,7 +49,11 @@ export function useVoterMatch(campaignProfileId: string | undefined) {
     setMatchedLoading(true)
     setError(null)
     try {
-      const row = await fetchMatchedVoterDisplay(campaignProfileId)
+      let row = await fetchMatchedVoterDisplay(campaignProfileId)
+      if (!row) {
+        await new Promise((r) => setTimeout(r, 280))
+        row = await fetchMatchedVoterDisplay(campaignProfileId)
+      }
       setMatched(row)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -131,6 +144,7 @@ export function useVoterMatch(campaignProfileId: string | undefined) {
           confidenceScore: confidence,
         })
         await loadMatched()
+        await onAfterMatch?.()
         setCandidates([])
         setCountyRefinement('')
         setUsedCountyRefinement(false)
@@ -141,7 +155,7 @@ export function useVoterMatch(campaignProfileId: string | undefined) {
         setConfirming(false)
       }
     },
-    [campaignProfileId, loadMatched],
+    [campaignProfileId, loadMatched, onAfterMatch],
   )
 
   return {
