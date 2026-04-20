@@ -3,9 +3,15 @@ import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-r
 import type { CampaignProfile } from '../../hooks/useProfile'
 import { useEventById } from '../../hooks/useCampaignEvents'
 import { useEventOperationalTasks } from '../../hooks/useEventOperationalTasks'
-import { useEventStaffingAssignments } from '../../hooks/useEventStaffingAssignments'
+import { useCampaignStaffingBulk } from '../../hooks/useCampaignStaffingBulk'
+import { useCampaignEventsContext } from '../../context/CampaignEventsContext'
 import type { CampaignCalendarEventRecord } from '../../lib/campaignCalendarArchitecture'
 import { collectOperationsGapsForEvent } from '../../lib/campaignEventCoordinatorOperations'
+import { buildRapidActionContextFromEvent } from '../../lib/rapidActionContextSelectors'
+import { buildDeterministicStaffingBrief } from '../../lib/staffingIntelligenceAI'
+import { computeEventCoverageMetrics } from '../../lib/staffingCoverageHeatmapService'
+import { buildVolunteerLoadMap } from '../../lib/volunteerLoadBalancerService'
+import { warnBeforeAssign } from '../../lib/volunteerLoadWarnings'
 import {
   CAMPAIGN_EVENT_NEW_RECORD_SLUG,
   EVENT_RECORD_DETAIL_SECTION_DOM_IDS,
@@ -56,6 +62,7 @@ import EventOverviewCard from './event-detail/EventOverviewCard'
 import EventStaffingCard from './event-detail/EventStaffingCard'
 import EventStageTrackerCard from './event-detail/EventStageTrackerCard'
 import EventTaskChecklistCard from './event-detail/EventTaskChecklistCard'
+import RapidActionsBar from './command/RapidActionsBar'
 
 const TYPE_KEYS = CAMPAIGN_EVENT_TYPE_MATRIX.map((t) => t.key)
 
@@ -80,11 +87,10 @@ function scaffoldEligibilityInput(type: CampaignEventTypeKey): MobilizeEligibili
 type RecordPatch = { eventId: string; patch: Partial<CampaignCalendarEventRecord> }
 
 export default function EventRecordDeskContent({
-  profile: _profile,
+  profile,
 }: {
   profile: CampaignProfile | null
 }) {
-  void _profile
   const { eventId = '' } = useParams<{ eventId: string }>()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -94,10 +100,21 @@ export default function EventRecordDeskContent({
   const isNew = eventId === CAMPAIGN_EVENT_NEW_RECORD_SLUG
   const isUuid = isUuidParam(eventId)
 
-  const { event: fetchedEvent, loading: eventLoading, error: eventFetchError } = useEventById(
-    paramOk && isUuid ? eventId : null,
-  )
-  const staffingAssignments = useEventStaffingAssignments(paramOk && isUuid ? eventId : null)
+  const {
+    event: fetchedEvent,
+    loading: eventLoading,
+    error: eventFetchError,
+    refetch: refetchEvent,
+  } = useEventById(paramOk && isUuid ? eventId : null)
+  const [staffingRefresh, setStaffingRefresh] = useState(0)
+  const [volunteerLoadAsOfMs] = useState(() => Date.now())
+  const { events: campaignEvents } = useCampaignEventsContext()
+  const campaignEventIds = useMemo(() => campaignEvents.map((e) => e.event_id), [campaignEvents])
+  const { assignmentMap: campaignAssignmentMap } = useCampaignStaffingBulk(campaignEventIds, staffingRefresh)
+  const staffingAssignments = useMemo(() => {
+    if (!paramOk || !isUuid) return []
+    return campaignAssignmentMap.get(eventId) ?? []
+  }, [paramOk, isUuid, eventId, campaignAssignmentMap])
 
   const [pickedType, setPickedType] = useState<CampaignEventTypeKey | null>(null)
   const selectedType = queryType ?? pickedType ?? 'public_fair_festival'
@@ -216,6 +233,33 @@ export default function EventRecordDeskContent({
     [operationsGaps],
   )
 
+  const rapidContext = useMemo(
+    () => buildRapidActionContextFromEvent('event_command', displayRecord),
+    [displayRecord],
+  )
+
+  const coverageMetrics = useMemo(() => {
+    if (!displayRecord) return null
+    return computeEventCoverageMetrics(displayRecord, staffingAssignments)
+  }, [displayRecord, staffingAssignments])
+
+  const loadHint = useMemo(() => {
+    if (!displayRecord) return null
+    const loads = buildVolunteerLoadMap(campaignEvents, campaignAssignmentMap, volunteerLoadAsOfMs, 14)
+    const firstUid = staffingAssignments.find((a) => a.assigned_user_id)?.assigned_user_id
+    return warnBeforeAssign(firstUid ?? null, loads)
+  }, [displayRecord, campaignEvents, campaignAssignmentMap, staffingAssignments, volunteerLoadAsOfMs])
+
+  const staffingBrief = useMemo(() => {
+    if (!displayRecord) return null
+    const loads = buildVolunteerLoadMap(campaignEvents, campaignAssignmentMap, volunteerLoadAsOfMs, 14)
+    return buildDeterministicStaffingBrief({
+      event: displayRecord,
+      assignments: staffingAssignments,
+      volunteerLoads: loads,
+    })
+  }, [displayRecord, campaignEvents, campaignAssignmentMap, staffingAssignments, volunteerLoadAsOfMs])
+
   if (!paramOk) {
     return (
       <div className="event-coordinator-desk" id="event-record-detail">
@@ -295,9 +339,63 @@ export default function EventRecordDeskContent({
         title={headerTitle}
         record={displayRecord}
         typeLabel={typeLabel}
+        campaignEvents={campaignEvents}
+        campaignAssignmentMap={campaignAssignmentMap}
       />
 
       <EventReadinessTimelineStrip record={displayRecord} />
+
+      {isUuid && displayRecord ? (
+        <>
+          <RapidActionsBar
+            context={rapidContext}
+            profile={profile}
+            operationalEvent={displayRecord}
+            campaignEvents={campaignEvents}
+            assignmentMap={campaignAssignmentMap}
+            onAfterAction={() => {
+              setStaffingRefresh((n) => n + 1)
+              void refetchEvent()
+            }}
+            compact
+          />
+          {staffingBrief ? (
+            <section
+              className="event-coordinator-desk__section"
+              style={{
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 8,
+                padding: '0.75rem 1rem',
+                marginBottom: '0.75rem',
+              }}
+              aria-label="Staffing intelligence"
+            >
+              <p className="event-coordinator-desk__eyebrow" style={{ margin: 0 }}>
+                Staffing intelligence (deterministic)
+              </p>
+              <p style={{ margin: '0.35rem 0', fontSize: '0.92rem' }}>{staffingBrief.issue_summary}</p>
+              <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.1rem', fontSize: '0.86rem' }}>
+                {staffingBrief.top_risks.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+              {coverageMetrics ? (
+                <p className="subtitle" style={{ margin: '0.5rem 0 0', fontSize: '0.82rem' }}>
+                  Gate: {coverageMetrics.operational_gate.replace(/_/g, ' ')} · coverage{' '}
+                  {coverageMetrics.coverage_percentage}% · critical roles{' '}
+                  {coverageMetrics.critical_role_coverage_percentage}% · risk {coverageMetrics.staffing_risk_score}{' '}
+                  · {coverageMetrics.bucket.replace(/_/g, ' ')}
+                </p>
+              ) : null}
+              {loadHint && loadHint.level !== 'ok' ? (
+                <p className="seg-cal__banner" role="status" style={{ marginTop: 8 }}>
+                  Load: {loadHint.message}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+        </>
+      ) : null}
 
       <EventDetailSectionNav eventId={eventId} />
 

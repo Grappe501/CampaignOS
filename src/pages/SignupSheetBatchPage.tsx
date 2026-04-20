@@ -136,15 +136,12 @@ export default function SignupSheetBatchPage({ onDevSessionClear }: BatchPagePro
   }, [batchId])
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- reset when navigating to another batch */
     setSelectedId(null)
     setDraft(null)
     setEscNote('')
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [batchId])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- server fetch on mount / batch change
     void load()
   }, [load])
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CampaignCalendarEventRecord } from '../../../lib/campaignCalendarArchitecture'
+import type { CoordinatorOperationsGap } from '../../../lib/campaignEventCoordinatorOperations'
 import { collectOperationsGapsForEvent } from '../../../lib/campaignEventCoordinatorOperations'
 import { computeEventHealthScoreV2 } from '../../../lib/eventHealthScoreV2'
 import { fetchLatestHealthScoreForEvent } from '../../../lib/eventHealthHistoryDb'
@@ -7,9 +8,15 @@ import { fetchLatestHealthScoreForEvent } from '../../../lib/eventHealthHistoryD
 type EventHealthDrillDownProps = {
   record: CampaignCalendarEventRecord
   priorScore?: number | null
+  /** When provided, uses staffing / load / drift–aware gaps (Final Pass). */
+  enrichedGaps?: readonly CoordinatorOperationsGap[]
 }
 
-export default function EventHealthDrillDown({ record, priorScore: priorProp = null }: EventHealthDrillDownProps) {
+export default function EventHealthDrillDown({
+  record,
+  priorScore: priorProp = null,
+  enrichedGaps,
+}: EventHealthDrillDownProps) {
   const [priorDb, setPriorDb] = useState<number | null>(null)
 
   useEffect(() => {
@@ -25,9 +32,9 @@ export default function EventHealthDrillDown({ record, priorScore: priorProp = n
   const priorScore = priorProp ?? priorDb
 
   const v2 = useMemo(() => {
-    const gaps = collectOperationsGapsForEvent(record)
+    const gaps = enrichedGaps ?? collectOperationsGapsForEvent(record)
     return computeEventHealthScoreV2({ record, gaps, prior_score: priorScore })
-  }, [record, priorScore])
+  }, [record, priorScore, enrichedGaps])
 
   const worst = [...v2.score_components].sort((a, b) => a.component_score - b.component_score).slice(0, 4)
   const fastThree = v2.recommended_actions.slice(0, 3)
@@ -89,6 +96,31 @@ export default function EventHealthDrillDown({ record, priorScore: priorProp = n
             </li>
           ))}
         </ol>
+
+        {enrichedGaps && enrichedGaps.length ? (
+          <>
+            <h4 className="subtitle" style={{ margin: '0.75rem 0 0.35rem', fontWeight: 600 }}>
+              Operational control layer (staffing · load · drift)
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.85rem' }}>
+              {enrichedGaps.slice(0, 8).map((g, idx) => (
+                <li key={`${idx}-${g.message.slice(0, 48)}`}>
+                  <span
+                    style={{
+                      textTransform: 'uppercase',
+                      fontSize: '0.72rem',
+                      marginRight: 6,
+                      opacity: 0.85,
+                    }}
+                  >
+                    {g.severity}
+                  </span>
+                  {g.message}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
       </div>
     </details>
   )

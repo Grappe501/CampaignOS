@@ -4,6 +4,8 @@
 
 import type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture'
 import { collectOperationsGapsForEvent } from './campaignEventCoordinatorOperations'
+import type { StaffingAssignmentLike } from './eventStaffingMatrix'
+import { collectOperationsGapsWithOperationalLayer } from './operationalCommandGaps'
 import {
   computeEventHealthScore,
   healthStatusFromScore,
@@ -191,8 +193,13 @@ function toItem(
   record: CampaignCalendarEventRecord,
   nowMs: number,
   priorScores?: ReadonlyMap<string, number>,
+  assignmentMap?: Map<string, StaffingAssignmentLike[]>,
+  allEvents?: readonly CampaignCalendarEventRecord[],
 ): TodayCommandEventItem {
-  const gaps = collectOperationsGapsForEvent(record)
+  const gaps =
+    assignmentMap && allEvents
+      ? collectOperationsGapsWithOperationalLayer(record, allEvents, assignmentMap, nowMs)
+      : collectOperationsGapsForEvent(record)
   const prior = priorScores?.get(record.event_id) ?? null
   const health = computeEventHealthScoreV2({ record, gaps, nowMs, prior_score: prior })
   const t = new Date(record.start_at).getTime()
@@ -333,6 +340,8 @@ export function buildTodayCommandSnapshot(
   nowMs: number = Date.now(),
   options?: {
     priorScores?: ReadonlyMap<string, number>
+    /** When set, staffing/load/drift gaps feed health + issues (Final Pass). */
+    assignmentMap?: Map<string, StaffingAssignmentLike[]>
   },
 ): TodayCommandSnapshot {
   const list = [...events]
@@ -340,7 +349,8 @@ export function buildTodayCommandSnapshot(
     .filter((e) => String(e.stage_status ?? '').toLowerCase() !== 'archived')
 
   const priorMap = options?.priorScores
-  const items = list.map((r) => toItem(r, nowMs, priorMap))
+  const am = options?.assignmentMap
+  const items = list.map((r) => toItem(r, nowMs, priorMap, am, am ? list : undefined))
   const approvals = listPendingApprovalEvents(events)
 
   const today = items.filter((it) => isEventToday(it.record, nowMs)).sort(sortCommandItems)
@@ -374,7 +384,10 @@ export function buildTodayCommandSnapshot(
 
   for (const p of approvals) {
     const sub = p.submitted_for_review_at ?? p.created_at
-    const gAp = collectOperationsGapsForEvent(p)
+    const gAp =
+      am && list.length
+        ? collectOperationsGapsWithOperationalLayer(p, list, am, nowMs)
+        : collectOperationsGapsForEvent(p)
     const hAp = computeEventHealthScore({ record: p, gaps: gAp, nowMs })
     issues.unshift({
       id: `appr-${p.event_id}`,

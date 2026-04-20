@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- provider + consumer hook */
 import { createContext, useContext, type ReactNode } from 'react'
 import type { CampaignCalendarEventRecord } from '../lib/campaignCalendarArchitecture'
 import { useCampaignEvents } from '../hooks/useCampaignEvents'

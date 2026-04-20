@@ -87,4 +87,6 @@ export default function EventCalendarWeekGrid({
   )
 }
 
+// Non-component exports for calendar math (used by filters and other views).
+/* eslint-disable react-refresh/only-export-components */
 export { startOfWeekMonday, addDays }

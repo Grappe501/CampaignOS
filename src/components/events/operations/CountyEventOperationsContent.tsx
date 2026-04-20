@@ -80,21 +80,21 @@ export default function CountyEventOperationsContent() {
     return [...s].sort()
   }, [source])
 
-  const now = Date.now()
+  const [opsListAsOfMs] = useState(() => Date.now())
   const staffingGaps = useMemo(() => selectStaffingGapRows(filtered), [filtered])
-  const followupAttention = useMemo(() => selectFollowupAttentionRows(filtered, now), [filtered, now])
-  const followupOverdue = useMemo(() => selectFollowupOverdueRows(filtered, now), [filtered, now])
+  const followupAttention = useMemo(() => selectFollowupAttentionRows(filtered, opsListAsOfMs), [filtered, opsListAsOfMs])
+  const followupOverdue = useMemo(() => selectFollowupOverdueRows(filtered, opsListAsOfMs), [filtered, opsListAsOfMs])
   const eventsThisMonth = useMemo(() => countEventsScheduledInMonth(source), [source])
-  const recentOutcomes = useMemo(() => selectRecentCompletedEvents(source, 45, now), [source, now])
+  const recentOutcomes = useMemo(() => selectRecentCompletedEvents(source, 45, opsListAsOfMs), [source, opsListAsOfMs])
   const fortnight = useMemo(() => buildFortnightAgenda(filtered), [filtered])
 
   const upcoming = useMemo(() => {
-    const t = Date.now()
+    const t = opsListAsOfMs
     return [...filtered]
       .filter((r) => new Date(r.record.start_at).getTime() >= t - 86400000)
       .sort((a, b) => new Date(a.record.start_at).getTime() - new Date(b.record.start_at).getTime())
       .slice(0, 14)
-  }, [filtered])
+  }, [filtered, opsListAsOfMs])
 
   const lowReadiness = filtered.filter((r) => r.readinessScore < 60)
 

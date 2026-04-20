@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { StaffingAssignmentLike } from '../lib/eventStaffingMatrix'
 
-export function useEventStaffingAssignments(eventId: string | undefined | null) {
+export function useEventStaffingAssignments(eventId: string | undefined | null, refreshToken?: number) {
   const [assignments, setAssignments] = useState<StaffingAssignmentLike[]>([])
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function useEventStaffingAssignments(eventId: string | undefined | null) 
     return () => {
       cancelled = true
     }
-  }, [eventId])
+  }, [eventId, refreshToken])
 
   return assignments
 }

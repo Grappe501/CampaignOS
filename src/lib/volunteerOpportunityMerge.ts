@@ -3,12 +3,7 @@
  */
 
 import { supabase } from './supabaseClient'
-import {
-  fetchAssignmentsForCampaign,
-  fetchOpenAssignments,
-  fetchShiftsForCampaign,
-  fetchShiftSlots,
-} from './volunteerCommandApi'
+import { fetchOpenAssignments, fetchShiftsForCampaign, fetchShiftSlots } from './volunteerCommandApi'
 import { fetchVolunteerRoleDefinitions } from './volunteerCommandApi'
 import { mapVolunteerOpportunityRow, fetchOpportunitiesFromDb } from './volunteerOpportunityApi'
 import type { VolunteerOpportunity } from './volunteerOpportunityDomain'

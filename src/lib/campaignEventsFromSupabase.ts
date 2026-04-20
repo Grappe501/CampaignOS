@@ -259,7 +259,7 @@ export async function fetchRecentEventHistoryForArea(
 ): Promise<readonly string[]> {
   if (!countyId) return []
 
-  let q = supabase
+  const q = supabase
     .from('campaign_events')
     .select('title,start_at,precinct_id')
     .eq('county_id', countyId)
@@ -294,14 +294,13 @@ export async function fetchEventFollowups(eventId: string) {
   return data ?? []
 }
 
-const FOLLOWUP_TYPE_DB = [
-  'thank_you',
-  'volunteer',
-  'donor',
-  'issue',
-  'host',
-  'county_intel',
-] as const
+type FollowupTypeSeed =
+  | 'thank_you'
+  | 'volunteer'
+  | 'donor'
+  | 'issue'
+  | 'host'
+  | 'county_intel'
 
 export async function seedDefaultFollowUpsIfEmpty(eventId: string, eventEndAtIso: string): Promise<void> {
   const { data: existing } = await supabase
@@ -315,7 +314,7 @@ export async function seedDefaultFollowUpsIfEmpty(eventId: string, eventEndAtIso
   const end = new Date(eventEndAtIso)
   if (Number.isNaN(end.getTime())) return
 
-  const mk = (type: (typeof FOLLOWUP_TYPE_DB)[number], hours: number, title: string) => ({
+  const mk = (type: FollowupTypeSeed, hours: number, title: string) => ({
     event_id: eventId,
     followup_type: type,
     due_at: new Date(end.getTime() + hours * 3600 * 1000).toISOString(),

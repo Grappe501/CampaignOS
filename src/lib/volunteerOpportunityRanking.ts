@@ -65,7 +65,7 @@ export function calculateVolunteerOpportunityFit(input: {
     ...(role?.trainingRequirements ?? []),
   ]
   const uniqTraining = [...new Set(trainingKeys)]
-  let trainingFit = uniqTraining.length === 0 ? 1 : hasTraining(uniqTraining, training) ? 1 : 0.35
+  const trainingFit = uniqTraining.length === 0 ? 1 : hasTraining(uniqTraining, training) ? 1 : 0.35
 
   const availabilityFit =
     volunteer.availability && Object.keys(volunteer.availability).length > 0 ? 0.75 : 0.55

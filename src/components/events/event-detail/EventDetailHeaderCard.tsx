@@ -1,6 +1,9 @@
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { CampaignCalendarEventRecord } from '../../../lib/campaignCalendarArchitecture'
 import { collectOperationsGapsForEvent } from '../../../lib/campaignEventCoordinatorOperations'
+import { collectOperationsGapsWithOperationalLayer } from '../../../lib/operationalCommandGaps'
+import type { StaffingAssignmentLike } from '../../../lib/eventStaffingMatrix'
 import { computeEventHealthScore, healthStatusToUiModifier } from '../../../lib/eventHealthScoreService'
 import { campaignEventRecordSectionPath } from '../../../lib/campaignEventSystem'
 import { eventIsPendingVolunteerRequest } from '../../../lib/eventSubmissionApproval'
@@ -13,6 +16,8 @@ type EventDetailHeaderCardProps = {
   title: string
   record: CampaignCalendarEventRecord | null
   typeLabel: string | null
+  campaignEvents?: readonly CampaignCalendarEventRecord[]
+  campaignAssignmentMap?: Map<string, StaffingAssignmentLike[]>
 }
 
 export default function EventDetailHeaderCard({
@@ -22,7 +27,11 @@ export default function EventDetailHeaderCard({
   title,
   record,
   typeLabel,
+  campaignEvents,
+  campaignAssignmentMap,
 }: EventDetailHeaderCardProps) {
+  const [operationalGapsAsOfMs] = useState(() => Date.now())
+
   const virtualOrVenue = record?.address_or_virtual?.trim()
     ? 'Virtual / hybrid (address on file)'
     : record?.venue_name
@@ -31,11 +40,24 @@ export default function EventDetailHeaderCard({
 
   const pendingApproval = record ? eventIsPendingVolunteerRequest(record) : false
 
+  const commandGaps = useMemo(() => {
+    if (!record) return []
+    if (campaignEvents?.length && campaignAssignmentMap) {
+      return collectOperationsGapsWithOperationalLayer(
+        record,
+        campaignEvents,
+        campaignAssignmentMap,
+        operationalGapsAsOfMs,
+      )
+    }
+    return collectOperationsGapsForEvent(record)
+  }, [record, campaignEvents, campaignAssignmentMap, operationalGapsAsOfMs])
+
   const health =
     record && isUuid && !isNew
       ? computeEventHealthScore({
           record,
-          gaps: collectOperationsGapsForEvent(record),
+          gaps: commandGaps,
         })
       : null
   const healthMod = health ? healthStatusToUiModifier(health.status) : null
@@ -62,7 +84,7 @@ export default function EventDetailHeaderCard({
               {health.reasonCodes.slice(0, 3).join(' · ') || 'No extra reason codes'}
             </span>
           </p>
-          {record ? <EventHealthDrillDown record={record} priorScore={null} /> : null}
+          {record ? <EventHealthDrillDown record={record} priorScore={null} enrichedGaps={commandGaps} /> : null}
         </>
       ) : null}
 

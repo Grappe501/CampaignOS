@@ -47,7 +47,6 @@ export default function SignupSheetIngestionPage({ onDevSessionClear }: Ingestio
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- server fetch on mount
     void load()
   }, [load])
 

@@ -6,6 +6,8 @@ import type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture
 import type { CoordinatorOperationsGap } from './campaignEventCoordinatorOperations'
 import { collectOperationsGapsForEvent } from './campaignEventCoordinatorOperations'
 import { isCampaignEventTypeKey } from './eventStaffingMatrix'
+import type { StaffingAssignmentLike } from './eventStaffingMatrix'
+import { collectOperationsGapsWithOperationalLayer } from './operationalCommandGaps'
 
 export type ApprovalPrecheckOutcome = 'pass' | 'pass_with_warnings' | 'blocked' | 'revise_recommended'
 
@@ -51,9 +53,14 @@ export function runApprovalPrecheck(
   options?: {
     gaps?: readonly CoordinatorOperationsGap[]
     peerEvents?: readonly CampaignCalendarEventRecord[]
+    /** Full campaign assignment map — enables staffing + load + drift checks */
+    assignmentMap?: Map<string, StaffingAssignmentLike[]>
   },
 ): ApprovalPrecheckResult {
-  const gaps = options?.gaps ?? collectOperationsGapsForEvent(record)
+  const gaps =
+    options?.assignmentMap && options.peerEvents?.length
+      ? collectOperationsGapsWithOperationalLayer(record, options.peerEvents, options.assignmentMap, Date.now())
+      : options?.gaps ?? collectOperationsGapsForEvent(record)
 
   const checks: ApprovalPrecheckCheck[] = []
 

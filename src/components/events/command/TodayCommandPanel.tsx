@@ -10,6 +10,10 @@ import {
 } from '../../../lib/todayCommandService'
 import { campaignEventRecordPath } from '../../../lib/campaignEventSystem'
 import { fetchLatestHealthScoresForEvents } from '../../../lib/eventHealthHistoryDb'
+import type { StaffingAssignmentLike } from '../../../lib/eventStaffingMatrix'
+import { buildRapidActionRecommendations } from '../../../lib/rapidActionOrchestrator'
+import { buildVolunteerLoadMap } from '../../../lib/volunteerLoadBalancerService'
+import { getRapidActionDefinition } from '../../../lib/rapidActionsService'
 
 function statusClass(s: string): string {
   if (s === 'CRITICAL') return 'event-health-pill event-health-pill--critical'
@@ -48,7 +52,7 @@ function IssueRow({ issue }: { issue: CommandPanelIssue }) {
     <li style={{ marginBottom: '0.65rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
         <span className={statusClass(issue.status)}>{issue.healthScore}</span>
-        <Link to={campaignEventRecordPath(e.event_id)} style={{ fontWeight: 600 }}>
+        <Link to={`${campaignEventRecordPath(e.event_id)}#rapid-actions-command`} style={{ fontWeight: 600 }}>
           {e.title}
         </Link>
         {issue.stale ? (
@@ -71,9 +75,10 @@ function IssueRow({ issue }: { issue: CommandPanelIssue }) {
 
 type TodayCommandPanelProps = {
   events: readonly CampaignCalendarEventRecord[]
+  assignmentMap?: Map<string, StaffingAssignmentLike[]>
 }
 
-export default function TodayCommandPanel({ events }: TodayCommandPanelProps) {
+export default function TodayCommandPanel({ events, assignmentMap }: TodayCommandPanelProps) {
   const [digestOnly, setDigestOnly] = useState(false)
   const [groupBy, setGroupBy] = useState<CommandGroupingMode>('urgency')
   const [priorMap, setPriorMap] = useState<Map<string, number>>(new Map())
@@ -95,8 +100,29 @@ export default function TodayCommandPanel({ events }: TodayCommandPanelProps) {
   }, [ids])
 
   const snap = useMemo(
-    () => buildTodayCommandSnapshot(events, asOfMs, { priorScores: priorMap }),
-    [events, priorMap, asOfMs],
+    () =>
+      buildTodayCommandSnapshot(events, asOfMs, {
+        priorScores: priorMap,
+        assignmentMap: assignmentMap ?? new Map(),
+      }),
+    [events, priorMap, asOfMs, assignmentMap],
+  )
+
+  const loadMap = useMemo(
+    () => buildVolunteerLoadMap(events, assignmentMap ?? new Map(), asOfMs, 14),
+    [events, assignmentMap, asOfMs],
+  )
+
+  const rapidRecs = useMemo(
+    () =>
+      buildRapidActionRecommendations({
+        events,
+        assignmentMap: assignmentMap ?? new Map(),
+        loadMap,
+        commandIssues: snap.issues,
+        nowMs: asOfMs,
+      }),
+    [events, assignmentMap, loadMap, snap.issues, asOfMs],
   )
 
   const topIssues = useMemo(
@@ -166,6 +192,52 @@ export default function TodayCommandPanel({ events }: TodayCommandPanelProps) {
           <strong>{snap.pendingApprovals.length}</strong> event request(s) awaiting approval — see the{' '}
           <a href="#event-approval-queue-heading">approval queue</a> below.
         </p>
+      ) : null}
+
+      {rapidRecs.length > 0 ? (
+        <div
+          style={{
+            marginBottom: '0.75rem',
+            padding: '0.65rem 0.75rem',
+            borderRadius: 8,
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(0,0,0,0.15)',
+          }}
+          aria-label="Recommended rapid actions"
+        >
+          <h3 className="event-coordinator-desk__h3" style={{ fontSize: '0.92rem', margin: 0 }}>
+            Recommended rapid actions
+          </h3>
+          <p className="subtitle" style={{ margin: '0.25rem 0 0.35rem', fontSize: '0.8rem' }}>
+            Deterministic suggestions tied to the Rapid Actions catalog — open the event, then run the
+            matching action from the bar above.
+          </p>
+          <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+            {rapidRecs.slice(0, 6).map((r) => {
+              const def = getRapidActionDefinition(r.recommended_action_type)
+              return (
+                <li key={r.id} style={{ marginBottom: 6 }}>
+                  <span
+                    className="subtitle"
+                    style={{ textTransform: 'uppercase', fontSize: '0.72rem', marginRight: 6 }}
+                  >
+                    {r.urgency}
+                  </span>
+                  {r.event_id ? (
+                    <Link to={campaignEventRecordPath(r.event_id)} style={{ fontWeight: 600 }}>
+                      {r.event_title ?? 'Event'}
+                    </Link>
+                  ) : (
+                    <span style={{ fontWeight: 600 }}>Program</span>
+                  )}
+                  <span className="subtitle" style={{ marginLeft: 6 }}>
+                    → {def?.label ?? r.recommended_action_type}: {r.reason_summary}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       ) : null}
 
       {digestOnly ? (

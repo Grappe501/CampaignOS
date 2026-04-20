@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCampaignStaffingBulk } from '../../../hooks/useCampaignStaffingBulk'
 import { Link } from 'react-router-dom'
 import type { CampaignCalendarEventRecord } from '../../../lib/campaignCalendarArchitecture'
 import {
@@ -12,6 +13,8 @@ import { buildDeterministicEventSummary } from '../../../lib/eventSummaryAI'
 import { runApprovalPrecheck } from '../../../lib/approvalPrecheckEngine'
 import { fetchApprovalAuditLog, insertCampaignEventApprovalAudit } from '../../../lib/eventApprovalAuditDb'
 import type { CampaignProfile } from '../../../hooks/useProfile'
+import { buildRapidActionContextFromEvent } from '../../../lib/rapidActionContextSelectors'
+import RapidActionsBar from './RapidActionsBar'
 
 type EventApprovalQueueProps = {
   events: readonly CampaignCalendarEventRecord[]
@@ -29,11 +32,21 @@ export default function EventApprovalQueue({ events, profile, onRefetch }: Event
   const [openAuditId, setOpenAuditId] = useState<string | null>(null)
   const [clockMs, setClockMs] = useState(() => Date.now())
 
+  const eventIds = useMemo(() => [...new Set(events.map((x) => x.event_id))], [events])
+  const { assignmentMap: approvalAssignmentMap } = useCampaignStaffingBulk(eventIds)
+
   const pending = useMemo(
     () => sortPendingApprovalEvents(events, sortMode, events),
     [events, sortMode],
   )
   const canAct = canApproveEventRequests(profile)
+
+  const approvalRapidContext = useMemo(() => {
+    const top = pending[0] ?? null
+    return buildRapidActionContextFromEvent('approval_queue', top, {
+      approval_request_event_id: top?.event_id ?? null,
+    })
+  }, [pending])
 
   const loadAudit = useCallback(async (eventId: string) => {
     const rows = await fetchApprovalAuditLog(eventId)
@@ -75,6 +88,14 @@ export default function EventApprovalQueue({ events, profile, onRefetch }: Event
         Review the checklist, add notes, then approve or send back. Requests stay off the volunteer
         calendar until you approve.
       </p>
+      {canAct && approvalRapidContext.approval_request_event_id ? (
+        <RapidActionsBar
+          context={approvalRapidContext}
+          profile={profile}
+          onAfterAction={() => void onRefetch()}
+          compact
+        />
+      ) : null}
       <label className="subtitle" style={{ display: 'block', marginBottom: 8 }}>
         Sort by{' '}
         <select
@@ -97,7 +118,7 @@ export default function EventApprovalQueue({ events, profile, onRefetch }: Event
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {pending.map((e) => {
           const adv = buildDeterministicEventSummary(e)
-          const pre = runApprovalPrecheck(e, { peerEvents: events })
+          const pre = runApprovalPrecheck(e, { peerEvents: events, assignmentMap: approvalAssignmentMap })
           const failedPrecheck = pre.checks.filter((c) => !c.ok)
           const note = notes[e.event_id] ?? ''
           const cond = conditions[e.event_id] ?? ''

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMobilizePromotionSummary } from '../../hooks/useEventSummaries'
 import type { CampaignProfile } from '../../hooks/useProfile'
 import { useCampaignEventsContext } from '../../context/CampaignEventsContext'
-import { getDevStaffingAssignmentsForEvent } from '../../lib/campaignEventStaffingDevFixtures'
+import { useCampaignStaffingBulk } from '../../hooks/useCampaignStaffingBulk'
 import { collectOperationsGapsForDesk } from '../../lib/campaignEventCoordinatorOperations'
 import {
   CAMPAIGN_EVENT_NEW_RECORD_SLUG,
@@ -27,6 +27,10 @@ import UpcomingCampaignStrip from './widgets/UpcomingCampaignStrip'
 import EventApprovalQueue from './command/EventApprovalQueue'
 import TodayCommandPanel from './command/TodayCommandPanel'
 import { buildTodayCommandSnapshot } from '../../lib/todayCommandService'
+import { buildRapidActionContextFromEvent } from '../../lib/rapidActionContextSelectors'
+import RapidActionsBar from './command/RapidActionsBar'
+import StaffingCoverageHeatmap from './command/StaffingCoverageHeatmap'
+import VolunteerLoadBalancerPanel from './command/VolunteerLoadBalancerPanel'
 
 export default function EventCoordinatorDeskContent({
   profile,
@@ -39,12 +43,13 @@ export default function EventCoordinatorDeskContent({
     'Coordinator'
 
   const { events: queueEvents, refetch: refetchEvents } = useCampaignEventsContext()
+  const eventIds = useMemo(() => queueEvents.map((e) => e.event_id), [queueEvents])
+  const { assignmentMap: deskAssignmentMap } = useCampaignStaffingBulk(eventIds)
+
   const coordinatorPressure = useMemo(
     () =>
-      collectOperationsGapsForDesk(queueEvents, (e) =>
-        getDevStaffingAssignmentsForEvent(e.event_id),
-      ),
-    [queueEvents],
+      collectOperationsGapsForDesk(queueEvents, (e) => deskAssignmentMap.get(e.event_id)),
+    [queueEvents, deskAssignmentMap],
   )
   const staffingDeskGaps = useMemo(
     () =>
@@ -58,6 +63,16 @@ export default function EventCoordinatorDeskContent({
       coordinatorPressure.filter((g) => ['followup', 'attendance'].includes(g.category)),
     [coordinatorPressure],
   )
+
+  const deskRapidContext = useMemo(() => {
+    const first =
+      staffingDeskGaps[0]?.event_id != null
+        ? queueEvents.find((e) => e.event_id === staffingDeskGaps[0]!.event_id) ?? queueEvents[0] ?? null
+        : queueEvents[0] ?? null
+    return buildRapidActionContextFromEvent('events_dashboard', first, {
+      issue_summary: staffingDeskGaps[0]?.message ?? null,
+    })
+  }, [queueEvents, staffingDeskGaps])
 
   const calendarPersona = mapProfileRoleToCalendarWidgetPersona(profile?.primary_role)
   const mobilizePromotion = useMobilizePromotionSummary(calendarPersona)
@@ -126,7 +141,22 @@ export default function EventCoordinatorDeskContent({
         </div>
       </header>
 
-      <TodayCommandPanel events={queueEvents} />
+      <RapidActionsBar
+        context={deskRapidContext}
+        profile={profile}
+        operationalEvent={
+          deskRapidContext.event_id
+            ? queueEvents.find((e) => e.event_id === deskRapidContext.event_id) ?? null
+            : null
+        }
+        campaignEvents={queueEvents}
+        assignmentMap={deskAssignmentMap}
+        onAfterAction={() => void refetchEvents()}
+      />
+      <StaffingCoverageHeatmap events={queueEvents} assignmentMap={deskAssignmentMap} />
+      <VolunteerLoadBalancerPanel events={queueEvents} assignmentMap={deskAssignmentMap} />
+
+      <TodayCommandPanel events={queueEvents} assignmentMap={deskAssignmentMap} />
 
       <EventApprovalQueue events={queueEvents} profile={profile} onRefetch={() => void refetchEvents()} />
 

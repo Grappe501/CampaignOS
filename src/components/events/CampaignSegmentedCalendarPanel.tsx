@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { CampaignCalendarEventRecord } from '../../lib/campaignCalendarArchitecture'
+import type { StaffingAssignmentLike } from '../../lib/eventStaffingMatrix'
 import {
   CALENDAR_FUNCTION_SEGMENTS,
   CALENDAR_GEO_SCOPE_SEGMENTS,
@@ -8,6 +9,8 @@ import {
   CALENDAR_VISIBILITY_SEGMENTS,
 } from '../../lib/campaignCalendarArchitecture'
 import { useCampaignEventsContext } from '../../context/CampaignEventsContext'
+import { useCampaignStaffingBulk } from '../../hooks/useCampaignStaffingBulk'
+import { computeEventCoverageMetrics } from '../../lib/staffingCoverageHeatmapService'
 import {
   applyCalendarSegmentFilters,
   daysInMonth,
@@ -48,8 +51,32 @@ function formatEventTime(iso: string): string {
   })
 }
 
+function StaffingCoverageChip({
+  event,
+  assignmentMap,
+}: {
+  event: CampaignCalendarEventRecord
+  assignmentMap: Map<string, StaffingAssignmentLike[]>
+}) {
+  const m = computeEventCoverageMetrics(event, assignmentMap.get(event.event_id) ?? [])
+  if (!m) return null
+  const short =
+    m.bucket === 'critical_gap'
+      ? 'Staffing critical'
+      : m.bucket === 'partial'
+        ? 'Staffing partial'
+        : `Cov ${Math.round(m.coverage_percentage)}%`
+  return (
+    <span className="seg-cal__chip" title={`Risk ${m.staffing_risk_score} · ${m.bucket.replace(/_/g, ' ')}`}>
+      {short}
+    </span>
+  )
+}
+
 export default function CampaignSegmentedCalendarPanel() {
   const { events: sourceEvents } = useCampaignEventsContext()
+  const eventIds = useMemo(() => sourceEvents.map((e) => e.event_id), [sourceEvents])
+  const { assignmentMap: calAssignmentMap } = useCampaignStaffingBulk(eventIds)
   const [filters, setFilters] = useState<CampaignCalendarSegmentFilters>(EMPTY_FILTERS)
   const [viewMode, setViewMode] = useState<CampaignCalendarViewMode>('agenda')
   const [cursor, setCursor] = useState(() => ({ year: 2026, monthIndex: 3 }))
@@ -289,6 +316,7 @@ export default function CampaignSegmentedCalendarPanel() {
                       </div>
                       <p className="seg-cal__agenda-chips">
                         <EventHealthChip record={e} />
+                        <StaffingCoverageChip event={e} assignmentMap={calAssignmentMap} />
                         <span className="seg-cal__chip">{formatSegmentLabel(e.visibility_scope)}</span>
                         <span className="seg-cal__chip">{formatSegmentLabel(inferFunctionSegment(e))}</span>
                         <span className="seg-cal__chip">{formatSegmentLabel(inferGeoScope(e))}</span>

@@ -88,8 +88,6 @@ export default function DashboardHeader({
   email,
   matchedVoter,
   onProfileRefresh,
-  hdWorkspace,
-  onHdWorkspaceChange,
   districtOfficials,
   headerOfficials,
   officialsLoading = false,
@@ -99,9 +97,6 @@ export default function DashboardHeader({
   email?: string | null
   matchedVoter?: MatchedVoterDisplayRow | null
   onProfileRefresh?: () => void
-  /** Wide (HD) canvas — mirrored in the right workspace dock on large screens. */
-  hdWorkspace?: boolean
-  onHdWorkspaceChange?: (wide: boolean) => void
   /** U.S. House, state senate, state house from Google Civic (matched to offices). */
   districtOfficials?: DistrictOfficialsMap | null
   /** Full merged list (districts first, then remaining officials) for header density. */
@@ -212,19 +207,6 @@ export default function DashboardHeader({
           </p>
         ) : null}
       </div>
-
-      {onHdWorkspaceChange ? (
-        <div className="dash-layout-toolbar">
-          <button
-            type="button"
-            className="dash-hd-toggle"
-            aria-pressed={Boolean(hdWorkspace)}
-            onClick={() => onHdWorkspaceChange(!hdWorkspace)}
-          >
-            {hdWorkspace ? 'Standard width' : 'Widen dashboard (edge-to-edge)'}
-          </button>
-        </div>
-      ) : null}
 
       <div
         className="dash-header-3col"

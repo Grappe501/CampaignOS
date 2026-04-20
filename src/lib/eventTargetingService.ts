@@ -78,14 +78,17 @@ export async function getEventTargetUniverse(eventId: string): Promise<EventTarg
 
 /** Stub: replace with voter-file / CRM queries. */
 export function recommendInviteList(_profile: EventTargetingProfile): InviteRecommendation[] {
+  void _profile
   return []
 }
 
 export function recommendVolunteerProspects(_profile: EventTargetingProfile): InviteRecommendation[] {
+  void _profile
   return []
 }
 
 export function recommendHostCandidates(_profile: EventTargetingProfile): HostCandidateRecommendation[] {
+  void _profile
   return []
 }
 

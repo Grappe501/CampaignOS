@@ -31,5 +31,9 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Standard data-fetch pattern: load() sets React state; deferring with microtasks would not improve UX.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

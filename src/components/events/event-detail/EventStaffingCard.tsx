@@ -182,6 +182,10 @@ export default function EventStaffingCard({
       ) : (
         <p className="event-coordinator-desk__placeholder">No staffing gaps flagged.</p>
       )}
+      <p className="event-coordinator-desk__meta">
+        <a href="#rapid-actions-command">Rapid staffing actions</a> — assign, reassign, confirm coverage, and
+        marketplace publish — are available in the command action strip above this section.
+      </p>
     </section>
   )
 }

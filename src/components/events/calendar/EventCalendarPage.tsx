@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useCampaignEventsContext } from '../../../context/CampaignEventsContext'
 import type { CampaignCalendarViewMode } from '../../../lib/campaignCalendarSegmentEngine'
 import {
@@ -24,18 +23,15 @@ import EventAgendaList from './EventAgendaList'
 import EventCalendarFilters from './EventCalendarFilters'
 import EventCalendarHeader from './EventCalendarHeader'
 import EventCalendarMonthGrid, { type MonthCursor } from './EventCalendarMonthGrid'
-import EventCalendarWeekGrid, { startOfWeekMonday } from './EventCalendarWeekGrid'
 
 type EventCalendarPageProps = {
   persona: CalendarWidgetPersona
 }
 
 export default function EventCalendarPage({ persona }: EventCalendarPageProps) {
-  const navigate = useNavigate()
   const [ui, setUi] = useState<EventCalendarUiState>(DEFAULT_EVENT_CALENDAR_UI)
   const [viewMode, setViewMode] = useState<CampaignCalendarViewMode>('agenda')
   const [monthCursor, setMonthCursor] = useState<MonthCursor>({ year: 2026, monthIndex: 3 })
-  const [weekCursor, setWeekCursor] = useState(() => startOfWeekMonday(new Date()))
   const [nowMs, setNowMs] = useState(() => Date.now())
 
   useEffect(() => {

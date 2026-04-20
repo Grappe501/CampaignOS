@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useDashboardFocusMode } from '../hooks/useDashboardFocusMode'
 import { useHdWorkspace } from '../hooks/useHdWorkspace'
 import { useProfile } from '../hooks/useProfile'
 import { usePublicOfficials } from '../hooks/usePublicOfficials'
@@ -52,6 +53,7 @@ import ElectedOfficialsWidget from '../components/dashboard/ElectedOfficialsWidg
 import type { PublicOfficialEntry } from '../lib/api/publicOfficials'
 import VoterStatusCard from '../components/dashboard/VoterStatusCard'
 import WorkspaceDock from '../components/WorkspaceDock'
+import WorkspaceDockBar from '../components/workspace/WorkspaceDockBar'
 import {
   WORKSPACE_DOCK_ITEMS,
   type WorkspaceSectionGlyphId,
@@ -74,6 +76,8 @@ import EventPressureSummaryCard from '../components/calendar-widgets/EventPressu
 import CalendarSnapshotCard from '../components/calendar-widgets/CalendarSnapshotCard'
 import MobilizeQueueCard from '../components/calendar-widgets/MobilizeQueueCard'
 import CountyEventRailCard from '../components/calendar-widgets/CountyEventRailCard'
+import DashboardHubNav from '../components/dashboard/DashboardHubNav'
+import DashboardAiGuideStrip from '../components/dashboard/DashboardAiGuideStrip'
 
 const VOTER_WORKSPACE_EXPANDED_KEY = 'campaignos-voter-workspace-expanded'
 
@@ -92,6 +96,7 @@ type DashboardProps = {
 
 export default function Dashboard({ onDevSessionClear }: DashboardProps) {
   const { hdWorkspace, setHdWorkspace } = useHdWorkspace()
+  const { focusCalmMode, toggleFocusCalmMode } = useDashboardFocusMode()
   const { profile, loading, refetch } = useProfile()
   const profileId =
     profile?.id != null && profile.id !== '' ? String(profile.id) : undefined
@@ -391,16 +396,37 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     visibleSectionIds: workspaceDockVisibleIds,
   }
 
+  const expandOptional = !focusCalmMode
+
   return (
     <>
       <AppHeader onSignOut={handleSignOut} />
-      <main
-        className={`app-shell dashboard-workspace dashboard-workspace--dense${
-          hdWorkspace ? ' dashboard-workspace--hd' : ''
-        }`}
-      >
-        <WorkspaceDock {...workspaceDockProps} />
-        <div className="dashboard-workspace-canvas">
+      <main className="app-shell dashboard-workspace dashboard-workspace--dense">
+        <div className="dashboard-workspace-surface">
+          <aside className="dashboard-workspace-side dashboard-workspace-side--left" aria-label="Sections">
+            <WorkspaceDockBar
+              {...workspaceDockProps}
+              layout="vertical"
+              variant="navigation-only"
+            />
+          </aside>
+          <div className="dashboard-workspace-canvas">
+            <div className="dashboard-workspace-dock-mobile">
+              <WorkspaceDock {...workspaceDockProps} />
+            </div>
+            <DashboardHubNav profile={profile} />
+            <div className="dashboard-focus-toggle">
+              <span>{focusCalmMode ? 'Calm view — essentials first' : 'Full dashboard'}</span>
+              <button type="button" onClick={toggleFocusCalmMode}>
+                {focusCalmMode ? 'Show all widgets' : 'Calm view'}
+              </button>
+            </div>
+            <DashboardAiGuideStrip
+              nextStep={nextStep}
+              onOpenAgent={() =>
+                window.dispatchEvent(new CustomEvent('campaignos:open-agent-jones'))
+              }
+            />
         <DashboardGrid>
           <DashboardPanelFrame
             storageKey="dash-identity"
@@ -412,8 +438,6 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               email={accountEmail}
               matchedVoter={voterMatch.matched}
               onProfileRefresh={() => void refetch()}
-              hdWorkspace={hdWorkspace}
-              onHdWorkspaceChange={setHdWorkspace}
               districtOfficials={officialsState?.districtOfficials ?? null}
               headerOfficials={headerOfficials}
               officialsLoading={officialsLoading}
@@ -427,7 +451,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               storageKey="dash-calendar-widgets"
               labelCollapsed="Campaign calendar"
               sectionGlyph="dash-calendar-widgets"
-              defaultExpanded
+              defaultExpanded={expandOptional}
             >
               <UpcomingCampaignStrip items={calendarPack.strip} />
               {calendarPersona === 'campaign_manager' ? (
@@ -460,6 +484,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             storageKey="dash-volunteer-global"
             labelCollapsed="Volunteer guide"
             sectionGlyph="volunteer-global"
+            defaultExpanded={expandOptional}
           >
             <p className="subtitle" style={{ margin: '0 0 12px' }}>
               <Link to="/volunteers/me">Volunteer command hub</Link> — claim open assignments, track
@@ -534,7 +559,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             storageKey="dash-daily-activation"
             labelCollapsed="Daily"
             sectionGlyph="daily-activation"
-            defaultExpanded
+            defaultExpanded={expandOptional}
           >
             <DailyMissionCard
               tasks={dailyMission.tasks}
@@ -577,6 +602,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             storageKey="dash-onboarding-activation"
             labelCollapsed="Get started"
             sectionGlyph="onboarding-activation"
+            defaultExpanded={expandOptional}
           >
             <OnboardingActivationCard profile={profile} />
           </DashboardPanelFrame>
@@ -587,6 +613,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               storageKey="dash-onboarding-branch"
               labelCollapsed="Volunteer path"
               sectionGlyph="onboarding-branch"
+              defaultExpanded
             >
               <OnboardingBranchCard
                 profileId={profileId}
@@ -604,6 +631,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               storageKey="dash-voter-status"
               labelCollapsed="Voter status"
               sectionGlyph="voter-status-card"
+              defaultExpanded={expandOptional}
             >
               <VoterStatusCard
                 profile={profile}
@@ -616,6 +644,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               storageKey="dash-workspace-summary"
               labelCollapsed="Workspace snapshot"
               sectionGlyph="workspace-summary"
+              defaultExpanded={expandOptional}
             >
               <StatusCard title="Workspace snapshot">
               <dl className="summary-grid">
@@ -672,6 +701,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               storageKey="dash-branch-specialty"
               labelCollapsed="Path tips"
               sectionGlyph="branch-specialty"
+              defaultExpanded={expandOptional}
             >
               <VolunteerPathCardGrid
                 headingId="branch-specialty-heading"
@@ -688,6 +718,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               storageKey="dash-public-officials"
               labelCollapsed="Public officials"
               sectionGlyph="public-officials-card"
+              defaultExpanded={expandOptional}
             >
               <ElectedOfficialsWidget
                 matchedVoter={voterMatch.matched}
@@ -704,6 +735,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             storageKey="dash-power5"
             labelCollapsed="Power of 5"
             sectionGlyph="power5-workspace"
+            defaultExpanded={expandOptional}
           >
             <Power5SummaryCard
               loading={power5Workspace.loading}
@@ -723,6 +755,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               storageKey="dash-voter-workspace"
               labelCollapsed="Voter lookup"
               sectionGlyph="voter-workspace"
+              defaultExpanded={expandOptional}
             >
               <section
             className={`voter-workspace-section stack-section${
@@ -811,6 +844,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             storageKey="dash-workspace-cards"
             labelCollapsed="Tasks & training"
             sectionGlyph="workspace-cards"
+            defaultExpanded={expandOptional}
           >
             <section
             className="workspace-cards-section stack-section"
@@ -847,6 +881,10 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
 
           <div id="agent-jones" className="agent-jones-anchor" aria-hidden="true" />
         </DashboardGrid>
+          </div>
+          <aside className="dashboard-workspace-side dashboard-workspace-side--right" aria-label="Layout & AI">
+            <WorkspaceDockBar {...workspaceDockProps} layout="vertical" variant="full" />
+          </aside>
         </div>
         <OfficialContactModal
           official={contactOfficial}
