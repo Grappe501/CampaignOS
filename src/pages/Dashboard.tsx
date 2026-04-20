@@ -18,19 +18,11 @@ import {
 import { supabase } from '../lib/supabaseClient'
 import { buildExpandedOfficialsList } from '../lib/api/publicOfficials'
 import {
-  buildAgentJonesRelationalPower5Context,
-} from '../lib/agentJonesContextV2'
-import {
-  countEarlyStagePower5Nodes,
-  getPower5SuggestedNextLine,
-} from '../lib/power5DashboardHints'
-import {
   getDashboardProgressSlice,
   getFirstTaskCardModel,
   getNextStep,
   getTrainingCardModel,
   isRegisteredArkansasVoterBranch,
-  needsOnboardingPath,
   normalizeKey,
   progressionGateMessage,
   REGISTERED_ARKANSAS_VOTER_BRANCH,
@@ -42,7 +34,6 @@ import {
 } from '../lib/volunteerDashboardCards'
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
-import FloatingAgentJones from '../components/FloatingAgentJones'
 import VoterMatchForm from '../components/VoterMatchForm'
 import VoterWidget from '../components/VoterWidget'
 import DashboardGrid from '../components/dashboard/DashboardGrid'
@@ -113,23 +104,6 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
       ),
     [officialsState?.districtOfficials, officialsState?.officials],
   )
-  const agentJonesRelationalPower5 = useMemo(
-    () =>
-      buildAgentJonesRelationalPower5Context({
-        totalNodes: power5Workspace.nodes.length,
-        contacted: power5Workspace.impact.contacted,
-        activated: power5Workspace.impact.activated,
-        rosterMatched: power5Workspace.impact.matched,
-        earlyStageCount: countEarlyStagePower5Nodes(power5Workspace.nodes),
-        openManualRelays: power5Propagation.openRelayCount,
-        recommendedNext: getPower5SuggestedNextLine(power5Workspace.nodes),
-      }),
-    [
-      power5Workspace.nodes,
-      power5Workspace.impact,
-      power5Propagation.openRelayCount,
-    ],
-  )
   const [contactOfficial, setContactOfficial] = useState<PublicOfficialEntry | null>(
     null,
   )
@@ -145,13 +119,6 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     profileId,
     profile?.primary_role != null ? String(profile.primary_role) : null,
   )
-  const agentJonesInternLayer = useMemo(() => {
-    if (!internDesk.isIntern || !internDesk.agentInternContext) return null
-    return {
-      ...internDesk.agentInternContext,
-      leadership_task_title: volunteerTasks.nextBest?.title ?? null,
-    }
-  }, [internDesk.isIntern, internDesk.agentInternContext, volunteerTasks.nextBest?.title])
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -180,7 +147,6 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
   const [accountEmail, setAccountEmail] = useState<string | null>(() =>
     isDevAuthBypassEnabled() ? devBypassDisplayEmail() : null,
   )
-  const [agentJonesOpen, setAgentJonesOpen] = useState(false)
   const [voterWorkspaceExpanded, setVoterWorkspaceExpanded] = useState(false)
   const voterMatchReadyRef = useRef(false)
   const prevVoterMatchedRef = useRef(false)
@@ -409,7 +375,9 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
         className={`app-shell dashboard-workspace${hdWorkspace ? ' dashboard-workspace--hd' : ''}`}
       >
         <WorkspaceDock
-          onAgentOpen={() => setAgentJonesOpen(true)}
+          onAgentOpen={() =>
+            window.dispatchEvent(new CustomEvent('campaignos:open-agent-jones'))
+          }
           hdWorkspace={hdWorkspace}
           onHdWorkspaceChange={setHdWorkspace}
           visibleSectionIds={workspaceDockVisibleIds}
@@ -833,43 +801,6 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
         <OfficialContactModal
           official={contactOfficial}
           onClose={() => setContactOfficial(null)}
-        />
-        <FloatingAgentJones
-          key={`${progressSlice}-${voterMatch.matchedLoading}-${normalizeKey(
-            profile?.onboarding_branch,
-          )}-${normalizeKey(profile?.exception_request_status)}-${
-            progressSlice === 'matched_ready' && needsOnboardingPath(profile)
-              ? 'orient'
-              : 'x'
-          }-${tasks.structured?.title ?? ''}-${training.structured?.title ?? ''}-${
-            power5Workspace.nodes.length
-          }-${power5Propagation.openRelayCount}-${
-            volunteerTasks.nextBest?.title ?? ''
-          }-${volunteerTasks.active.length}-${dailyMission.completedCount}-${
-            dailyMission.totalCount
-          }-${internDesk.overdueCount}-${internDesk.pipelines.length}-${
-            campaignKpis.kpis[0]?.current_value ?? 0
-          }-${campaignKpis.contributions.length}-${location.pathname}`}
-          open={agentJonesOpen}
-          onOpenChange={setAgentJonesOpen}
-          progressSlice={progressSlice}
-          profile={profile}
-          voterLoading={voterMatch.matchedLoading}
-          voterMatched={voterMatched}
-          matchedVoter={voterMatch.matched}
-          surface={location.pathname === '/intern' ? 'intern_desk' : 'volunteer_dashboard'}
-          onProfileRefresh={async () => {
-            await refetch()
-            await volunteerTasks.refetch()
-            await dailyMission.refetch()
-            await internDesk.refetch()
-            await campaignKpis.refetch()
-          }}
-          relationalPower5={agentJonesRelationalPower5}
-          volunteerMission={volunteerTasks.agentMissionContext}
-          dailyActivation={profileId ? dailyMission.agentDailyContext : null}
-          internLayer={agentJonesInternLayer}
-          campaignGoals={campaignKpis.agentCampaignGoals}
         />
       </main>
       <AppFooter />

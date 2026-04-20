@@ -9,6 +9,7 @@ import type {
   AgentJonesDailyActivationContext,
   AgentJonesInternLayerContext,
   AgentJonesLeadershipSnapshotContext,
+  AgentJonesOperatingContext,
   AgentJonesSurface,
   AgentJonesVolunteerMissionContext,
 } from './agentJonesContextV2'
@@ -139,6 +140,7 @@ export function buildAgentJonesFallbackV2(input: {
   dailyActivation?: AgentJonesDailyActivationContext | null
   internLayer?: AgentJonesInternLayerContext | null
   campaignGoals?: AgentJonesCampaignGoalsContext | null
+  operating?: AgentJonesOperatingContext | null
 }): AgentJonesResponse {
   const surf: AgentJonesSurface = input.surface ?? 'volunteer_dashboard'
   const bundle = getAgentJonesGuidanceBundle({
@@ -148,6 +150,7 @@ export function buildAgentJonesFallbackV2(input: {
     surface: surf,
     coordinatorOps: input.coordinatorOps ?? null,
     leadershipSnapshot: input.leadershipSnapshot ?? null,
+    operating: input.operating ?? null,
   })
 
   const suggestedPrompts = bundle.prompts
@@ -242,7 +245,17 @@ export function buildAgentJonesFallbackV2(input: {
         >)
       : undefined
 
+  const adminScroll =
+    surf === 'admin_desk'
+      ? ([
+          { type: 'scroll' as const, targetId: 'admin-exceptions' as const },
+          { type: 'scroll' as const, targetId: 'admin-desks' as const },
+          { type: 'scroll' as const, targetId: 'admin-tasks' as const },
+        ] as NonNullable<AgentJonesResponse['recommendedActions']>)
+      : undefined
+
   const mergedScrolls = [
+    ...(adminScroll ?? []),
     ...(coordScroll ?? []),
     ...(candScroll ?? []),
     ...(missionScroll ?? []),

@@ -1,14 +1,10 @@
 import { Link } from 'react-router-dom'
-import { useMemo, useState } from 'react'
 import CampaignKpisCard from '../dashboard/CampaignKpisCard'
 import LeadershipKpiScaffold from '../dashboard/LeadershipKpiScaffold'
-import FloatingAgentJones from '../FloatingAgentJones'
 import { useCampaignKpis } from '../../hooks/useCampaignKpis'
 import { useCoordinatorDesk } from '../../hooks/useCoordinatorDesk'
-import { useVoterMatch } from '../../hooks/useVoterMatch'
 import type { CampaignProfile } from '../../hooks/useProfile'
-import { getDashboardProgressSlice, normalizeKey } from '../../lib/dashboardState'
-import { buildAgentJonesCoordinatorOps } from '../../lib/agentJonesDeskContext'
+import { normalizeKey } from '../../lib/dashboardState'
 import { countJsonArray, shortProfileId } from '../../lib/coordinatorDeskData'
 import CoordinatorOperationsBoard from './CoordinatorOperationsBoard'
 import CoordinatorMissionDispatch from './CoordinatorMissionDispatch'
@@ -33,38 +29,6 @@ export default function CoordinatorDeskContent({
 
   const desk = useCoordinatorDesk(homeTeam)
   const kpis = useCampaignKpis(profileId, primaryRole)
-  const voterMatch = useVoterMatch(profileId, {
-    onAfterMatch: () => void onRefreshProfile(),
-  })
-  const voterLinked =
-    Boolean(voterMatch.matched) ||
-    Boolean(
-      profile?.linked_voter_id != null && String(profile.linked_voter_id).trim() !== '',
-    )
-  const progressSlice = getDashboardProgressSlice({
-    profile,
-    voterMatched: voterLinked,
-    voterLoading: voterMatch.matchedLoading,
-  })
-  const coordinatorAgentOps = useMemo(
-    () =>
-      buildAgentJonesCoordinatorOps({
-        hasSupervisorScope: desk.hasSupervisorScope,
-        supervisedTeamCount: desk.supervisedTeams.length,
-        buckets: desk.assignmentBuckets,
-        internParsed: desk.internParsed,
-        deskLoading: desk.loading,
-      }),
-    [
-      desk.assignmentBuckets,
-      desk.hasSupervisorScope,
-      desk.internParsed,
-      desk.loading,
-      desk.supervisedTeams.length,
-    ],
-  )
-  const [agentJonesOpen, setAgentJonesOpen] = useState(false)
-
   const io = desk.internParsed
   const b = desk.assignmentBuckets
   const emerging = countJsonArray(desk.activation?.emerging_leaders)
@@ -443,25 +407,6 @@ export default function CoordinatorDeskContent({
           </p>
         </section>
       )}
-
-      <FloatingAgentJones
-        key={`coord-aj-${progressSlice}-${desk.loading}-${coordinatorAgentOps.open_assignments_total}-${kpis.kpis.length}`}
-        open={agentJonesOpen}
-        onOpenChange={setAgentJonesOpen}
-        progressSlice={progressSlice}
-        profile={profile}
-        voterLoading={voterMatch.matchedLoading}
-        voterMatched={voterLinked}
-        matchedVoter={voterMatch.matched}
-        surface="coordinator_desk"
-        coordinatorOps={coordinatorAgentOps}
-        campaignGoals={kpis.agentCampaignGoals}
-        onProfileRefresh={async () => {
-          await onRefreshProfile()
-          await kpis.refetch()
-          await desk.refresh()
-        }}
-      />
 
       <footer className="coordinator-desk-footer">
         <p className="subtitle" style={{ margin: 0 }}>

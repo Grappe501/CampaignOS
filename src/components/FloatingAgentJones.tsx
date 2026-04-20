@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useState } from 'react'
 import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from '../lib/dashboardState'
 import type { MatchedVoterDisplayRow } from '../lib/voterMatch'
+import { resetAgentJonesIfProgressionChanged } from '../lib/agentJonesSessionStorage'
 import type {
   AgentJonesRelationalPower5Context,
   AgentJonesVolunteerMissionContext,
@@ -12,9 +13,13 @@ import type {
   AgentJonesCoordinatorOpsContext,
   AgentJonesLeadershipSnapshotContext,
 } from '../lib/agentJonesContextV2'
-import AgentJonesPanel from './AgentJonesPanel'
+import AgentJonesPanel, { AGENT_JONES_CLEAR_EVENT } from './AgentJonesPanel'
+import AgentJonesLauncher from './agentJones/AgentJonesLauncher'
+import AgentJonesFloatingPanel from './agentJones/AgentJonesFloatingPanel'
 
 export type FloatingAgentJonesProps = {
+  /** Bumps session when onboarding slice / branch / gate changes meaningfully. */
+  progressionEpoch: string
   progressSlice: DashboardProgressSlice
   profile: CampaignProfile | null
   voterLoading: boolean
@@ -23,6 +28,8 @@ export type FloatingAgentJonesProps = {
   surface?: AgentJonesSurface
   coordinatorOps?: AgentJonesCoordinatorOpsContext | null
   leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
+  /** Used for operating-scope hints when not on /coordinator. */
+  coordinatorHasSupervisorScope?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onProfileRefresh?: () => void | Promise<void>
@@ -34,6 +41,7 @@ export type FloatingAgentJonesProps = {
 }
 
 export default function FloatingAgentJones({
+  progressionEpoch,
   progressSlice,
   profile,
   voterLoading,
@@ -50,11 +58,14 @@ export default function FloatingAgentJones({
   surface,
   coordinatorOps,
   leadershipSnapshot,
+  coordinatorHasSupervisorScope = false,
 }: FloatingAgentJonesProps) {
-  const panelId = useId()
+  resetAgentJonesIfProgressionChanged(progressionEpoch)
+
+  const panelDomId = useId()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const isControlled = controlledOpen !== undefined
-  const open = isControlled ? controlledOpen : uncontrolledOpen
+  const open = isControlled ? Boolean(controlledOpen) : uncontrolledOpen
 
   const setOpen = useCallback(
     (next: boolean) => {
@@ -72,8 +83,19 @@ export default function FloatingAgentJones({
         setUncontrolledOpen((o) => !o)
       }
     }
+    const onOpenEvt = () => {
+      if (isControlled) {
+        onOpenChange?.(true)
+      } else {
+        setUncontrolledOpen(true)
+      }
+    }
     window.addEventListener('campaignos:toggle-agent-jones', onToggle)
-    return () => window.removeEventListener('campaignos:toggle-agent-jones', onToggle)
+    window.addEventListener('campaignos:open-agent-jones', onOpenEvt)
+    return () => {
+      window.removeEventListener('campaignos:toggle-agent-jones', onToggle)
+      window.removeEventListener('campaignos:open-agent-jones', onOpenEvt)
+    }
   }, [controlledOpen, isControlled, onOpenChange])
 
   useEffect(() => {
@@ -85,17 +107,25 @@ export default function FloatingAgentJones({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, setOpen])
 
+  const requestClear = useCallback(() => {
+    window.dispatchEvent(new Event(AGENT_JONES_CLEAR_EVENT))
+  }, [])
+
+  const toggleOpen = useCallback(() => {
+    if (isControlled) {
+      onOpenChange?.(!controlledOpen)
+    } else {
+      setUncontrolledOpen((o) => !o)
+    }
+  }, [controlledOpen, isControlled, onOpenChange])
+
   return (
-    <>
-      <button
-        type="button"
-        className="floating-agent-jones-fab"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen(!open)}
-      >
-        <span className="floating-agent-jones-fab-label">Agent Jones</span>
-      </button>
+    <div className="floating-agent-jones-root">
+      <AgentJonesLauncher
+        panelId={panelDomId}
+        panelOpen={open}
+        onToggle={toggleOpen}
+      />
 
       {open ? (
         <>
@@ -105,46 +135,34 @@ export default function FloatingAgentJones({
             aria-label="Close Agent Jones"
             onClick={() => setOpen(false)}
           />
-          <div
-            id={panelId}
-            className="floating-agent-jones-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Agent Jones assistant"
+          <AgentJonesFloatingPanel
+            id={panelDomId}
+            onRequestClose={() => setOpen(false)}
+            onRequestClear={requestClear}
           >
-            <div className="floating-agent-jones-panel-header">
-              <div />
-              <button
-                type="button"
-                className="floating-agent-jones-close"
-                onClick={() => setOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-            <div className="floating-agent-jones-panel-body">
-              <AgentJonesPanel
-                progressSlice={progressSlice}
-                profile={profile}
-                voterLoading={voterLoading}
-                voterMatched={voterMatched}
-                matchedVoter={matchedVoter}
-                surface={surface}
-                coordinatorOps={coordinatorOps}
-                leadershipSnapshot={leadershipSnapshot}
-                persistSession
-                sectionClassName="agent-jones-floating-surface stack-section"
-                onProfileRefresh={onProfileRefresh}
-                relationalPower5={relationalPower5}
-                volunteerMission={volunteerMission}
-                dailyActivation={dailyActivation}
-                internLayer={internLayer}
-                campaignGoals={campaignGoals}
-              />
-            </div>
-          </div>
+            <AgentJonesPanel
+              key={progressionEpoch}
+              progressSlice={progressSlice}
+              profile={profile}
+              voterLoading={voterLoading}
+              voterMatched={voterMatched}
+              matchedVoter={matchedVoter}
+              surface={surface}
+              coordinatorOps={coordinatorOps}
+              leadershipSnapshot={leadershipSnapshot}
+              coordinatorHasSupervisorScope={coordinatorHasSupervisorScope}
+              persistSession
+              sectionClassName="agent-jones-floating-surface stack-section agent-jones-premium"
+              onProfileRefresh={onProfileRefresh}
+              relationalPower5={relationalPower5}
+              volunteerMission={volunteerMission}
+              dailyActivation={dailyActivation}
+              internLayer={internLayer}
+              campaignGoals={campaignGoals}
+            />
+          </AgentJonesFloatingPanel>
         </>
       ) : null}
-    </>
+    </div>
   )
 }

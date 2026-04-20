@@ -1,5 +1,3 @@
-/**
- * Inline Agent Jones (same panel as floating; no sessionStorage by default).
- */
-export { default } from './AgentJonesPanel'
+export { default } from './FloatingAgentJones'
+export type { FloatingAgentJonesProps as AgentJonesProps } from './FloatingAgentJones'
 export type { AgentJonesPanelProps } from './AgentJonesPanel'

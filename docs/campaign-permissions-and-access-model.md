@@ -173,7 +173,7 @@ Legend: **Y** = default on, **S** = scoped (needs geography/team), **—** = off
 | **Route: /candidate** | Y | Y | Y | S | S | S | — | — | — | — | — |
 | **Route: /coordinator** | Y | S | Y | Y | Y | S | S | S | — | — | — |
 | **Route: /power5** | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y | Y |
-| **Route: /admin (future)** | Y | — | S | — | — | — | — | — | — | — | — |
+| **Route: /admin** | Y | — | — | — | — | — | — | — | — | — | — |
 | **Calendar: campaign view** | Y | Y | Y | Y | Y | Y | S | S | — | S | S |
 | **Calendar: create event draft** | Y | S | Y | Y | S | Y | S | S | — | — | — |
 | **Calendar: approve/publish** | Y | S | Y | S | — | S | — | — | — | — | — |
@@ -189,6 +189,7 @@ Legend: **Y** = default on, **S** = scoped (needs geography/team), **—** = off
 
 **Notes**
 
+- **`/admin`:** Shipped; client gate (`canAccessAdminDesk`) allows **`admin`** and **`staff`** only (plus dev auth bypass). Other roles hitting `/admin` are redirected to `/dashboard`. The matrix has no `staff` column — treat **`staff`** as **Y** for this row per §1.3.
 - **(M)** matches today’s pattern: coordinator-like powers from **`volunteer_supervisor_teams`** even when `primary_role` is not literally `coordinator`.
 - **S** (scoped): same verb as parent role but **filtered** by county/precinct/team columns in queries/RPCs.
 - **Candidate row:** Principal gets **strategic** routes and **narrative** publish/approve in product policy; DB must be updated if they should run `kpi_leadership_*` without being `staff`/`coordinator`.

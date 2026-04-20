@@ -10,12 +10,13 @@ function normalizePrimaryRoleKey(role: string | null | undefined): string {
     .replace(/\s+/g, '_')
 }
 
-export type RoleHomeBucket = 'intern' | 'candidate' | 'coordinator' | 'default'
+export type RoleHomeBucket = 'admin' | 'intern' | 'candidate' | 'coordinator' | 'default'
 
 export function getPrimaryRoleHomeBucket(
   primaryRole: string | null | undefined,
 ): RoleHomeBucket {
   const k = normalizePrimaryRoleKey(primaryRole)
+  if (k === 'admin') return 'admin'
   if (k === 'intern') return 'intern'
   if (k === 'candidate') return 'candidate'
   if (k === 'coordinator' || k === 'volunteer_coordinator') return 'coordinator'
@@ -25,6 +26,8 @@ export function getPrimaryRoleHomeBucket(
 export function getRoleHomePath(primaryRole: string | null | undefined): string {
   const bucket = getPrimaryRoleHomeBucket(primaryRole)
   switch (bucket) {
+    case 'admin':
+      return '/admin'
     case 'intern':
       return '/intern'
     case 'candidate':
@@ -42,6 +45,8 @@ export function getWorkspacePrimaryNavLabel(
 ): string {
   const bucket = getPrimaryRoleHomeBucket(primaryRole)
   switch (bucket) {
+    case 'admin':
+      return 'Command center'
     case 'intern':
       return 'Team desk'
     case 'candidate':

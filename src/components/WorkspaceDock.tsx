@@ -54,8 +54,8 @@ export default function WorkspaceDock({
           <button
             type="button"
             className="workspace-dock-icon-btn workspace-dock-icon-btn--brand"
-            title="Agent Jones"
-            aria-label="Open Agent Jones"
+            title="Jones AI"
+            aria-label="Open Jones AI"
             onClick={() => onAgentOpen?.()}
           >
             <span className="workspace-dock-icon-btn__glyph workspace-dock-icon-btn__img-wrap" aria-hidden>

@@ -2,6 +2,12 @@ import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from './dashboardState'
 import { needsOnboardingPath } from './dashboardState'
 import type { MatchedVoterDisplayRow } from './voterMatch'
+import type {
+  AgentJonesDeskRoute,
+  AgentJonesLeadershipLevel,
+  AgentJonesNormalizedRole,
+  AgentJonesUserScope,
+} from './agentJonesRoleDesk'
 
 /** Bounded relational organizing summary — no PII beyond counts and stage hints. */
 export type AgentJonesRelationalPower5Context = {
@@ -91,8 +97,73 @@ export const AGENT_JONES_SURFACES = [
   'intern_desk',
   'coordinator_desk',
   'candidate_desk',
+  'admin_desk',
 ] as const
 export type AgentJonesSurface = (typeof AGENT_JONES_SURFACES)[number]
+
+export function agentJonesSurfaceFromPathname(pathname: string): AgentJonesSurface {
+  const p = (pathname.split('?')[0] ?? '/').trim() || '/'
+  if (p.startsWith('/admin')) return 'admin_desk'
+  if (p.startsWith('/intern')) return 'intern_desk'
+  if (p.startsWith('/coordinator')) return 'coordinator_desk'
+  if (p.startsWith('/candidate')) return 'candidate_desk'
+  return 'volunteer_dashboard'
+}
+
+/** Brain mode hint — UI may stay unified; server uses this for tone. */
+export type AgentJonesOperatingMode =
+  | 'guide'
+  | 'command'
+  | 'ops'
+  | 'task'
+  | 'calendar'
+  | 'leadership'
+  | 'training'
+
+export type AgentJonesUrgentSignal = {
+  id: string
+  label: string
+  severity: 'info' | 'watch' | 'urgent'
+  owner_hint: string | null
+  route_hint: string | null
+}
+
+export type AgentJonesCommandSummary = {
+  attention_now: string[]
+  on_track: string[]
+  next_steps: string[]
+  recent_changes: string[]
+}
+
+/** Compact operating picture: deterministic, roster-safe, no invented metrics. */
+export type AgentJonesOperatingContext = {
+  normalized_role: AgentJonesNormalizedRole
+  desk_route: AgentJonesDeskRoute
+  leadership_level: AgentJonesLeadershipLevel
+  user_scope: AgentJonesUserScope
+  recommended_mode: AgentJonesOperatingMode
+  command_summary: AgentJonesCommandSummary
+  urgent_signals: AgentJonesUrgentSignal[]
+  exception_summary: {
+    status_key: string
+    has_open_exception: boolean
+    pending_review: boolean
+  }
+  desk_health: {
+    volunteer_lane: 'healthy' | 'watch' | 'urgent' | 'na'
+    intern_lane: 'healthy' | 'watch' | 'urgent' | 'na'
+    coordinator_lane: 'healthy' | 'watch' | 'urgent' | 'na'
+    leadership_lane: 'healthy' | 'watch' | 'urgent' | 'na'
+  }
+  kpi_telemetry: {
+    active_kpi_count: number | null
+    mean_pct: number | null
+    below_half: number | null
+    weakest_name: string | null
+    weakest_pct_of_target: number | null
+  }
+  readiness_summary: string
+}
 
 /** Coordinator oversight — counts only, no assignee PII. */
 export type AgentJonesCoordinatorOpsContext = {
@@ -136,6 +207,10 @@ export type AgentJonesVolunteerMissionContext = {
 
 export type AgentJonesContextV2 = {
   surface: AgentJonesSurface
+  /** Policy flags for server / future tool use (no open-web browsing in current release). */
+  policy?: {
+    outside_internet: 'denied' | 'elevated_reserved'
+  }
   user: {
     role?: string | null
     onboarding_status?: string | null
@@ -189,6 +264,8 @@ export type AgentJonesContextV2 = {
   campaign_goals?: AgentJonesCampaignGoalsContext
   coordinator_ops?: AgentJonesCoordinatorOpsContext
   leadership_snapshot?: AgentJonesLeadershipSnapshotContext
+  /** Role-aware command snapshot — grounded in visible client state only. */
+  operating?: AgentJonesOperatingContext
 }
 
 function trunc(s: unknown, max: number): string | null {
@@ -216,6 +293,8 @@ export function buildAgentJonesContextV2(input: {
   campaignGoals?: AgentJonesCampaignGoalsContext | null
   coordinatorOps?: AgentJonesCoordinatorOpsContext | null
   leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
+  policy?: AgentJonesContextV2['policy'] | null
+  operating?: AgentJonesOperatingContext | null
 }): AgentJonesContextV2 {
   const {
     profile,
@@ -232,12 +311,15 @@ export function buildAgentJonesContextV2(input: {
     campaignGoals,
     coordinatorOps,
     leadershipSnapshot,
+    policy,
+    operating,
   } = input
 
   const surface: AgentJonesSurface = surfaceIn ?? 'volunteer_dashboard'
 
   return {
     surface,
+    ...(policy ? { policy } : {}),
     user: {
       role: trunc(profile?.primary_role, 120),
       onboarding_status: trunc(profile?.onboarding_status, 120),
@@ -273,6 +355,7 @@ export function buildAgentJonesContextV2(input: {
     ...(campaignGoals ? { campaign_goals: campaignGoals } : {}),
     ...(coordinatorOps ? { coordinator_ops: coordinatorOps } : {}),
     ...(leadershipSnapshot ? { leadership_snapshot: leadershipSnapshot } : {}),
+    ...(operating ? { operating } : {}),
   }
 }
 

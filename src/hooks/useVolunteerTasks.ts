@@ -259,6 +259,7 @@ export function useVolunteerTasks(campaignProfileId: string | undefined) {
   return {
     active,
     recentDone,
+    stalled,
     engagement,
     loading,
     error,

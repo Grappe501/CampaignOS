@@ -122,6 +122,47 @@ type AgentJonesSurfaceSafe =
   | 'intern_desk'
   | 'coordinator_desk'
   | 'candidate_desk'
+  | 'admin_desk'
+
+type AgentJonesOperatingSafe = {
+  normalized_role: string
+  desk_route: string
+  leadership_level: string
+  user_scope: string
+  recommended_mode: string
+  command_summary: {
+    attention_now: string[]
+    on_track: string[]
+    next_steps: string[]
+    recent_changes: string[]
+  }
+  urgent_signals: {
+    id: string
+    label: string
+    severity: 'info' | 'watch' | 'urgent'
+    owner_hint: string | null
+    route_hint: string | null
+  }[]
+  exception_summary: {
+    status_key: string
+    has_open_exception: boolean
+    pending_review: boolean
+  }
+  desk_health: {
+    volunteer_lane: 'healthy' | 'watch' | 'urgent' | 'na'
+    intern_lane: 'healthy' | 'watch' | 'urgent' | 'na'
+    coordinator_lane: 'healthy' | 'watch' | 'urgent' | 'na'
+    leadership_lane: 'healthy' | 'watch' | 'urgent' | 'na'
+  }
+  kpi_telemetry: {
+    active_kpi_count: number | null
+    mean_pct: number | null
+    below_half: number | null
+    weakest_name: string | null
+    weakest_pct_of_target: number | null
+  }
+  readiness_summary: string
+}
 
 type AgentJonesSafeContextV2 = {
   surface: AgentJonesSurfaceSafe
@@ -164,6 +205,7 @@ type AgentJonesSafeContextV2 = {
   campaign_goals?: AgentJonesCampaignGoalsSafe
   coordinator_ops?: AgentJonesCoordinatorOpsSafe
   leadership_snapshot?: AgentJonesLeadershipSnapshotSafe
+  operating?: AgentJonesOperatingSafe
 }
 
 type AgentJonesSafeContextLegacy = {
@@ -243,15 +285,64 @@ const SCROLL_IDS = new Set([
   'agent-jones',
   'coordinator-mission-ops',
   'candidate-health-snapshot',
+  'admin-overview',
+  'admin-exceptions',
+  'admin-desks',
+  'admin-tasks',
+  'admin-config',
 ])
 
-const NAV_PATHS = new Set(['/', '/dashboard', '/intern', '/coordinator', '/candidate'])
+const NAV_PATHS = new Set([
+  '/',
+  '/dashboard',
+  '/intern',
+  '/coordinator',
+  '/candidate',
+  '/admin',
+])
 
 const SURFACES = new Set<AgentJonesSurfaceSafe>([
   'volunteer_dashboard',
   'intern_desk',
   'coordinator_desk',
   'candidate_desk',
+  'admin_desk',
+])
+
+const OPERATING_ROLES = new Set([
+  'admin',
+  'campaign_manager',
+  'candidate',
+  'assistant_campaign_manager',
+  'coordinator',
+  'county_lead',
+  'precinct_captain',
+  'intern',
+  'volunteer',
+  'unknown',
+])
+
+const OPERATING_DESKS = new Set(['/dashboard', '/intern', '/coordinator', '/candidate', '/admin'])
+
+const OPERATING_LEVELS = new Set([
+  'volunteer',
+  'intern',
+  'field_lead',
+  'coordinator',
+  'leadership',
+  'admin',
+])
+
+const OPERATING_SCOPES = new Set(['self', 'supervised_teams', 'campaign_wide'])
+
+const OPERATING_MODES = new Set([
+  'guide',
+  'command',
+  'ops',
+  'task',
+  'calendar',
+  'leadership',
+  'training',
 ])
 
 const corsHeaders: Record<string, string> = {
@@ -901,6 +992,162 @@ function validateOperational(
   }
 }
 
+function validateStringList(raw: unknown, maxItems: number, maxLen: number): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  for (const item of raw.slice(0, maxItems)) {
+    if (typeof item !== 'string') continue
+    const t = item.trim()
+    if (!t || t.length > maxLen) continue
+    if (/[<>\\]/.test(t)) continue
+    out.push(t)
+  }
+  return out
+}
+
+function validateOperatingRaw(raw: unknown): AgentJonesOperatingSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+
+  const nr =
+    typeof raw.normalized_role === 'string' && OPERATING_ROLES.has(raw.normalized_role.trim())
+      ? (raw.normalized_role.trim() as AgentJonesOperatingSafe['normalized_role'])
+      : null
+  const dr =
+    typeof raw.desk_route === 'string' && OPERATING_DESKS.has(raw.desk_route.trim())
+      ? (raw.desk_route.trim() as AgentJonesOperatingSafe['desk_route'])
+      : null
+  const ll =
+    typeof raw.leadership_level === 'string' &&
+    OPERATING_LEVELS.has(raw.leadership_level.trim())
+      ? (raw.leadership_level.trim() as AgentJonesOperatingSafe['leadership_level'])
+      : null
+  const us =
+    typeof raw.user_scope === 'string' && OPERATING_SCOPES.has(raw.user_scope.trim())
+      ? (raw.user_scope.trim() as AgentJonesOperatingSafe['user_scope'])
+      : null
+  const rm =
+    typeof raw.recommended_mode === 'string' &&
+    OPERATING_MODES.has(raw.recommended_mode.trim())
+      ? (raw.recommended_mode.trim() as AgentJonesOperatingSafe['recommended_mode'])
+      : null
+
+  if (!nr || !dr || !ll || !us || !rm) return undefined
+
+  const cs = raw.command_summary
+  if (!isRecord(cs)) return undefined
+  const attention_now = validateStringList(cs.attention_now, 8, 320)
+  const on_track = validateStringList(cs.on_track, 6, 320)
+  const next_steps = validateStringList(cs.next_steps, 5, 320)
+  const recent_changes = validateStringList(cs.recent_changes, 3, 320)
+
+  const urgRaw = raw.urgent_signals
+  const urgent_signals: AgentJonesOperatingSafe['urgent_signals'] = []
+  if (Array.isArray(urgRaw)) {
+    for (const row of urgRaw.slice(0, 8)) {
+      if (!isRecord(row)) continue
+      const id = typeof row.id === 'string' ? row.id.trim() : ''
+      const label = typeof row.label === 'string' ? row.label.trim() : ''
+      const sev = row.severity
+      if (!id || id.length > 64 || !label || label.length > 220) continue
+      if (sev !== 'info' && sev !== 'watch' && sev !== 'urgent') continue
+      if (/[<>\\]/.test(label)) continue
+      const oh =
+        row.owner_hint === null
+          ? null
+          : typeof row.owner_hint === 'string'
+            ? row.owner_hint.trim().slice(0, 80) || null
+            : null
+      const rh =
+        row.route_hint === null
+          ? null
+          : typeof row.route_hint === 'string'
+            ? row.route_hint.trim().slice(0, 80) || null
+            : null
+      urgent_signals.push({ id, label, severity: sev, owner_hint: oh, route_hint: rh })
+    }
+  }
+
+  const ex = raw.exception_summary
+  if (!isRecord(ex)) return undefined
+  const status_key =
+    typeof ex.status_key === 'string' ? ex.status_key.trim().slice(0, 64) : ''
+  if (!status_key || /[<>\\]/.test(status_key)) return undefined
+  if (typeof ex.has_open_exception !== 'boolean' || typeof ex.pending_review !== 'boolean') {
+    return undefined
+  }
+
+  const dh = raw.desk_health
+  if (!isRecord(dh)) return undefined
+  const laneKeys = [
+    'volunteer_lane',
+    'intern_lane',
+    'coordinator_lane',
+    'leadership_lane',
+  ] as const
+  const desk_health = {} as AgentJonesOperatingSafe['desk_health']
+  for (const k of laneKeys) {
+    const v = dh[k]
+    if (v !== 'healthy' && v !== 'watch' && v !== 'urgent' && v !== 'na') return undefined
+    desk_health[k] = v
+  }
+
+  const kt = raw.kpi_telemetry
+  if (!isRecord(kt)) return undefined
+  const nullOrFiniteInt = (x: unknown, max: number): number | null => {
+    if (x === null) return null
+    if (typeof x !== 'number' || !Number.isFinite(x)) return null
+    const n = Math.floor(x)
+    if (n < 0 || n > max) return null
+    return n
+  }
+  const nullOrFiniteFloat = (x: unknown): number | null => {
+    if (x === null) return null
+    if (typeof x !== 'number' || !Number.isFinite(x)) return null
+    if (x < 0 || x > 1_000_000) return null
+    return Math.round(x * 100) / 100
+  }
+  const kpi_telemetry: AgentJonesOperatingSafe['kpi_telemetry'] = {
+    active_kpi_count: nullOrFiniteInt(kt.active_kpi_count, 500),
+    mean_pct: nullOrFiniteFloat(kt.mean_pct),
+    below_half: nullOrFiniteInt(kt.below_half, 500),
+    weakest_name:
+      kt.weakest_name === null
+        ? null
+        : typeof kt.weakest_name === 'string'
+          ? kt.weakest_name.trim().slice(0, 120) || null
+          : null,
+    weakest_pct_of_target: nullOrFiniteFloat(kt.weakest_pct_of_target),
+  }
+
+  const readiness =
+    typeof raw.readiness_summary === 'string' ? raw.readiness_summary.trim().slice(0, 400) : ''
+  if (!readiness || /[<>\\]/.test(readiness)) return undefined
+
+  return {
+    normalized_role: nr,
+    desk_route: dr,
+    leadership_level: ll,
+    user_scope: us,
+    recommended_mode: rm,
+    command_summary: {
+      attention_now,
+      on_track,
+      next_steps,
+      recent_changes,
+    },
+    urgent_signals,
+    exception_summary: {
+      status_key,
+      has_open_exception: ex.has_open_exception,
+      pending_review: ex.pending_review,
+    },
+    desk_health,
+    kpi_telemetry,
+    readiness_summary: readiness,
+  }
+}
+
 function validateSurfaceRaw(raw: unknown): AgentJonesSurfaceSafe {
   if (typeof raw !== 'string') return 'volunteer_dashboard'
   const t = raw.trim()
@@ -1066,6 +1313,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
     const daily_activation = validateDailyActivation(raw.daily_activation)
     const intern_layer = validateInternLayer(raw.intern_layer)
     const campaign_goals = validateCampaignGoals(raw.campaign_goals)
+    const operating = validateOperatingRaw(raw.operating)
     return {
       surface,
       user,
@@ -1090,6 +1338,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
       ...(campaign_goals ? { campaign_goals } : {}),
       ...(coordinator_ops ? { coordinator_ops } : {}),
       ...(leadership_snapshot ? { leadership_snapshot } : {}),
+      ...(operating ? { operating } : {}),
     }
   }
 
@@ -1109,7 +1358,7 @@ function buildSystemPrompt(context: AgentJonesSafeContextV2): string {
 
 Rules:
 - You ONLY reason about the volunteer using the JSON "dashboardContext" below. Do not claim you queried a database, opened Supabase, or accessed tools beyond this context.
-- dashboardContext.surface is one of: volunteer_dashboard | intern_desk | coordinator_desk | candidate_desk. Match tone: volunteer_dashboard/intern_desk emphasize individual tasks and roster; coordinator_desk emphasizes supervised teams, blocked/overdue mission lanes, and intern pipeline counts (no volunteer PII); candidate_desk emphasizes KPI health, strategic focus, and when to use coordinator vs volunteer surfaces — never invent polling or finance detail.
+- dashboardContext.surface is one of: volunteer_dashboard | intern_desk | coordinator_desk | candidate_desk | admin_desk. Match tone: volunteer_dashboard/intern_desk emphasize individual tasks and roster; coordinator_desk emphasizes supervised teams, blocked/overdue mission lanes, and intern pipeline counts (no volunteer PII); candidate_desk emphasizes KPI health, strategic focus, and when to use coordinator vs volunteer surfaces — never invent polling or finance detail; admin_desk emphasizes honest governance: desk health visible with this session, exceptions, KPI telemetry, integration readiness — never imply org-wide queues or privileged writes you cannot see in context.
 - Progress is exactly one of: unmatched, matched_no_branch, exception_pending, matched_ready (dashboardContext.operational.progressSlice).
 - voterLoading means roster/voter linkage is still loading — be cautious/verification-first.
 - Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs) — ground wording and next-steps in it, but do not invent policy details.
@@ -1124,6 +1373,7 @@ Rules:
 - If dashboardContext.campaign_goals exists, it lists top campaign KPIs (name, current, target, unit, pct toward goal) and optional user_contribution_summary (slug + contributed). Tie encouragement to these numbers (e.g. “moves us toward 20,000 volunteers”, “about 60% to fundraising goal” when pct matches). Connect completed mission tasks to moving these metrics. Suggest scrolling to campaign-kpis when pointing at the goal strip.
 - If dashboardContext.coordinator_ops exists, it is a bounded coordinator summary: supervisor scope flag, supervised_team_count, open_assignments_total, lane counts (blocked, overdue, in_progress, assigned_not_started), optional intern pipeline aggregates, desk_loading. Prioritize blocked/overdue assignments, then intern escalations/overdue first contacts. Suggest scroll coordinator-mission-ops when discussing supervised missions. Do not name volunteers.
 - If dashboardContext.leadership_snapshot exists, it summarizes KPI health for a principal/leadership desk: active_kpi_count, kpi_mean_progress_pct, kpis_below_half_target, optional weakest_kpi_name / weakest_kpi_pct_of_target, missions_visible_count. Stay strategic — align narratives with these numbers; suggest scroll candidate-health-snapshot when pointing at the executive snapshot. Do not claim access to polling or ad-buy systems.
+- If dashboardContext.operating exists, it is a deterministic “campaign operating brain” snapshot built client-side: normalized_role (volunteer/intern/coordinator/candidate/admin/campaign_manager/etc.), desk_route, leadership_level, user_scope (self | supervised_teams | campaign_wide), recommended_mode (guide|command|ops|task|calendar|leadership|training), command_summary (attention_now, on_track, next_steps, recent_changes — all grounded strings), urgent_signals (ranked labels with severity, optional owner_hint and route_hint paths like /dashboard), exception_summary, desk_health lane statuses (healthy|watch|urgent|na), kpi_telemetry, readiness_summary. Treat this as the priority stack: lead with attention_now, acknowledge on_track so the tone is not only alarms, close with next_steps. Never invent urgency not reflected here. For admin_desk + campaign_wide scope, sound like a calm field director: system health, intervention points, and honest limits of client-visible data.
 
 dashboardContext:
 ${JSON.stringify(context)}

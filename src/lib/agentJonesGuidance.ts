@@ -13,8 +13,10 @@ import {
 import type {
   AgentJonesCoordinatorOpsContext,
   AgentJonesLeadershipSnapshotContext,
+  AgentJonesOperatingContext,
   AgentJonesSurface,
 } from './agentJonesContextV2'
+import type { AgentJonesNormalizedRole } from './agentJonesRoleDesk'
 
 export type AgentJonesPrompt = {
   id: string
@@ -44,6 +46,104 @@ export type AgentJonesGuidanceInput = {
   surface?: AgentJonesSurface
   coordinatorOps?: AgentJonesCoordinatorOpsContext | null
   leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
+  /** Deterministic command snapshot — visible client state only. */
+  operating?: AgentJonesOperatingContext | null
+}
+
+function roleOperatingLeadIn(normalized: AgentJonesNormalizedRole): string {
+  switch (normalized) {
+    case 'admin':
+    case 'campaign_manager':
+      return 'Ops view: I stay grounded in desk health, exceptions, and KPIs we can actually see — no invented org-wide counts.'
+    case 'candidate':
+      return 'Principal view: I connect field signals to KPI health and where leadership attention earns the most.'
+    case 'coordinator':
+      return 'Coordination view: I prioritize blocked/overdue lanes and intern pipeline risk before optional work.'
+    case 'assistant_campaign_manager':
+      return 'HQ view: I mirror leadership summaries and coordination pressure without claiming tools we do not have.'
+    case 'intern':
+      return 'Team desk view: I keep first-contact windows and follow-ups tight.'
+    case 'county_lead':
+    case 'precinct_captain':
+      return 'Field lead view: I emphasize roster readiness, follow-through, and captain-level clarity.'
+    default:
+      return 'Volunteer view: I keep your next step obvious and roster-safe.'
+  }
+}
+
+function buildAdminDeskGuidanceBundle(
+  operating: AgentJonesOperatingContext | null,
+): AgentJonesGuidanceBundle {
+  const attention = operating?.command_summary.attention_now ?? []
+  const onTrack = operating?.command_summary.on_track ?? []
+  const next = operating?.command_summary.next_steps ?? []
+  const stateCore =
+    attention.length > 0
+      ? `Top attention from visible data: ${attention.slice(0, 4).join(' ')}`
+      : 'No urgent attention rows from this session’s visible signals — still review desk rollups, exceptions, and calendar governance on the page.'
+  const trackLine =
+    onTrack.length > 0 ? ` On track: ${onTrack.slice(0, 2).join(' ')}` : ''
+  const nextLine =
+    next.length > 0 ? ` Suggested moves: ${next.slice(0, 3).join(' · ')}` : ''
+
+  return {
+    greeting: 'Admin command center.',
+    stateExplanation: `${stateCore}${trackLine}${nextLine}`.trim(),
+    prompts: [
+      {
+        id: 'adm-exceptions',
+        label: 'Open exceptions & intervention',
+        response: 'Scrolling to governance — exceptions are profile-scoped until org queues are wired.',
+        scrollToId: 'admin-exceptions',
+      },
+      {
+        id: 'adm-desks',
+        label: 'Desk health rollup',
+        response: 'Scrolling to desk health — summaries reflect your permitted reads, not full org telemetry.',
+        scrollToId: 'admin-desks',
+      },
+      {
+        id: 'adm-tasks',
+        label: 'Task command center',
+        response: 'Scrolling to task oversight for mission lanes visible with your role.',
+        scrollToId: 'admin-tasks',
+      },
+      {
+        id: 'adm-config',
+        label: 'Config & integrations',
+        response: 'Scrolling to integration status — read-only until service paths exist.',
+        scrollToId: 'admin-config',
+      },
+    ],
+  }
+}
+
+function decorateGuidanceWithOperating(
+  bundle: AgentJonesGuidanceBundle,
+  input: AgentJonesGuidanceInput,
+): AgentJonesGuidanceBundle {
+  const op = input.operating
+  if (!op) return bundle
+  const voice = roleOperatingLeadIn(op.normalized_role)
+  const lines: string[] = []
+  if (op.command_summary.attention_now.length) {
+    lines.push(`Attention: ${op.command_summary.attention_now.slice(0, 2).join(' · ')}`)
+  }
+  if (op.command_summary.on_track.length) {
+    lines.push(`On track: ${op.command_summary.on_track[0]}`)
+  }
+  if (op.command_summary.next_steps.length) {
+    lines.push(`Next: ${op.command_summary.next_steps.slice(0, 3).join(' · ')}`)
+  }
+  if (op.readiness_summary && input.slice === 'matched_ready') {
+    lines.push(op.readiness_summary)
+  }
+  const prefix = lines.length ? `${lines.join('\n')}\n\n` : ''
+  return {
+    ...bundle,
+    greeting: `${bundle.greeting} (${voice})`,
+    stateExplanation: `${prefix}${bundle.stateExplanation}`.trim(),
+  }
 }
 
 function buildCoordinatorDeskGuidance(
@@ -290,7 +390,7 @@ function buildMomentumOnboardingBundle(
   }
 }
 
-export function getAgentJonesGuidanceBundle(
+function computeStandardGuidanceBundle(
   input: AgentJonesGuidanceInput,
 ): AgentJonesGuidanceBundle {
   const { slice, profile, voterLoading } = input
@@ -532,6 +632,15 @@ export function getAgentJonesGuidanceBundle(
   }
 
   return clearedVolunteerBundle
+}
+
+export function getAgentJonesGuidanceBundle(
+  input: AgentJonesGuidanceInput,
+): AgentJonesGuidanceBundle {
+  if ((input.surface ?? 'volunteer_dashboard') === 'admin_desk') {
+    return buildAdminDeskGuidanceBundle(input.operating ?? null)
+  }
+  return decorateGuidanceWithOperating(computeStandardGuidanceBundle(input), input)
 }
 
 export function scrollToDashboardId(id: string) {

@@ -2,13 +2,9 @@ import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import CampaignKpisCard from '../dashboard/CampaignKpisCard'
 import LeadershipKpiScaffold from '../dashboard/LeadershipKpiScaffold'
-import FloatingAgentJones from '../FloatingAgentJones'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../../brand/chrisJonesForCongress'
 import type { CampaignProfile } from '../../hooks/useProfile'
 import { useCampaignKpis } from '../../hooks/useCampaignKpis'
-import { useVoterMatch } from '../../hooks/useVoterMatch'
-import { getDashboardProgressSlice } from '../../lib/dashboardState'
-import { buildAgentJonesLeadershipSnapshot } from '../../lib/agentJonesDeskContext'
 import {
   getCountdownParts,
   getCountdownUrgency,
@@ -51,29 +47,6 @@ export default function CandidateDeskContent({
   const primaryRole =
     profile?.primary_role != null ? String(profile.primary_role) : null
   const kpisHook = useCampaignKpis(profileId, primaryRole)
-  const voterMatch = useVoterMatch(profileId, {
-    onAfterMatch: () => void onRefreshProfile(),
-  })
-  const voterLinked =
-    Boolean(voterMatch.matched) ||
-    Boolean(
-      profile?.linked_voter_id != null && String(profile.linked_voter_id).trim() !== '',
-    )
-  const progressSlice = getDashboardProgressSlice({
-    profile,
-    voterMatched: voterLinked,
-    voterLoading: voterMatch.matchedLoading,
-  })
-  const leadershipAgentSnapshot = useMemo(
-    () =>
-      buildAgentJonesLeadershipSnapshot(
-        kpisHook.kpis,
-        kpisHook.isLeadership ? kpisHook.missions.length : 0,
-      ),
-    [kpisHook.isLeadership, kpisHook.kpis, kpisHook.missions.length],
-  )
-  const [agentJonesOpen, setAgentJonesOpen] = useState(false)
-
   const [nowMs, setNowMs] = useState(() => Date.now())
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 60_000)
@@ -449,23 +422,6 @@ export default function CandidateDeskContent({
         </p>
       </section>
 
-      <FloatingAgentJones
-        key={`cand-aj-${progressSlice}-${kpisHook.kpis.length}-${leadershipAgentSnapshot.active_kpi_count}`}
-        open={agentJonesOpen}
-        onOpenChange={setAgentJonesOpen}
-        progressSlice={progressSlice}
-        profile={profile}
-        voterLoading={voterMatch.matchedLoading}
-        voterMatched={voterLinked}
-        matchedVoter={voterMatch.matched}
-        surface="candidate_desk"
-        leadershipSnapshot={leadershipAgentSnapshot}
-        campaignGoals={kpisHook.agentCampaignGoals}
-        onProfileRefresh={async () => {
-          await onRefreshProfile()
-          await kpisHook.refetch()
-        }}
-      />
     </div>
   )
 }

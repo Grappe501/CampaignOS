@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from '../lib/dashboardState'
 import {
@@ -6,6 +7,7 @@ import {
   scrollToDashboardId,
   type AgentJonesPrompt,
 } from '../lib/agentJonesGuidance'
+import { buildAgentJonesOperatingContext } from '../lib/agentJonesPriorities'
 import {
   buildAgentJonesContextV2,
   type AgentJonesContextV2,
@@ -30,14 +32,22 @@ import SuggestedPromptList from './agentJones/SuggestedPromptList'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 import { AGENT_JONES_ACCESS_NOTICE } from '../brand/compliance'
 import {
+  clearAgentJonesConversationStorage,
   loadAgentJonesPersisted,
   saveAgentJonesPersisted,
+  type AgentJonesTranscriptEntry,
 } from '../lib/agentJonesSessionStorage'
+import {
+  agentJonesPolicyPayload,
+  getAgentJonesCapabilities,
+} from '../lib/agentJonesCapabilities'
 import { supabase } from '../lib/supabaseClient'
 import type { MomentumAction } from '../lib/onboardingEngine'
 import { isDevAuthBypassEnabled } from '../lib/devAuth'
 import { applyDevOnboardingMomentumAction } from '../lib/devOnboardingMomentum'
 import { useAgentJonesVoiceRecorder } from '../hooks/useAgentJonesVoiceRecorder'
+
+export const AGENT_JONES_CLEAR_EVENT = 'campaignos:agent-jones-clear'
 
 function auditPatch(meta?: { lastPrompt?: string }) {
   return {
@@ -125,6 +135,10 @@ function stringsToFollowUps(items: string[]): AgentJonesPrompt[] {
   }))
 }
 
+function nextTranscriptId(): string {
+  return `aj-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
 export type AgentJonesPanelProps = {
   progressSlice: DashboardProgressSlice
   profile: CampaignProfile | null
@@ -145,6 +159,7 @@ export type AgentJonesPanelProps = {
   surface?: AgentJonesSurface
   coordinatorOps?: AgentJonesCoordinatorOpsContext | null
   leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
+  coordinatorHasSupervisorScope?: boolean
 }
 
 export default function AgentJonesPanel({
@@ -164,8 +179,51 @@ export default function AgentJonesPanel({
   surface,
   coordinatorOps,
   leadershipSnapshot,
+  coordinatorHasSupervisorScope = false,
 }: AgentJonesPanelProps) {
+  const location = useLocation()
+  const headingId = useId()
   const persisted = useMemo(() => loadAgentJonesPersisted(), [])
+  const caps = useMemo(
+    () => getAgentJonesCapabilities(profile?.primary_role),
+    [profile?.primary_role],
+  )
+
+  const operating = useMemo(
+    () =>
+      buildAgentJonesOperatingContext({
+        pathname: location.pathname,
+        profile,
+        primaryRole: profile?.primary_role,
+        progressSlice,
+        voterLoading,
+        voterMatched,
+        coordinatorHasSupervisorScope,
+        relationalPower5: relationalPower5 ?? null,
+        volunteerMission: volunteerMission ?? null,
+        dailyActivation: dailyActivation ?? null,
+        internLayer: internLayer ?? null,
+        campaignGoals: campaignGoals ?? null,
+        coordinatorOps: coordinatorOps ?? null,
+        leadershipSnapshot: leadershipSnapshot ?? null,
+      }),
+    [
+      location.pathname,
+      profile,
+      progressSlice,
+      voterLoading,
+      voterMatched,
+      coordinatorHasSupervisorScope,
+      relationalPower5,
+      volunteerMission,
+      dailyActivation,
+      internLayer,
+      campaignGoals,
+      coordinatorOps,
+      leadershipSnapshot,
+    ],
+  )
+
   const bundle = useMemo(
     () =>
       getAgentJonesGuidanceBundle({
@@ -175,6 +233,7 @@ export default function AgentJonesPanel({
         surface: surface ?? 'volunteer_dashboard',
         coordinatorOps: coordinatorOps ?? null,
         leadershipSnapshot: leadershipSnapshot ?? null,
+        operating,
       }),
     [
       progressSlice,
@@ -183,6 +242,7 @@ export default function AgentJonesPanel({
       surface,
       coordinatorOps,
       leadershipSnapshot,
+      operating,
     ],
   )
 
@@ -195,8 +255,29 @@ export default function AgentJonesPanel({
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(persisted.aiError ?? null)
   const [contextV2, setContextV2] = useState<AgentJonesContextV2 | null>(null)
+  const [draftInput, setDraftInput] = useState(persisted.draftInput ?? '')
+  const [transcript, setTranscript] = useState<AgentJonesTranscriptEntry[]>(
+    () => persisted.transcript ?? [],
+  )
 
   const voice = useAgentJonesVoiceRecorder()
+
+  const resetConversation = useCallback(() => {
+    clearAgentJonesConversationStorage()
+    setActivePromptId(null)
+    setReply(null)
+    setAiError(null)
+    setDraftInput('')
+    setTranscript([])
+  }, [])
+
+  useEffect(() => {
+    const onClear = () => {
+      resetConversation()
+    }
+    window.addEventListener(AGENT_JONES_CLEAR_EVENT, onClear)
+    return () => window.removeEventListener(AGENT_JONES_CLEAR_EVENT, onClear)
+  }, [resetConversation])
 
   const runRecommendedActions = useCallback(
     (actions: AgentJonesResponse['recommendedActions']) => {
@@ -217,7 +298,14 @@ export default function AgentJonesPanel({
       const userMessage = rawMessage.trim().slice(0, 600)
       if (!userMessage) return
 
-      setActivePromptId('voice-message')
+      const userEntry: AgentJonesTranscriptEntry = {
+        id: nextTranscriptId(),
+        role: 'user',
+        text: userMessage,
+        at: Date.now(),
+      }
+      setTranscript((t) => [...t, userEntry])
+      setActivePromptId('typed-message')
       setAiError(null)
       setAiLoading(true)
       setReply(null)
@@ -233,21 +321,55 @@ export default function AgentJonesPanel({
         })
         setReply(next)
         runRecommendedActions(next.recommendedActions)
+        setTranscript((t) => [
+          ...t,
+          {
+            id: nextTranscriptId(),
+            role: 'assistant',
+            text: next.response,
+            at: Date.now(),
+            ...(next.insight
+              ? {
+                  insight: {
+                    type: next.insight.type,
+                    message: next.insight.message,
+                  },
+                }
+              : {}),
+          },
+        ])
       } catch (err) {
-        setReply(
-          buildAgentJonesFallbackV2({
-            slice: progressSlice,
-            profile,
-            voterLoading,
-            surface: surface ?? 'volunteer_dashboard',
-            coordinatorOps: coordinatorOps ?? null,
-            leadershipSnapshot: leadershipSnapshot ?? null,
-            volunteerMission: volunteerMission ?? null,
-            dailyActivation: dailyActivation ?? null,
-            internLayer: internLayer ?? null,
-            campaignGoals: campaignGoals ?? null,
-          }),
-        )
+        const fallback = buildAgentJonesFallbackV2({
+          slice: progressSlice,
+          profile,
+          voterLoading,
+          surface: surface ?? 'volunteer_dashboard',
+          coordinatorOps: coordinatorOps ?? null,
+          leadershipSnapshot: leadershipSnapshot ?? null,
+          volunteerMission: volunteerMission ?? null,
+          dailyActivation: dailyActivation ?? null,
+          internLayer: internLayer ?? null,
+          campaignGoals: campaignGoals ?? null,
+          operating,
+        })
+        setReply(fallback)
+        setTranscript((t) => [
+          ...t,
+          {
+            id: nextTranscriptId(),
+            role: 'assistant',
+            text: fallback.response,
+            at: Date.now(),
+            ...(fallback.insight
+              ? {
+                  insight: {
+                    type: fallback.insight.type,
+                    message: fallback.insight.message,
+                  },
+                }
+              : {}),
+          },
+        ])
         const msg =
           err instanceof AgentJonesApiError
             ? err.message
@@ -269,6 +391,7 @@ export default function AgentJonesPanel({
       dailyActivation,
       internLayer,
       campaignGoals,
+      operating,
       runRecommendedActions,
     ],
   )
@@ -279,8 +402,17 @@ export default function AgentJonesPanel({
       activePromptId,
       reply,
       aiError,
+      draftInput,
+      transcript: transcript.slice(-48),
     })
-  }, [activePromptId, reply, aiError, persistSession])
+  }, [
+    activePromptId,
+    reply,
+    aiError,
+    draftInput,
+    transcript,
+    persistSession,
+  ])
 
   const gridPrompts = useMemo(
     () =>
@@ -289,6 +421,8 @@ export default function AgentJonesPanel({
         : bundle.prompts,
     [bundle.prompts, reply],
   )
+
+  const policyPayload = useMemo(() => agentJonesPolicyPayload(caps), [caps])
 
   useEffect(() => {
     let cancelled = false
@@ -307,6 +441,8 @@ export default function AgentJonesPanel({
         campaignGoals: campaignGoals ?? null,
         coordinatorOps: coordinatorOps ?? null,
         leadershipSnapshot: leadershipSnapshot ?? null,
+        policy: policyPayload,
+        operating,
       })
       try {
         const campaign = await getRelevantCampaignContext({
@@ -354,9 +490,27 @@ export default function AgentJonesPanel({
     surface,
     coordinatorOps,
     leadershipSnapshot,
+    policyPayload,
+    operating,
   ])
 
   const handleSelect = async (prompt: AgentJonesPrompt) => {
+    const isFollowUp = Boolean(prompt.followUpSourceId)
+    const userLine = isFollowUp
+      ? prompt.label.trim().slice(0, 600)
+      : prompt.label.trim().slice(0, 600)
+    if (userLine) {
+      setTranscript((t) => [
+        ...t,
+        {
+          id: nextTranscriptId(),
+          role: 'user',
+          text: userLine,
+          at: Date.now(),
+        },
+      ])
+    }
+
     setActivePromptId(prompt.id)
     setAiError(null)
     if (prompt.scrollToId) {
@@ -374,7 +528,6 @@ export default function AgentJonesPanel({
       await onProfileRefresh?.()
     }
 
-    const isFollowUp = Boolean(prompt.followUpSourceId)
     const userMessage = isFollowUp
       ? prompt.label.trim().slice(0, 600)
       : `[${prompt.id}] ${prompt.label}`.slice(0, 600)
@@ -393,27 +546,75 @@ export default function AgentJonesPanel({
       })
       setReply(next)
       runRecommendedActions(next.recommendedActions)
+      setTranscript((t) => [
+        ...t,
+        {
+          id: nextTranscriptId(),
+          role: 'assistant',
+          text: next.response,
+          at: Date.now(),
+          ...(next.insight
+            ? {
+                insight: {
+                  type: next.insight.type,
+                  message: next.insight.message,
+                },
+              }
+            : {}),
+        },
+      ])
     } catch (err) {
       if (!isFollowUp && prompt.response) {
-        setReply({
+        const det = {
           response: prompt.response,
-          insight: { type: 'strategy', message: 'Deterministic roster-safe reply.' },
-        })
+          insight: { type: 'strategy' as const, message: 'Deterministic roster-safe reply.' },
+        }
+        setReply(det)
+        setTranscript((t) => [
+          ...t,
+          {
+            id: nextTranscriptId(),
+            role: 'assistant',
+            text: det.response,
+            at: Date.now(),
+            insight: {
+              type: det.insight.type,
+              message: det.insight.message,
+            },
+          },
+        ])
       } else {
-        setReply(
-          buildAgentJonesFallbackV2({
-            slice: progressSlice,
-            profile,
-            voterLoading,
-            surface: surface ?? 'volunteer_dashboard',
-            coordinatorOps: coordinatorOps ?? null,
-            leadershipSnapshot: leadershipSnapshot ?? null,
-            volunteerMission: volunteerMission ?? null,
-            dailyActivation: dailyActivation ?? null,
-            internLayer: internLayer ?? null,
-            campaignGoals: campaignGoals ?? null,
-          }),
-        )
+        const fallback = buildAgentJonesFallbackV2({
+          slice: progressSlice,
+          profile,
+          voterLoading,
+          surface: surface ?? 'volunteer_dashboard',
+          coordinatorOps: coordinatorOps ?? null,
+          leadershipSnapshot: leadershipSnapshot ?? null,
+          volunteerMission: volunteerMission ?? null,
+          dailyActivation: dailyActivation ?? null,
+          internLayer: internLayer ?? null,
+          campaignGoals: campaignGoals ?? null,
+          operating,
+        })
+        setReply(fallback)
+        setTranscript((t) => [
+          ...t,
+          {
+            id: nextTranscriptId(),
+            role: 'assistant',
+            text: fallback.response,
+            at: Date.now(),
+            ...(fallback.insight
+              ? {
+                  insight: {
+                    type: fallback.insight.type,
+                    message: fallback.insight.message,
+                  },
+                }
+              : {}),
+          },
+        ])
       }
       const msg =
         err instanceof AgentJonesApiError
@@ -429,30 +630,78 @@ export default function AgentJonesPanel({
     (a) => a.type === 'scroll' || a.type === 'navigate',
   )
 
-  const rootClass = sectionClassName ?? 'card agent-jones-card stack-section'
+  const rootClass =
+    sectionClassName ?? 'card agent-jones-card stack-section agent-jones-premium'
 
   return (
     <section
       className={rootClass}
-      aria-labelledby="agent-jones-title"
+      aria-labelledby={headingId}
     >
-      <p
-        className="subtitle agent-jones-eyebrow"
-      >
-        Guidance layer
-      </p>
-      <h2 id="agent-jones-title" className="page-title" style={{ marginTop: 4 }}>
-        Agent Jones
+      <p className="subtitle agent-jones-eyebrow">Strategic advisor</p>
+      <h2 id={headingId} className="agent-jones-title">
+        Jones AI
       </h2>
+      <p className="agent-jones-lede">
+        Precision briefings from the dashboard state we share with the server — no
+        theatrics, no data we do not already hold.
+      </p>
+
+      <div
+        className={`agent-jones-access-pill agent-jones-access-pill--${caps.internetAccessTier}`}
+        role="status"
+      >
+        <span className="agent-jones-access-pill-label">{caps.accessModeLabel}</span>
+        <span className="agent-jones-access-pill-desc">{caps.accessModeDescription}</span>
+      </div>
+
       <p className="subtitle agent-jones-internal-notice" role="note">
         {AGENT_JONES_ACCESS_NOTICE}
       </p>
-      <p className="subtitle" style={{ marginTop: 0 }}>
-        {bundle.greeting}
-      </p>
-      <p id="agent-jones-state" className="subtitle" style={{ marginTop: 0 }}>
-        {bundle.stateExplanation}
-      </p>
+      <div className="agent-jones-context-block">
+        <p className="agent-jones-context-line">{bundle.greeting}</p>
+        <p id="agent-jones-state" className="agent-jones-context-line agent-jones-context-line--meta">
+          {bundle.stateExplanation}
+        </p>
+      </div>
+
+      <div
+        className="agent-jones-transcript"
+        role="log"
+        aria-label="Conversation"
+        aria-live="polite"
+      >
+        {transcript.length === 0 && !aiLoading ? (
+          <p className="agent-jones-transcript-empty">
+            No messages yet. Tap a suggested brief, type below, or use hold-to-speak.
+          </p>
+        ) : null}
+        {transcript.map((turn) => (
+          <div
+            key={turn.id}
+            className={`agent-jones-turn agent-jones-turn--${turn.role}`}
+          >
+            {turn.role === 'user' ? (
+              <span className="agent-jones-turn-label">You</span>
+            ) : (
+              <span className="agent-jones-turn-label">Agent Jones</span>
+            )}
+            {turn.insight ? (
+              <div className="agent-jones-insight agent-jones-insight--compact" role="note">
+                <span className="agent-jones-insight-pill">{turn.insight.type}</span>
+                <span className="agent-jones-insight-text">{turn.insight.message}</span>
+              </div>
+            ) : null}
+            <p className="agent-jones-turn-text">{turn.text}</p>
+          </div>
+        ))}
+        {aiLoading ? (
+          <p className="agent-jones-loading agent-jones-loading--inline">
+            <span className="agent-jones-loading-dot" aria-hidden />
+            Synthesizing response…
+          </p>
+        ) : null}
+      </div>
 
       <SuggestedPromptList
         prompts={gridPrompts}
@@ -460,6 +709,35 @@ export default function AgentJonesPanel({
         disabled={aiLoading}
         onSelect={handleSelect}
       />
+
+      <div className="agent-jones-typed-compose">
+        <label className="sr-only" htmlFor="agent-jones-draft-input">
+          Message to Agent Jones
+        </label>
+        <textarea
+          id="agent-jones-draft-input"
+          className="agent-jones-draft-input input-stretch"
+          rows={3}
+          maxLength={600}
+          value={draftInput}
+          placeholder="Type a question (max 600 characters)…"
+          onChange={(e) => setDraftInput(e.target.value)}
+          disabled={aiLoading || !contextV2}
+        />
+        <button
+          type="button"
+          className="btn-touch btn-primary agent-jones-send-btn"
+          disabled={aiLoading || !contextV2 || !draftInput.trim()}
+          onClick={() => {
+            const t = draftInput.trim()
+            if (!t) return
+            setDraftInput('')
+            void submitCustomUserMessage(t)
+          }}
+        >
+          Send
+        </button>
+      </div>
 
       <div className="agent-jones-voice-row">
         <button
@@ -511,8 +789,8 @@ export default function AgentJonesPanel({
               : 'Hold to speak'}
         </button>
         <p className="subtitle agent-jones-voice-hint" style={{ margin: 0 }}>
-          OpenAI transcription via Netlify — Agent Jones only. Max 600 characters
-          sent to the assistant.
+          Hold-to-speak: audio transcribes via Netlify (OpenAI). At most 600
+          characters per message — same privacy envelope as typed prompts.
         </p>
         {voice.lastError ? (
           <p className="subtitle agent-jones-error-line" style={{ margin: 0 }}>
@@ -521,58 +799,32 @@ export default function AgentJonesPanel({
         ) : null}
       </div>
 
-      <div
-        className="agent-jones-response"
-        role="region"
-        aria-label="Response"
-        aria-live="polite"
-      >
-        {aiLoading ? (
-          <p className="subtitle" style={{ marginBottom: reply?.response ? 8 : 0 }}>
-            Asking Agent Jones…
-          </p>
-        ) : null}
-        {reply?.insight ? (
-          <div className="agent-jones-insight" role="note">
-            <span className="agent-jones-insight-pill">{reply.insight.type}</span>
-            <span className="agent-jones-insight-text">{reply.insight.message}</span>
-          </div>
-        ) : null}
-        {reply?.response ? (
-          <>
-            <p className="agent-jones-response-text">{reply.response}</p>
-            {actionButtons?.length ? (
-              <div className="agent-jones-actions" aria-label="Recommended actions">
-                {actionButtons.slice(0, 3).map((a, i) => (
-                  <button
-                    key={`${a.type}-${a.targetId ?? ''}-${i}`}
-                    type="button"
-                    className="btn-touch btn-primary agent-jones-action-btn"
-                    onClick={() => {
-                      if (a.type === 'scroll' && a.targetId) scrollToDashboardId(a.targetId)
-                      if (a.type === 'navigate' && a.targetId) window.location.assign(a.targetId)
-                    }}
-                  >
-                    {a.type === 'scroll' ? 'Go to section' : 'Open link'}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            {aiError ? (
-              <p className="subtitle agent-jones-error-line">
-                {aiError} — showing roster-safe fallback when available.
-              </p>
-            ) : null}
-          </>
-        ) : !aiLoading ? (
-          <p className="agent-jones-response-placeholder subtitle">
-            Tap a suggestion — answers use live assist with only the dashboard
-            state we pass to the server (no API keys in the browser). If the
-            function is unreachable, you will see the same deterministic copy as
-            before.
-          </p>
-        ) : null}
-      </div>
+      {reply?.response && actionButtons?.length ? (
+        <div
+          className="agent-jones-actions"
+          aria-label="Recommended actions"
+        >
+          {actionButtons.slice(0, 3).map((a, i) => (
+            <button
+              key={`${a.type}-${a.targetId ?? ''}-${i}`}
+              type="button"
+              className="btn-touch btn-primary agent-jones-action-btn"
+              onClick={() => {
+                if (a.type === 'scroll' && a.targetId) scrollToDashboardId(a.targetId)
+                if (a.type === 'navigate' && a.targetId) window.location.assign(a.targetId)
+              }}
+            >
+              {a.type === 'scroll' ? 'Go to section' : 'Open link'}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {aiError ? (
+        <p className="subtitle agent-jones-error-line" role="alert">
+          {aiError} — showing roster-safe fallback when available.
+        </p>
+      ) : null}
     </section>
   )
 }

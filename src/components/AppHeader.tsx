@@ -4,10 +4,12 @@ import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 import ElectionCountdownBar from './ElectionCountdownBar'
 import { useProfile } from '../hooks/useProfile'
 import {
+  getPrimaryRoleHomeBucket,
   getRoleHomePath,
   getWorkspacePrimaryNavLabel,
   shouldOmitTeamDeskNavLink,
 } from '../lib/roleHomeRouting'
+import { canAccessAdminDesk } from '../lib/adminDeskAccess'
 
 const DRAWER_ID = 'campaignos-nav-drawer'
 const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
@@ -40,6 +42,7 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
   const isInternDesk = location.pathname.startsWith('/intern')
   const isCandidateDesk = location.pathname.startsWith('/candidate')
   const isCoordinatorDesk = location.pathname.startsWith('/coordinator')
+  const isAdminDesk = location.pathname.startsWith('/admin')
 
   const useLegacyWorkspaceNav = Boolean(onSignOut && profileLoading)
   const primaryPath = useLegacyWorkspaceNav
@@ -56,6 +59,13 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
     shouldOmitTeamDeskNavLink(profile?.primary_role)
   const showTeamDeskRow =
     showTeamDeskLink && (!onSignOut || useLegacyWorkspaceNav || !omitTeamDeskDuplicate)
+
+  const roleBucket = getPrimaryRoleHomeBucket(profile?.primary_role)
+  const showCommandCenterNav =
+    Boolean(onSignOut) &&
+    !useLegacyWorkspaceNav &&
+    canAccessAdminDesk(profile?.primary_role) &&
+    roleBucket !== 'admin'
 
   return (
     <header className="app-topbar">
@@ -121,13 +131,19 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                 (primaryPath === '/dashboard' && isDashboard) ||
                 (primaryPath === '/intern' && isInternDesk) ||
                 (primaryPath === '/candidate' && isCandidateDesk) ||
-                (primaryPath === '/coordinator' && isCoordinatorDesk)
+                (primaryPath === '/coordinator' && isCoordinatorDesk) ||
+                (primaryPath === '/admin' && isAdminDesk)
                   ? 'page'
                   : undefined
               }
             >
               {primaryLabel}
             </Link>
+            {showCommandCenterNav ? (
+              <Link to="/admin" aria-current={isAdminDesk ? 'page' : undefined}>
+                Command center
+              </Link>
+            ) : null}
             {showVolunteerWorkspaceLink ? (
               <Link
                 to="/dashboard"
@@ -229,7 +245,8 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                     (primaryPath === '/dashboard' && isDashboard) ||
                     (primaryPath === '/intern' && isInternDesk) ||
                     (primaryPath === '/candidate' && isCandidateDesk) ||
-                    (primaryPath === '/coordinator' && isCoordinatorDesk)
+                    (primaryPath === '/coordinator' && isCoordinatorDesk) ||
+                    (primaryPath === '/admin' && isAdminDesk)
                       ? 'page'
                       : undefined
                   }
@@ -237,6 +254,16 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                 >
                   {primaryLabel}
                 </Link>
+                {showCommandCenterNav ? (
+                  <Link
+                    to="/admin"
+                    className="drawer-nav-link"
+                    aria-current={isAdminDesk ? 'page' : undefined}
+                    onClick={closeDrawer}
+                  >
+                    Command center
+                  </Link>
+                ) : null}
                 {showVolunteerWorkspaceLink ? (
                   <Link
                     to="/dashboard"

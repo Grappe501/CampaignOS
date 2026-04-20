@@ -19,7 +19,9 @@ import CandidateDesk from './pages/CandidateDesk'
 import CoordinatorDesk from './pages/CoordinatorDesk'
 import Login from './pages/Login'
 import Power5Desk from './pages/Power5Desk'
+import AdminDesk from './pages/AdminDesk'
 import RoleHomeRedirect from './components/RoleHomeRedirect'
+import GlobalFloatingAgentJones from './components/GlobalFloatingAgentJones'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(() =>
@@ -149,6 +151,22 @@ export default function App() {
           }
         />
         <Route
+          path="/admin"
+          element={
+            session ? (
+              <AdminDesk
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
           path="/"
           element={
             session ? <RoleHomeRedirect /> : <Navigate to="/login" replace />
@@ -156,6 +174,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {session ? <GlobalFloatingAgentJones /> : null}
       </div>
       </DevMockDashboardProvider>
     </BrowserRouter>

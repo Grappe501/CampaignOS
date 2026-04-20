@@ -18,6 +18,7 @@
 | `/candidate` | `CandidateDesk.tsx` | **Shipped (deepening)** | Leadership KPIs, health snapshot, ops links; `isCampaignLeadershipRole` includes `candidate` for KPI scaffold. |
 | `/coordinator` | `CoordinatorDesk.tsx` | **Shipped (deepening)** | Supervisor missions, intern overview RPC, activation, KPIs; no route-level gate — any signed-in user can open URL. |
 | `/power5` | `Power5Desk.tsx` | **Shipped** | Focused relational organizing surface; not role-routed from `/` today. |
+| `/admin` | `AdminDesk.tsx` | **Shipped (MVP)** | Command center; `admin` home via `getRoleHomePath`; `staff` + dev bypass see nav link; client gate in `adminDeskAccess.ts`. |
 | `/login` | `Login.tsx` | **Shipped** | Post-login still navigates to `/dashboard` in one code path; `/` uses role redirect when session exists. |
 
 **Gaps called out in repo**
@@ -156,7 +157,9 @@ Columns: **Role** → **Purpose in hierarchy** → **Primary user** → **Desk s
 
 **Events coordinator module (same shell):** event intake, review/publish states, staffing, logistics tasks, calendar publication pipeline. **Header:** events awaiting review, unstaffed upcoming events, published-this-week signal, deadlines approaching. **Attention:** pending requests, staffing shortages, missing logistics confirmations, unpublished high-priority events.
 
-### 5.7 Admin — `/admin` (proposed, not in repo)
+### 5.7 Admin — `/admin` (shipped MVP)
+
+**Full control-tower spec:** `docs/admin-master-dashboard-blueprint.md` (page order, section IDs, MVP phases, widget inventory). **Implementation handoff:** `docs/admin-dashboard-build-script.md` · **Code:** `src/pages/AdminDesk.tsx`, `src/components/admin/AdminDeskContent.tsx`.
 
 | Item | Content |
 |------|---------|
@@ -376,6 +379,7 @@ Admin is **not** a replacement for CM: use for **platform and permission** overs
 | New route added | Update §1 family map + `reports/ai-thread-build-map.md` (or automate via audit script). |
 | New `primary_role` | Update §3 canonical list + §4 inventory + `getPrimaryRoleHomeBucket`. |
 | New desk shipped | Update §5 + Phase table + scaffold TS file + §9 rollup tables if the desk feeds executive surfaces. |
+| Admin desk scope | Keep aligned with `docs/admin-master-dashboard-blueprint.md`. |
 
 ---
 

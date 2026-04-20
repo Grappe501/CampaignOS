@@ -17,6 +17,11 @@ export const AGENT_JONES_SCROLL_TARGET_IDS = [
   'agent-jones',
   'coordinator-mission-ops',
   'candidate-health-snapshot',
+  'admin-overview',
+  'admin-exceptions',
+  'admin-desks',
+  'admin-tasks',
+  'admin-config',
 ] as const
 
 /** Paths the model may suggest via navigate actions (client + Netlify must stay aligned). */
@@ -26,6 +31,7 @@ export const AGENT_JONES_NAVIGATE_PATHS = [
   '/intern',
   '/coordinator',
   '/candidate',
+  '/admin',
 ] as const
 
 export type AgentJonesNavigatePath = (typeof AGENT_JONES_NAVIGATE_PATHS)[number]

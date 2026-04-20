@@ -14,7 +14,7 @@ export default function OnboardingActivationCard({
   )
 
   const openAgentJones = () => {
-    window.dispatchEvent(new CustomEvent('campaignos:toggle-agent-jones'))
+    window.dispatchEvent(new CustomEvent('campaignos:open-agent-jones'))
   }
 
   return (

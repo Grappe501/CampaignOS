@@ -28,7 +28,10 @@ export default function SuggestedPromptList({
           }`}
           onClick={() => onSelect(p)}
         >
-          {p.label}
+          <span className="agent-jones-prompt-label">{p.label}</span>
+          <span className="agent-jones-prompt-arrow" aria-hidden>
+            →
+          </span>
         </button>
       ))}
     </div>
