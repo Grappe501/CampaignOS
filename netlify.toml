@@ -1,0 +1,15 @@
+# CampaignOS — Netlify build (GitHub → production + branch deploy previews).
+# Set environment variables in the Netlify UI (Site / Env) or via Netlify CLI.
+# Do not commit real secrets; use branch deploys for PR previews.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Reserved for server-side logic (OpenAI, Twilio, Sendgrid, etc.).
+# Add handlers under netlify/functions/ when ready; keys stay off the client.
+[functions]
+  directory = "netlify/functions"
