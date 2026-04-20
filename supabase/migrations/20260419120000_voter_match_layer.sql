@@ -37,7 +37,7 @@ AS $$
             rv.voter_id,
             rv.name_last,
             rv.name_first,
-            rv.date_of_birth,
+            rv.date_of_birth::date AS date_of_birth,
             rv.county,
             rv.registrant_status,
             rv.res_city,
@@ -53,7 +53,7 @@ AS $$
         FROM public.raw_vr rv
         WHERE trim(lower(rv.name_last)) = trim(lower(p_name_last))
           AND trim(lower(rv.name_first)) = trim(lower(p_name_first))
-          AND rv.date_of_birth = p_date_of_birth
+          AND rv.date_of_birth::date = p_date_of_birth
     )
     SELECT
         bm.voter_id,
@@ -136,7 +136,7 @@ BEGIN
         WHERE rv.voter_id = p_voter_id
           AND trim(lower(rv.name_last)) = trim(lower(p_name_last))
           AND trim(lower(rv.name_first)) = trim(lower(p_name_first))
-          AND rv.date_of_birth = p_date_of_birth
+          AND rv.date_of_birth::date = p_date_of_birth
           AND (
               p_county IS NULL
               OR trim(lower(rv.county)) = trim(lower(p_county))

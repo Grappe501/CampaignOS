@@ -4,12 +4,48 @@
  */
 import { useState } from 'react'
 import type { AuthError } from '@supabase/supabase-js'
+import { ensureCampaignProfile } from '../lib/ensureCampaignProfile'
 import { supabase } from '../lib/supabaseClient'
 import AppHeader from '../components/AppHeader'
 
 function isRateLimitError(error: AuthError): boolean {
   if (error.status === 429) return true
   return /\b429\b|rate\s*limit|too many requests/i.test(error.message)
+}
+
+/** Surface clearer copy for common Supabase Auth responses. */
+function formatAuthError(error: AuthError): string {
+  const m = error.message.toLowerCase()
+  if (
+    m.includes('redirect') ||
+    m.includes('redirect_uri') ||
+    m.includes('redirect url')
+  ) {
+    return `${error.message} Add this app’s URL under Supabase → Authentication → URL Configuration (Redirect URLs).`
+  }
+  if (m.includes('already registered') || m.includes('already been registered')) {
+    return 'That email already has an account. Use Sign in, or reset password from Supabase.'
+  }
+  if (m.includes('signup') && m.includes('disabled')) {
+    return 'New sign-ups are disabled in this Supabase project. Enable Email signups under Authentication → Providers.'
+  }
+  if (m.includes('database error saving new user')) {
+    return 'Sign-up hit a database error. Run `npx supabase db push` so migration 20260421150000 is applied (drops the auth trigger and adds ensure_campaign_profile).'
+  }
+  return error.message
+}
+
+/** Read live values (helps when the browser autofills before React onChange runs). */
+function readCredentials(email: string, password: string) {
+  const elEmail = document.getElementById(
+    'login-email',
+  ) as HTMLInputElement | null
+  const elPass = document.getElementById(
+    'login-password',
+  ) as HTMLInputElement | null
+  const e = (elEmail?.value ?? email).trim()
+  const p = elPass?.value ?? password
+  return { email: e, password: p }
 }
 
 export default function Login() {
@@ -24,13 +60,13 @@ export default function Login() {
   )
   const [busy, setBusy] = useState(false)
 
-  const trimmedEmail = email.trim()
-  const canSubmit = trimmedEmail.length > 0 && password.length > 0 && !busy
+  const passwordAutoComplete =
+    authIntent === 'signin' ? 'current-password' : 'new-password'
 
   const handleSignIn = async () => {
     setAuthIntent('signin')
-
-    if (!canSubmit) {
+    const { email: em, password: pw } = readCredentials(email, password)
+    if (!em || !pw) {
       setMessageTone('error')
       setMessage('Enter email and password.')
       return
@@ -41,8 +77,8 @@ export default function Login() {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: trimmedEmail,
-        password,
+        email: em,
+        password: pw,
       })
 
       if (error) {
@@ -50,7 +86,7 @@ export default function Login() {
         setMessage(
           isRateLimitError(error)
             ? 'Too many attempts. Wait a moment and try again.'
-            : error.message,
+            : formatAuthError(error),
         )
         return
       }
@@ -63,6 +99,8 @@ export default function Login() {
         return
       }
 
+      await ensureCampaignProfile()
+
       setMessageTone('success')
       setMessage('Signed in. Loading your workspace…')
     } finally {
@@ -72,14 +110,14 @@ export default function Login() {
 
   const handleSignUp = async () => {
     setAuthIntent('signup')
-
-    if (!canSubmit) {
+    const { email: em, password: pw } = readCredentials(email, password)
+    if (!em || !pw) {
       setMessageTone('error')
       setMessage('Enter email and password to create an account.')
       return
     }
 
-    if (password.length < 6) {
+    if (pw.length < 6) {
       setMessageTone('error')
       setMessage('Password must be at least 6 characters (Supabase default).')
       return
@@ -89,9 +127,12 @@ export default function Login() {
     setMessage(null)
 
     try {
+      // Omit emailRedirectTo unless Supabase has this exact origin in
+      // Authentication → URL Configuration (Site URL + Redirect URLs). Passing
+      // a non-whitelisted URL makes signUp fail for everyone.
       const { data, error } = await supabase.auth.signUp({
-        email: trimmedEmail,
-        password,
+        email: em,
+        password: pw,
       })
 
       if (error) {
@@ -99,12 +140,13 @@ export default function Login() {
         setMessage(
           isRateLimitError(error)
             ? 'Too many attempts. Wait a moment and try again.'
-            : error.message,
+            : formatAuthError(error),
         )
         return
       }
 
       if (data.session) {
+        await ensureCampaignProfile()
         setMessageTone('success')
         setMessage('Account ready. Loading your workspace…')
         return
@@ -126,9 +168,6 @@ export default function Login() {
         ? '#b91c1c'
         : 'var(--text-h)'
 
-  const passwordAutoComplete =
-    authIntent === 'signin' ? 'current-password' : 'new-password'
-
   return (
     <>
       <AppHeader />
@@ -137,7 +176,8 @@ export default function Login() {
         <p className="subtitle" style={{ marginBottom: 16 }}>
           Use your email and password below. Choose <strong>Sign in</strong> if
           you already have an account, or <strong>Create account</strong> if you
-          are new. (Magic link or Google can be added later.)
+          are new. Use the buttons — do not rely on the Enter key, so sign-up is
+          never mistaken for sign-in.
         </p>
 
         <form
@@ -145,7 +185,6 @@ export default function Login() {
           style={{ maxWidth: '480px' }}
           onSubmit={(e) => {
             e.preventDefault()
-            void handleSignIn()
           }}
         >
           <div className="field-block">
@@ -159,6 +198,7 @@ export default function Login() {
               enterKeyHint="next"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
               disabled={busy}
               className="input-stretch"
             />
@@ -175,6 +215,7 @@ export default function Login() {
                 enterKeyHint="go"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
                 disabled={busy}
                 className="input-stretch"
               />
@@ -194,10 +235,11 @@ export default function Login() {
           <div className="login-action-section">
             <p className="login-action-heading">Already have an account?</p>
             <button
-              type="submit"
+              type="button"
               className="btn-touch btn-primary"
-              disabled={!canSubmit}
-              onClick={() => setAuthIntent('signin')}
+              disabled={busy}
+              onPointerDown={() => setAuthIntent('signin')}
+              onClick={() => void handleSignIn()}
             >
               {busy && authIntent === 'signin' ? 'Working…' : 'Sign in'}
             </button>
@@ -208,7 +250,8 @@ export default function Login() {
             <button
               type="button"
               className="btn-touch"
-              disabled={!canSubmit}
+              disabled={busy}
+              onPointerDown={() => setAuthIntent('signup')}
               onClick={() => void handleSignUp()}
             >
               {busy && authIntent === 'signup' ? 'Working…' : 'Create account'}

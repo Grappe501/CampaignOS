@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useDevMockDashboard } from './useDevMockDashboard'
 import { getDevMockProfile, isDevAuthBypassEnabled } from '../lib/devAuth'
+import { ensureCampaignProfile } from '../lib/ensureCampaignProfile'
 import { supabase } from '../lib/supabaseClient'
 
 /** Row from `campaign_profiles`; fields depend on your schema. */
@@ -44,6 +45,8 @@ export function useProfile() {
       setProfile(null)
       return
     }
+
+    await ensureCampaignProfile()
 
     const { data, error } = await supabase
       .from('campaign_profiles')
