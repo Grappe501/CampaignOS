@@ -7,6 +7,9 @@ type SeedToken = { category: string; key: string; value: string } & Record<strin
 type SeedMessage = { kind: string; text: string; sortOrder?: number } & Record<string, unknown>
 type SeedSocialLink = { platform: string; label: string; url: string; handle?: string | null } & Record<string, unknown>
 type SeedContactPoint = { kind: string; label: string; value: string; url?: string | null } & Record<string, unknown>
+type SeedBioFact = { fact: string; sortOrder?: number } & Record<string, unknown>
+type SeedIssuePillar = { key: string; title: string; summary: string } & Record<string, unknown>
+type SeedCta = { key: string; label: string; url: string; kind?: string; sortOrder?: number } & Record<string, unknown>
 
 type SeedFile = {
   campaignSlug?: string
@@ -16,6 +19,9 @@ type SeedFile = {
   tokens?: SeedToken[]
   messages?: SeedMessage[]
   navigationLabels?: string[]
+  bioFacts?: SeedBioFact[]
+  issuePillars?: SeedIssuePillar[]
+  ctas?: SeedCta[]
   socialLinks?: SeedSocialLink[]
   contactPoints?: SeedContactPoint[]
 } & SeedShape
@@ -36,6 +42,117 @@ function safeTrim(x: unknown): string {
 function pickFirstMatch(re: RegExp, text: string): string | null {
   const m = re.exec(text)
   return m?.[1]?.trim() ?? null
+}
+
+function normalizeSpace(s: string): string {
+  return s
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .trim()
+}
+
+type KnowledgeChunk = {
+  index: number
+  text: string
+  tags: string[]
+}
+
+type KnowledgeSeed = {
+  campaignSlug: string
+  sourceUrl: string
+  title: string
+  fetchedAt: string
+  contentText: string
+  tags: string[]
+  chunks: KnowledgeChunk[]
+}
+
+function buildKnowledgeSeedFromHomepage(seed: SeedFile): KnowledgeSeed | null {
+  const slug = safeTrim(seed.campaignSlug)
+  const sourceUrl = safeTrim(seed.source?.homepageUrl) || 'https://chrisjonesforcongress.com/'
+  if (!slug) return null
+
+  const slogan = (seed.messages ?? []).find((m) => m.kind === 'slogan')?.text ?? ''
+  const heroLines = (seed.messages ?? [])
+    .filter((m) => m.kind === 'hero')
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((m) => m.text)
+    .filter(Boolean)
+
+  const bio = (seed.bioFacts ?? [])
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((b) => b.fact)
+    .filter(Boolean)
+
+  const issues = (seed.issuePillars ?? []).map((p) => ({
+    title: p.title,
+    summary: p.summary,
+  }))
+
+  const ctas = (seed.ctas ?? [])
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((c) => `${c.label} — ${c.url}`)
+    .filter(Boolean)
+
+  const contact = (seed.contactPoints ?? []).map((c) => `${c.label}: ${c.value}`).filter(Boolean)
+  const social = (seed.socialLinks ?? []).map((s) => `${s.label}: ${s.url}`).filter(Boolean)
+
+  const parts: string[] = []
+  if (slogan) parts.push(`Slogan: ${slogan}`)
+  if (heroLines.length) parts.push(`Hero: ${heroLines.join(' ')}`)
+  if (bio.length) parts.push(`Bio: ${bio.join(' ')}`)
+  if (issues.length) {
+    parts.push(
+      `Issues: ${issues
+        .map((i) => `${i.title} — ${i.summary}`)
+        .join(' ')}`,
+    )
+  }
+  if (ctas.length) parts.push(`CTAs: ${ctas.join(' | ')}`)
+  if (contact.length) parts.push(`Contact: ${contact.join(' | ')}`)
+  if (social.length) parts.push(`Social: ${social.join(' | ')}`)
+
+  const contentText = normalizeSpace(parts.join('\n\n'))
+
+  const chunks: KnowledgeChunk[] = []
+  let idx = 0
+  const push = (text: string, tags: string[]) => {
+    const t = normalizeSpace(text)
+    if (!t) return
+    chunks.push({ index: idx++, text: t, tags })
+  }
+
+  if (slogan) push(slogan, ['slogan', 'hero', 'branding'])
+  for (const line of heroLines.slice(0, 4)) push(line, ['hero', 'messaging'])
+  if (bio.length) push(bio.join(' '), ['bio', 'meet-chris'])
+  for (const i of issues.slice(0, 8)) push(`${i.title}: ${i.summary}`, ['issues', i.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')])
+  for (const c of (seed.ctas ?? []).slice(0, 8)) {
+    push(`${c.label} — ${c.url}`, ['cta', (c.kind ?? 'other')])
+  }
+  for (const c of (seed.contactPoints ?? []).slice(0, 8)) {
+    push(`${c.label}: ${c.value}${c.url ? ` (${c.url})` : ''}`, ['contact', c.kind])
+  }
+  for (const s of (seed.socialLinks ?? []).slice(0, 8)) {
+    push(`${s.label}: ${s.url}`, ['social', s.platform])
+  }
+
+  const tagSet = new Set<string>()
+  for (const c of chunks) {
+    for (const t of c.tags) {
+      const x = safeTrim(t).toLowerCase()
+      if (x) tagSet.add(x)
+    }
+  }
+
+  return {
+    campaignSlug: slug,
+    sourceUrl,
+    title: 'Homepage',
+    fetchedAt: new Date().toISOString(),
+    contentText,
+    tags: Array.from(tagSet).sort(),
+    chunks,
+  }
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -101,6 +218,10 @@ function extractHomepagePieces(html: string) {
 async function main() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const seedPath = path.resolve(root, 'scripts/ingestion/chris-jones-homepage.seed.json')
+  const knowledgePath = path.resolve(
+    root,
+    'scripts/ingestion/chris-jones-homepage.knowledge.seed.json',
+  )
   const seedRaw = await readFile(seedPath, 'utf8')
   const seed = JSON.parse(seedRaw) as SeedFile
 
@@ -183,6 +304,10 @@ async function main() {
   }
 
   await writeFile(seedPath, JSON.stringify(seed, null, 2) + '\n', 'utf8')
+  const knowledge = buildKnowledgeSeedFromHomepage(seed)
+  if (knowledge) {
+    await writeFile(knowledgePath, JSON.stringify(knowledge, null, 2) + '\n', 'utf8')
+  }
   process.stdout.write(`Updated seed: ${seedPath}\n`)
 }
 

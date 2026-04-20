@@ -5,29 +5,27 @@
  * - **Local Vite:** set `VITE_NETLIFY_FUNCTIONS_ORIGIN` (e.g. `http://localhost:8888`) with `netlify dev`.
  */
 
-import type { AgentJonesSafeContext } from '../agentJonesContext'
+import type { AgentJonesContextV2 } from '../agentJonesContextV2'
 import { isAgentJonesScrollTargetId } from '../agentJonesContext'
 
 export type AgentJonesRequest = {
-  context: AgentJonesSafeContext
+  context: AgentJonesContextV2
   userMessage: string
   model?: string
 }
 
-export type AgentJonesFollowUpPrompt = {
-  id: string
-  label: string
-}
-
-export type AgentJonesScrollAction = {
-  type: 'scroll'
-  targetId: string
-}
-
-export type AgentJonesReply = {
+export type AgentJonesResponse = {
   response: string
-  suggestedPrompts?: AgentJonesFollowUpPrompt[]
-  actions?: AgentJonesScrollAction[]
+  suggestedPrompts?: string[]
+  recommendedActions?: {
+    type: 'scroll' | 'navigate' | 'task'
+    targetId?: string
+    taskType?: string
+  }[]
+  insight?: {
+    type: 'campaign_context' | 'user_context' | 'strategy'
+    message: string
+  }
 }
 
 export type AgentJonesErrorBody = {
@@ -61,45 +59,80 @@ export function getAgentJonesEndpointUrl(): string {
   return origin ? `${origin}${path}` : path
 }
 
-function sanitizeReply(data: unknown): AgentJonesReply | null {
+function sanitizeReply(data: unknown): AgentJonesResponse | null {
   if (!data || typeof data !== 'object') return null
   const o = data as Record<string, unknown>
   if (typeof o.response !== 'string' || !o.response.trim()) return null
 
-  const reply: AgentJonesReply = { response: o.response.trim() }
+  const reply: AgentJonesResponse = { response: o.response.trim() }
 
   if (Array.isArray(o.suggestedPrompts)) {
-    const prompts: AgentJonesFollowUpPrompt[] = []
-    for (const p of o.suggestedPrompts.slice(0, 4)) {
-      if (!p || typeof p !== 'object') continue
-      const r = p as Record<string, unknown>
-      const id = typeof r.id === 'string' ? r.id.trim() : ''
-      const label = typeof r.label === 'string' ? r.label.trim() : ''
-      if (id && label && id.length <= 64 && label.length <= 120) {
-        prompts.push({ id, label })
-      }
+    const prompts: string[] = []
+    for (const p of o.suggestedPrompts.slice(0, 6)) {
+      if (typeof p !== 'string') continue
+      const t = p.trim()
+      if (!t || t.length > 120) continue
+      if (/[<>\\]/.test(t)) continue
+      prompts.push(t)
     }
-    if (prompts.length) reply.suggestedPrompts = prompts
+    if (prompts.length) reply.suggestedPrompts = prompts.slice(0, 4)
   }
 
-  if (Array.isArray(o.actions)) {
-    const actions: AgentJonesScrollAction[] = []
-    for (const a of o.actions.slice(0, 3)) {
+  if (Array.isArray(o.recommendedActions)) {
+    const actions: NonNullable<AgentJonesResponse['recommendedActions']> = []
+    for (const a of o.recommendedActions.slice(0, 6)) {
       if (!a || typeof a !== 'object') continue
       const r = a as Record<string, unknown>
-      if (r.type !== 'scroll') continue
+      const type = typeof r.type === 'string' ? r.type.trim() : ''
+      if (type !== 'scroll' && type !== 'navigate' && type !== 'task') continue
+
       const targetId = typeof r.targetId === 'string' ? r.targetId.trim() : ''
-      if (targetId && isAgentJonesScrollTargetId(targetId)) {
+      const taskType = typeof r.taskType === 'string' ? r.taskType.trim() : ''
+
+      if (type === 'scroll') {
+        if (!targetId || !isAgentJonesScrollTargetId(targetId)) continue
         actions.push({ type: 'scroll', targetId })
+        continue
+      }
+
+      if (type === 'navigate') {
+        if (!targetId || targetId.length > 120) continue
+        if (!targetId.startsWith('/')) continue
+        actions.push({ type: 'navigate', targetId })
+        continue
+      }
+
+      if (type === 'task') {
+        if (!taskType || taskType.length > 80) continue
+        actions.push({ type: 'task', taskType })
+        continue
       }
     }
-    if (actions.length) reply.actions = actions
+    if (actions.length) reply.recommendedActions = actions.slice(0, 3)
+  }
+
+  if (o.insight && typeof o.insight === 'object') {
+    const r = o.insight as Record<string, unknown>
+    const type = typeof r.type === 'string' ? r.type.trim() : ''
+    const message = typeof r.message === 'string' ? r.message.trim() : ''
+    if (
+      (type === 'campaign_context' ||
+        type === 'user_context' ||
+        type === 'strategy') &&
+      message &&
+      message.length <= 220 &&
+      !/[<>\\]/.test(message)
+    ) {
+      reply.insight = { type, message } as AgentJonesResponse['insight']
+    }
   }
 
   return reply
 }
 
-export async function callAgentJones(body: AgentJonesRequest): Promise<AgentJonesReply> {
+export async function callAgentJones(
+  body: AgentJonesRequest,
+): Promise<AgentJonesResponse> {
   const url = getAgentJonesEndpointUrl()
   const res = await fetch(url, {
     method: 'POST',

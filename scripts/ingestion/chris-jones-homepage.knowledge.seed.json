@@ -1,0 +1,76 @@
+{
+  "campaignSlug": "chris-jones-for-congress",
+  "sourceUrl": "https://chrisjonesforcongress.com/",
+  "title": "Homepage",
+  "fetchedAt": "2026-04-20",
+  "tags": [
+    "bio",
+    "branding",
+    "cta",
+    "democracy_for_the_people",
+    "donate",
+    "families___health",
+    "hero",
+    "issues",
+    "jobs___local_economy",
+    "mailing_address",
+    "meet-chris",
+    "messaging",
+    "schools___innovation",
+    "social",
+    "slogan",
+    "volunteer",
+    "x"
+  ],
+  "contentText": "Slogan: A Bigger Table. A Brighter Future.\n\nHero: I’m a bridge builder, a fighter for us, and a visionary for the future of Arkansas. Our campaign is about expanding opportunity, strengthening our communities, and proving that when Arkansans come together, we can fly.\n\nBio: Grew up in Pine Bluff as the son of a minister. Values of service and community. Path led to science while staying rooted in Arkansas. Bridge-building narrative: faith and science, rural and urban, young and old; respecting tradition while bringing new ideas.\n\nIssues: Jobs & Local Economy — We can build an economy that lifts every community. Good jobs, fair wages, small business growth, high-quality internet access, and hospitals that stay open in rural towns. Families & Health — Every family deserves the chance to thrive. Stronger schools, a full range of comprehensive maternal health support, addiction support and recovery, and food security must be part of the foundation for healthy communities. Schools & Innovation — Our government should invest in our people. Early childhood education, hands-on apprenticeships, and training in both technology and the trades will prepare our children and our workforce for tomorrow. Democracy for the People — Democracy belongs to all of us. Fair maps, secure and accessible elections, a government you can trust, and leaders who listen are the guardrails that protect our voice and our future.\n\nCTAs: Get to Know Me — https://chrisjonesforcongress.com/about/ | Volunteer — https://chrisjonesforcongress.com/volunteer/ | Donate — https://chrisjonesforcongress.com/donate/\n\nContact: Mailing address: P.O. Box 21803, Little Rock, AR 72221\n\nSocial: Facebook: https://chrisjonesforcongress.com/facebook/ | X: https://chrisjonesforcongress.com/x/ | Instagram: https://chrisjonesforcongress.com/instagram/",
+  "chunks": [
+    { "index": 0, "text": "A Bigger Table. A Brighter Future.", "tags": ["slogan", "hero", "branding"] },
+    {
+      "index": 1,
+      "text": "I’m a bridge builder, a fighter for us, and a visionary for the future of Arkansas.",
+      "tags": ["hero", "messaging"]
+    },
+    {
+      "index": 2,
+      "text": "Our campaign is about expanding opportunity, strengthening our communities, and proving that when Arkansans come together, we can fly.",
+      "tags": ["hero", "messaging"]
+    },
+    {
+      "index": 3,
+      "text": "Grew up in Pine Bluff as the son of a minister. Values of service and community. Path led to science while staying rooted in Arkansas. Bridge-building narrative: faith and science, rural and urban, young and old; respecting tradition while bringing new ideas.",
+      "tags": ["bio", "meet-chris"]
+    },
+    {
+      "index": 4,
+      "text": "Jobs & Local Economy: We can build an economy that lifts every community. Good jobs, fair wages, small business growth, high-quality internet access, and hospitals that stay open in rural towns.",
+      "tags": ["issues", "jobs___local_economy"]
+    },
+    {
+      "index": 5,
+      "text": "Families & Health: Every family deserves the chance to thrive. Stronger schools, a full range of comprehensive maternal health support, addiction support and recovery, and food security must be part of the foundation for healthy communities.",
+      "tags": ["issues", "families___health", "health"]
+    },
+    {
+      "index": 6,
+      "text": "Schools & Innovation: Our government should invest in our people. Early childhood education, hands-on apprenticeships, and training in both technology and the trades will prepare our children and our workforce for tomorrow.",
+      "tags": ["issues", "schools___innovation", "schools"]
+    },
+    {
+      "index": 7,
+      "text": "Democracy for the People: Democracy belongs to all of us. Fair maps, secure and accessible elections, a government you can trust, and leaders who listen are the guardrails that protect our voice and our future.",
+      "tags": ["issues", "democracy_for_the_people", "democracy"]
+    },
+    { "index": 8, "text": "Get to Know Me — https://chrisjonesforcongress.com/about/", "tags": ["cta", "learn_more"] },
+    { "index": 9, "text": "Volunteer — https://chrisjonesforcongress.com/volunteer/", "tags": ["cta", "volunteer"] },
+    { "index": 10, "text": "Donate — https://chrisjonesforcongress.com/donate/", "tags": ["cta", "donate"] },
+    {
+      "index": 11,
+      "text": "Mailing address: P.O. Box 21803, Little Rock, AR 72221 (https://chrisjonesforcongress.com/contact-us/)",
+      "tags": ["contact", "mailing_address"]
+    },
+    { "index": 12, "text": "Facebook: https://chrisjonesforcongress.com/facebook/", "tags": ["social", "facebook"] },
+    { "index": 13, "text": "X: https://chrisjonesforcongress.com/x/", "tags": ["social", "x"] },
+    { "index": 14, "text": "Instagram: https://chrisjonesforcongress.com/instagram/", "tags": ["social", "instagram"] }
+  ]
+}
+

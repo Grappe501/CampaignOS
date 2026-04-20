@@ -506,6 +506,56 @@
   min-height: 96px;
 }
 
+.agent-jones-insight {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(43, 57, 132, 0.22);
+  background: rgba(236, 239, 249, 0.85);
+}
+
+.agent-jones-insight-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(43, 57, 132, 0.12);
+  color: var(--cj-primary);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+}
+
+.agent-jones-insight-text {
+  color: var(--text-h);
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.agent-jones-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@media (min-width: 600px) {
+  .agent-jones-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.agent-jones-action-btn {
+  min-width: 0;
+}
+
 .agent-jones-response-text {
   margin: 0;
   color: var(--text-h);

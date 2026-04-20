@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useProfile } from '../hooks/useProfile'
 import { useTasks } from '../hooks/useTasks'
 import { useTraining } from '../hooks/useTraining'
@@ -8,7 +8,6 @@ import {
   isDevAuthBypassEnabled,
 } from '../lib/devAuth'
 import { supabase } from '../lib/supabaseClient'
-import type { AgentJonesTaskTrainingSummaries } from '../lib/agentJonesContext'
 import {
   getDashboardProgressSlice,
   getFirstTaskCardModel,
@@ -113,28 +112,6 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     voterLoading: voterMatch.matchedLoading,
     structured: structuredTraining,
   })
-
-  const agentJonesSummaries = useMemo((): AgentJonesTaskTrainingSummaries | null => {
-    if (voterMatch.matchedLoading || tasks.loading || training.loading) {
-      return null
-    }
-    const s: AgentJonesTaskTrainingSummaries = {}
-    if (tasks.structured?.title) s.currentTaskTitle = tasks.structured.title
-    if (tasks.structured?.status) s.currentTaskStatus = tasks.structured.status
-    if (training.structured?.title) {
-      s.currentTrainingTitle = training.structured.title
-    }
-    if (training.structured?.status) {
-      s.currentTrainingStatus = training.structured.status
-    }
-    return Object.keys(s).length > 0 ? s : null
-  }, [
-    voterMatch.matchedLoading,
-    tasks.loading,
-    training.loading,
-    tasks.structured,
-    training.structured,
-  ])
 
   const gate = progressionGateMessage(
     voterMatched,
@@ -295,7 +272,8 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               progressSlice={progressSlice}
               profile={profile}
               voterLoading={voterMatch.matchedLoading}
-              summaries={agentJonesSummaries}
+              voterMatched={voterMatched}
+              matchedVoter={voterMatch.matched}
             />
           </div>
         </DashboardGrid>

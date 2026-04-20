@@ -6,7 +6,36 @@
  * independently so this bundle stays self-contained.
  */
 
-type AgentJonesSafeContext = {
+type AgentJonesSafeContextV2 = {
+  user: {
+    role?: string | null
+    onboarding_status?: string | null
+    onboarding_branch?: string | null
+    voterMatched: boolean
+    precinct?: string | null
+    county?: string | null
+    congressional_district?: string | null
+    state_senate_district?: string | null
+    state_representative_district?: string | null
+  }
+  campaign?: {
+    slogan?: string
+    shortBio?: string
+    issuePillars?: { title: string; summary: string }[]
+    ctas?: { label: string; url: string }[]
+  }
+  operational: {
+    progressSlice:
+      | 'unmatched'
+      | 'matched_no_branch'
+      | 'exception_pending'
+      | 'matched_ready'
+    voterLoading: boolean
+    needsOnboardingPath: boolean
+  }
+}
+
+type AgentJonesSafeContextLegacy = {
   progressSlice:
     | 'unmatched'
     | 'matched_no_branch'
@@ -35,7 +64,7 @@ type AgentJonesSafeContext = {
 }
 
 type RequestBody = {
-  context: AgentJonesSafeContext
+  context: AgentJonesSafeContextV2 | AgentJonesSafeContextLegacy
   /** Short line, normally a deterministic prompt label from the UI */
   userMessage: string
   model?: string
@@ -90,7 +119,7 @@ function isRecord(x: unknown): x is Record<string, unknown> {
 
 function validateProfileHints(
   raw: unknown,
-): AgentJonesSafeContext['profileHints'] | undefined {
+): AgentJonesSafeContextLegacy['profileHints'] | undefined {
   if (raw === undefined || raw === null) return undefined
   if (!isRecord(raw)) return undefined
   const out: NonNullable<AgentJonesSafeContext['profileHints']> = {}
@@ -128,7 +157,9 @@ function validateUrl(raw: unknown, max: number): string | undefined {
   return t
 }
 
-function validateCampaign(raw: unknown): AgentJonesSafeContext['campaign'] | undefined {
+function validateCampaign(
+  raw: unknown,
+): AgentJonesSafeContextLegacy['campaign'] | undefined {
   if (raw === undefined || raw === null) return undefined
   if (!isRecord(raw)) return undefined
 
@@ -191,48 +222,133 @@ function validateCampaign(raw: unknown): AgentJonesSafeContext['campaign'] | und
   return Object.keys(out).length ? out : undefined
 }
 
-function validateContext(raw: unknown): AgentJonesSafeContext | null {
+function validateUser(raw: unknown): AgentJonesSafeContextV2['user'] | null {
+  if (!isRecord(raw)) return null
+  if (typeof raw.voterMatched !== 'boolean') return null
+  const out: AgentJonesSafeContextV2['user'] = { voterMatched: raw.voterMatched }
+  const keys = [
+    'role',
+    'onboarding_status',
+    'onboarding_branch',
+    'precinct',
+    'county',
+    'congressional_district',
+    'state_senate_district',
+    'state_representative_district',
+  ] as const
+  for (const k of keys) {
+    const v = raw[k]
+    if (v === null || v === undefined) continue
+    if (typeof v !== 'string') continue
+    const t = v.trim()
+    if (!t || t.length > 140) continue
+    if (/[<>\\]/.test(t)) continue
+    ;(out as Record<string, unknown>)[k] = t
+  }
+  return out
+}
+
+function validateOperational(
+  raw: unknown,
+): AgentJonesSafeContextV2['operational'] | null {
   if (!isRecord(raw)) return null
   const slice = raw.progressSlice
   const voterLoading = raw.voterLoading
+  const needs = raw.needsOnboardingPath
   if (typeof slice !== 'string' || !SLICES.has(slice)) return null
   if (typeof voterLoading !== 'boolean') return null
-  const hints = validateProfileHints(raw.profileHints)
-  const campaign = validateCampaign(raw.campaign)
-  const currentTaskTitle = validateSummaryLine(raw.currentTaskTitle, 120)
-  const currentTaskStatus = validateSummaryLine(raw.currentTaskStatus, 64)
-  const currentTrainingTitle = validateSummaryLine(raw.currentTrainingTitle, 120)
-  const currentTrainingStatus = validateSummaryLine(raw.currentTrainingStatus, 64)
+  if (typeof needs !== 'boolean') return null
   return {
-    progressSlice: slice as AgentJonesSafeContext['progressSlice'],
+    progressSlice: slice as AgentJonesSafeContextV2['operational']['progressSlice'],
     voterLoading,
-    ...(hints ? { profileHints: hints } : {}),
-    ...(campaign ? { campaign } : {}),
-    ...(currentTaskTitle ? { currentTaskTitle } : {}),
-    ...(currentTaskStatus ? { currentTaskStatus } : {}),
-    ...(currentTrainingTitle ? { currentTrainingTitle } : {}),
-    ...(currentTrainingStatus ? { currentTrainingStatus } : {}),
+    needsOnboardingPath: needs,
   }
 }
 
-function buildSystemPrompt(context: AgentJonesSafeContext): string {
-  return `You are Agent Jones, a concise campaign volunteer coach for CampaignOS.
+function legacyToV2(raw: AgentJonesSafeContextLegacy): AgentJonesSafeContextV2 {
+  return {
+    user: {
+      role: undefined,
+      onboarding_status: raw.profileHints?.onboarding_status,
+      onboarding_branch: raw.profileHints?.onboarding_branch,
+      voterMatched: raw.progressSlice !== 'unmatched' && raw.progressSlice !== 'exception_pending',
+    },
+    ...(raw.campaign
+      ? {
+          campaign: {
+            ...(raw.campaign.slogan ? { slogan: raw.campaign.slogan } : {}),
+            ...(raw.campaign.shortBio ? { shortBio: raw.campaign.shortBio } : {}),
+            ...(raw.campaign.issuePillars ? { issuePillars: raw.campaign.issuePillars } : {}),
+            ...(raw.campaign.ctas ? { ctas: raw.campaign.ctas } : {}),
+          },
+        }
+      : {}),
+    operational: {
+      progressSlice: raw.progressSlice,
+      voterLoading: raw.voterLoading,
+      needsOnboardingPath: false,
+    },
+  }
+}
+
+function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
+  if (!isRecord(raw)) return null
+
+  // V2 path
+  if ('user' in raw && 'operational' in raw) {
+    const user = validateUser(raw.user)
+    const operational = validateOperational(raw.operational)
+    if (!user || !operational) return null
+    const campaign = validateCampaign(raw.campaign)
+    return {
+      user,
+      operational,
+      ...(campaign
+        ? {
+            campaign: {
+              ...(campaign.slogan ? { slogan: campaign.slogan } : {}),
+              ...(campaign.shortBio ? { shortBio: campaign.shortBio } : {}),
+              ...(campaign.issuePillars ? { issuePillars: campaign.issuePillars } : {}),
+              ...(campaign.ctas ? { ctas: campaign.ctas } : {}),
+            },
+          }
+        : {}),
+    }
+  }
+
+  // Legacy path (accept then adapt)
+  const legacy = raw as unknown as AgentJonesSafeContextLegacy
+  const slice = legacy.progressSlice
+  const voterLoading = legacy.voterLoading
+  if (typeof slice !== 'string' || !SLICES.has(slice)) return null
+  if (typeof voterLoading !== 'boolean') return null
+  const hints = validateProfileHints(legacy.profileHints)
+  const campaign = validateCampaign(legacy.campaign)
+  return legacyToV2({ ...legacy, ...(hints ? { profileHints: hints } : {}), ...(campaign ? { campaign } : {}) })
+}
+
+function buildSystemPrompt(context: AgentJonesSafeContextV2): string {
+  return `You are Agent Jones V2, a context-aware campaign operator inside CampaignOS.
 
 Rules:
 - You ONLY reason about the volunteer using the JSON "dashboardContext" below. Do not claim you queried a database, opened Supabase, or accessed tools beyond this context.
-- Progress is exactly one of: unmatched, matched_no_branch, exception_pending, matched_ready. voterLoading means roster/voter linkage is still loading — treat UI as cautious/verification-first.
-- Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs, contact/social) — use it to ground recommendations and language, but do not invent policy details.
-- Optional fields currentTaskTitle, currentTaskStatus, currentTrainingTitle, currentTrainingStatus are short labels only (no secrets); if absent, do not invent assignments.
+- Progress is exactly one of: unmatched, matched_no_branch, exception_pending, matched_ready (dashboardContext.operational.progressSlice).
+- voterLoading means roster/voter linkage is still loading — be cautious/verification-first.
+- Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs) — ground wording and next-steps in it, but do not invent policy details.
 - Stay practical, supportive, and brief (mobile screens). No legal/medical advice. Do not ask for passwords, SSNs, or full document uploads.
-- If profileHints are missing, do not invent values.
+- Never reveal sensitive voter history. You may reference precinct/county/district if present.
 
 dashboardContext:
 ${JSON.stringify(context)}
 
 Output a single JSON object with:
 - "response" (string, required): your answer to the user.
-- "suggestedPrompts" (optional): max 4 of { "id": string (slug, letters/digits/hyphen/underscore), "label": string (short) } for follow-up taps.
-- "actions" (optional): max 3 of { "type": "scroll", "targetId": string } where targetId is one of: ${[...SCROLL_IDS].join(', ')}.
+- "suggestedPrompts" (optional): max 4 strings (short, tap-friendly).
+- "recommendedActions" (optional): max 3 of:
+  - { "type": "scroll", "targetId": one of: ${[...SCROLL_IDS].join(', ')} }
+  - { "type": "navigate", "targetId": "/dashboard" | "/" }
+  - { "type": "task", "taskType": string (short label) }
+- "insight" (optional): { "type": "campaign_context" | "user_context" | "strategy", "message": string }
 
 No other top-level keys. No markdown fences — raw JSON only.`
 }
@@ -259,30 +375,63 @@ function parseModelObject(text: string): Record<string, unknown> | null {
 
 function sanitizeSuggested(raw: unknown) {
   if (!Array.isArray(raw)) return undefined
-  const out: { id: string; label: string }[] = []
-  for (const item of raw.slice(0, 4)) {
-    if (!isRecord(item)) continue
-    const id = typeof item.id === 'string' ? item.id.trim() : ''
-    const label = typeof item.label === 'string' ? item.label.trim() : ''
-    if (!id || !label || id.length > 64 || label.length > 120) continue
-    if (!/^[a-zA-Z0-9_-]+$/.test(id)) continue
-    out.push({ id, label })
+  const out: string[] = []
+  for (const item of raw.slice(0, 6)) {
+    if (typeof item !== 'string') continue
+    const t = item.trim()
+    if (!t || t.length > 120) continue
+    if (/[<>\\]/.test(t)) continue
+    out.push(t)
   }
   return out.length ? out : undefined
 }
 
 function sanitizeActions(raw: unknown) {
   if (!Array.isArray(raw)) return undefined
-  const out: { type: 'scroll'; targetId: string }[] = []
+  const out: { type: 'scroll' | 'navigate' | 'task'; targetId?: string; taskType?: string }[] = []
   for (const item of raw.slice(0, 3)) {
     if (!isRecord(item)) continue
-    if (item.type !== 'scroll') continue
-    const targetId =
-      typeof item.targetId === 'string' ? item.targetId.trim() : ''
-    if (!targetId || !SCROLL_IDS.has(targetId)) continue
-    out.push({ type: 'scroll' as const, targetId })
+    const type = typeof item.type === 'string' ? item.type.trim() : ''
+    if (type === 'scroll') {
+      const targetId =
+        typeof item.targetId === 'string' ? item.targetId.trim() : ''
+      if (!targetId || !SCROLL_IDS.has(targetId)) continue
+      out.push({ type: 'scroll' as const, targetId })
+      continue
+    }
+    if (type === 'navigate') {
+      const targetId =
+        typeof item.targetId === 'string' ? item.targetId.trim() : ''
+      if (!targetId || (targetId !== '/' && targetId !== '/dashboard')) continue
+      out.push({ type: 'navigate' as const, targetId })
+      continue
+    }
+    if (type === 'task') {
+      const taskType =
+        typeof item.taskType === 'string' ? item.taskType.trim() : ''
+      if (!taskType || taskType.length > 80 || /[<>\\]/.test(taskType)) continue
+      out.push({ type: 'task' as const, taskType })
+      continue
+    }
   }
   return out.length ? out : undefined
+}
+
+function sanitizeInsight(raw: unknown) {
+  if (!isRecord(raw)) return undefined
+  const type = typeof raw.type === 'string' ? raw.type.trim() : ''
+  const message = typeof raw.message === 'string' ? raw.message.trim() : ''
+  if (
+    (type === 'campaign_context' ||
+      type === 'user_context' ||
+      type === 'strategy') &&
+    message &&
+    message.length <= 220 &&
+    !/[<>\\]/.test(message)
+  ) {
+    return { type, message }
+  }
+  return undefined
 }
 
 export default async function handler(
@@ -312,7 +461,7 @@ export default async function handler(
   if (!context) {
     return json(400, {
       error:
-        'Invalid context: require progressSlice (unmatched|matched_no_branch|exception_pending|matched_ready), voterLoading boolean, optional profileHints with only allowed string fields',
+        'Invalid context: require { user: { voterMatched }, operational: { progressSlice, voterLoading, needsOnboardingPath }, optional campaign }',
     })
   }
 
@@ -379,21 +528,25 @@ export default async function handler(
   const obj = parseModelObject(content)
   let responseText: string
   let suggestedPrompts: ReturnType<typeof sanitizeSuggested>
-  let actions: ReturnType<typeof sanitizeActions>
+  let recommendedActions: ReturnType<typeof sanitizeActions>
+  let insight: ReturnType<typeof sanitizeInsight>
 
   if (obj && typeof obj.response === 'string' && obj.response.trim()) {
     responseText = obj.response.trim()
     suggestedPrompts = sanitizeSuggested(obj.suggestedPrompts)
-    actions = sanitizeActions(obj.actions)
+    recommendedActions = sanitizeActions(obj.recommendedActions)
+    insight = sanitizeInsight(obj.insight)
   } else {
     responseText = content
     suggestedPrompts = undefined
-    actions = undefined
+    recommendedActions = undefined
+    insight = undefined
   }
 
   return json(200, {
     response: responseText,
     ...(suggestedPrompts ? { suggestedPrompts } : {}),
-    ...(actions ? { actions } : {}),
+    ...(recommendedActions ? { recommendedActions } : {}),
+    ...(insight ? { insight } : {}),
   })
 }

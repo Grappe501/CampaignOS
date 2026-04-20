@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from '../lib/dashboardState'
 import {
@@ -6,25 +6,24 @@ import {
   scrollToDashboardId,
   type AgentJonesPrompt,
 } from '../lib/agentJonesGuidance'
-import {
-  buildAgentJonesSafeContext,
-  type AgentJonesTaskTrainingSummaries,
-} from '../lib/agentJonesContext'
+import { buildAgentJonesContextV2, type AgentJonesContextV2 } from '../lib/agentJonesContextV2'
 import {
   AgentJonesApiError,
   callAgentJones,
-  type AgentJonesFollowUpPrompt,
+  type AgentJonesResponse,
 } from '../lib/api/agentJones'
+import type { MatchedVoterDisplayRow } from '../lib/voterMatch'
+import { getRelevantCampaignContext } from '../lib/agentJonesKnowledge'
+import { buildAgentJonesFallbackV2 } from '../lib/agentJonesBrain'
 import SuggestedPromptList from './agentJones/SuggestedPromptList'
+import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 
-function followUpsToPrompts(
-  items: AgentJonesFollowUpPrompt[],
-): AgentJonesPrompt[] {
-  return items.map((f, i) => ({
-    id: `ai-followup-${f.id}-${i}`,
-    label: f.label,
+function stringsToFollowUps(items: string[]): AgentJonesPrompt[] {
+  return items.map((label, i) => ({
+    id: `ai-followup-${i}`,
+    label,
     response: '',
-    followUpSourceId: f.id,
+    followUpSourceId: `ai-${i}`,
   }))
 }
 
@@ -32,12 +31,14 @@ export default function AgentJones({
   progressSlice,
   profile,
   voterLoading,
-  summaries,
+  voterMatched,
+  matchedVoter,
 }: {
   progressSlice: DashboardProgressSlice
   profile: CampaignProfile | null
   voterLoading: boolean
-  summaries?: AgentJonesTaskTrainingSummaries | null
+  voterMatched: boolean
+  matchedVoter?: MatchedVoterDisplayRow | null
 }) {
   const bundle = useMemo(
     () =>
@@ -50,26 +51,62 @@ export default function AgentJones({
   )
 
   const [activePromptId, setActivePromptId] = useState<string | null>(null)
-  const [responseText, setResponseText] = useState<string | null>(null)
-  const [followUps, setFollowUps] = useState<AgentJonesFollowUpPrompt[]>([])
+  const [reply, setReply] = useState<AgentJonesResponse | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [contextV2, setContextV2] = useState<AgentJonesContextV2 | null>(null)
 
   const gridPrompts = useMemo(
-    () => [...bundle.prompts, ...followUpsToPrompts(followUps)],
-    [bundle.prompts, followUps],
+    () =>
+      reply?.suggestedPrompts?.length
+        ? [...bundle.prompts, ...stringsToFollowUps(reply.suggestedPrompts)]
+        : bundle.prompts,
+    [bundle.prompts, reply],
   )
 
-  const safeContext = useMemo(
-    () =>
-      buildAgentJonesSafeContext({
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      const base = buildAgentJonesContextV2({
+        profile,
+        matchedVoter: matchedVoter ?? null,
+        voterMatched,
         progressSlice,
         voterLoading,
-        profile,
-        summaries: summaries ?? undefined,
-      }),
-    [progressSlice, voterLoading, profile, summaries],
-  )
+      })
+      try {
+        const campaign = await getRelevantCampaignContext({
+          campaignSlug: 'chris-jones-for-congress',
+          context: { user: base.user, operational: base.operational },
+        })
+        if (!cancelled) {
+          setContextV2({ ...base, campaign })
+        }
+      } catch {
+        if (!cancelled) {
+          setContextV2({
+            ...base,
+            campaign: {
+              slogan: CHRIS_JONES_FOR_CONGRESS_PUBLIC.slogan,
+              shortBio: CHRIS_JONES_FOR_CONGRESS_PUBLIC.shortBio,
+              issuePillars: CHRIS_JONES_FOR_CONGRESS_PUBLIC.issuePillars.map((p) => ({
+                title: p.title,
+                summary: p.summary,
+              })),
+              ctas: CHRIS_JONES_FOR_CONGRESS_PUBLIC.ctas.map((c) => ({
+                label: c.label,
+                url: c.url,
+              })),
+            },
+          })
+        }
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [profile, matchedVoter, voterMatched, progressSlice, voterLoading])
 
   const handleSelect = async (prompt: AgentJonesPrompt) => {
     setActivePromptId(prompt.id)
@@ -84,33 +121,43 @@ export default function AgentJones({
       : `[${prompt.id}] ${prompt.label}`.slice(0, 600)
 
     setAiLoading(true)
-    setFollowUps([])
+    setReply(null)
 
-    const runScrollActions = (
-      actions: { type: string; targetId: string }[] | undefined,
-    ) => {
+    const runActions = (actions: AgentJonesResponse['recommendedActions']) => {
       for (const a of actions ?? []) {
         if (a.type === 'scroll' && a.targetId) {
           scrollToDashboardId(a.targetId)
+        }
+        if (a.type === 'navigate' && a.targetId) {
+          window.location.assign(a.targetId)
         }
       }
     }
 
     try {
-      const reply = await callAgentJones({
-        context: safeContext,
+      const built = contextV2
+      if (!built) {
+        throw new AgentJonesApiError('Agent Jones context not ready', 0, null)
+      }
+      const next = await callAgentJones({
+        context: built,
         userMessage,
       })
-      setResponseText(reply.response)
-      setFollowUps(reply.suggestedPrompts ?? [])
-      runScrollActions(reply.actions)
+      setReply(next)
+      runActions(next.recommendedActions)
     } catch (err) {
-      setFollowUps([])
       if (!isFollowUp && prompt.response) {
-        setResponseText(prompt.response)
+        setReply({
+          response: prompt.response,
+          insight: { type: 'strategy', message: 'Deterministic roster-safe reply.' },
+        })
       } else {
-        setResponseText(
-          'Could not reach Agent Jones. You can try another suggestion in a moment.',
+        setReply(
+          buildAgentJonesFallbackV2({
+            slice: progressSlice,
+            profile,
+            voterLoading,
+          }),
         )
       }
       const msg =
@@ -122,6 +169,10 @@ export default function AgentJones({
       setAiLoading(false)
     }
   }
+
+  const actionButtons = reply?.recommendedActions?.filter(
+    (a) => a.type === 'scroll' || a.type === 'navigate',
+  )
 
   return (
     <section
@@ -165,13 +216,36 @@ export default function AgentJones({
         aria-live="polite"
       >
         {aiLoading ? (
-          <p className="subtitle" style={{ marginBottom: responseText ? 8 : 0 }}>
+          <p className="subtitle" style={{ marginBottom: reply?.response ? 8 : 0 }}>
             Asking Agent Jones…
           </p>
         ) : null}
-        {responseText ? (
+        {reply?.insight ? (
+          <div className="agent-jones-insight" role="note">
+            <span className="agent-jones-insight-pill">{reply.insight.type}</span>
+            <span className="agent-jones-insight-text">{reply.insight.message}</span>
+          </div>
+        ) : null}
+        {reply?.response ? (
           <>
-            <p className="agent-jones-response-text">{responseText}</p>
+            <p className="agent-jones-response-text">{reply.response}</p>
+            {actionButtons?.length ? (
+              <div className="agent-jones-actions" aria-label="Recommended actions">
+                {actionButtons.slice(0, 3).map((a, i) => (
+                  <button
+                    key={`${a.type}-${a.targetId ?? ''}-${i}`}
+                    type="button"
+                    className="btn-touch btn-primary agent-jones-action-btn"
+                    onClick={() => {
+                      if (a.type === 'scroll' && a.targetId) scrollToDashboardId(a.targetId)
+                      if (a.type === 'navigate' && a.targetId) window.location.assign(a.targetId)
+                    }}
+                  >
+                    {a.type === 'scroll' ? 'Go to section' : 'Open link'}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {aiError ? (
               <p className="subtitle" style={{ marginTop: 8, color: 'var(--warn, #b45309)' }}>
                 {aiError} — showing roster-safe fallback when available.

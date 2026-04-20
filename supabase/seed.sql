@@ -172,3 +172,52 @@ ON CONFLICT (campaign_slug, source_url) DO UPDATE SET
   content_json = EXCLUDED.content_json,
   fetched_at = EXCLUDED.fetched_at;
 
+-- ---------------------------------------------------------------------------
+-- Knowledge chunks + tags (granular; retrieval-ready)
+-- ---------------------------------------------------------------------------
+
+WITH doc AS (
+  SELECT id
+  FROM public.campaign_knowledge_documents
+  WHERE campaign_slug = 'chris-jones-for-congress'
+    AND source_url = 'https://chrisjonesforcongress.com/'
+  LIMIT 1
+),
+ins AS (
+  INSERT INTO public.campaign_knowledge_chunks (campaign_slug, document_id, chunk_index, content_text, tags)
+  SELECT
+    'chris-jones-for-congress',
+    doc.id,
+    x.chunk_index,
+    x.content_text,
+    x.tags
+  FROM doc
+  CROSS JOIN (
+    VALUES
+      (0, 'A Bigger Table. A Brighter Future.', ARRAY['slogan','hero','branding']::text[]),
+      (1, 'I’m a bridge builder, a fighter for us, and a visionary for the future of Arkansas.', ARRAY['hero','messaging']::text[]),
+      (2, 'Our campaign is about expanding opportunity, strengthening our communities, and proving that when Arkansans come together, we can fly.', ARRAY['hero','messaging']::text[]),
+      (3, 'Grew up in Pine Bluff as the son of a minister. Values of service and community. Path led to science while staying rooted in Arkansas. Bridge-building narrative: faith and science, rural and urban, young and old; respecting tradition while bringing new ideas.', ARRAY['bio','meet-chris']::text[]),
+      (4, 'Jobs & Local Economy: We can build an economy that lifts every community. Good jobs, fair wages, small business growth, high-quality internet access, and hospitals that stay open in rural towns.', ARRAY['issues','jobs','economy','jobs___local_economy']::text[]),
+      (5, 'Families & Health: Every family deserves the chance to thrive. Stronger schools, a full range of comprehensive maternal health support, addiction support and recovery, and food security must be part of the foundation for healthy communities.', ARRAY['issues','families','health','families___health']::text[]),
+      (6, 'Schools & Innovation: Our government should invest in our people. Early childhood education, hands-on apprenticeships, and training in both technology and the trades will prepare our children and our workforce for tomorrow.', ARRAY['issues','schools','innovation','schools___innovation']::text[]),
+      (7, 'Democracy for the People: Democracy belongs to all of us. Fair maps, secure and accessible elections, a government you can trust, and leaders who listen are the guardrails that protect our voice and our future.', ARRAY['issues','democracy','democracy_for_the_people']::text[]),
+      (8, 'Get to Know Me — https://chrisjonesforcongress.com/about/', ARRAY['cta','learn_more','bio']::text[]),
+      (9, 'Volunteer — https://chrisjonesforcongress.com/volunteer/', ARRAY['cta','volunteer']::text[]),
+      (10, 'Donate — https://chrisjonesforcongress.com/donate/', ARRAY['cta','donate']::text[]),
+      (11, 'Mailing address: P.O. Box 21803, Little Rock, AR 72221 (https://chrisjonesforcongress.com/contact-us/)', ARRAY['contact','mailing_address']::text[]),
+      (12, 'Facebook: https://chrisjonesforcongress.com/facebook/', ARRAY['social','facebook']::text[]),
+      (13, 'X: https://chrisjonesforcongress.com/x/', ARRAY['social','x']::text[]),
+      (14, 'Instagram: https://chrisjonesforcongress.com/instagram/', ARRAY['social','instagram']::text[])
+  ) AS x(chunk_index, content_text, tags)
+  ON CONFLICT (document_id, chunk_index) DO UPDATE SET
+    content_text = EXCLUDED.content_text,
+    tags = EXCLUDED.tags
+  RETURNING tags
+)
+INSERT INTO public.campaign_knowledge_tags (campaign_slug, tag)
+SELECT DISTINCT 'chris-jones-for-congress', t
+FROM ins
+CROSS JOIN LATERAL unnest(ins.tags) t
+ON CONFLICT (campaign_slug, tag) DO NOTHING;
+
