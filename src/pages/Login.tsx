@@ -103,6 +103,8 @@ export default function Login() {
 
       setMessageTone('success')
       setMessage('Signed in. Loading your workspace…')
+      // Full navigation so App picks up persisted session reliably (avoids race with React auth state).
+      window.location.replace('/dashboard')
     } finally {
       setBusy(false)
     }
@@ -149,6 +151,7 @@ export default function Login() {
         await ensureCampaignProfile()
         setMessageTone('success')
         setMessage('Account ready. Loading your workspace…')
+        window.location.replace('/dashboard')
         return
       }
 
@@ -181,7 +184,7 @@ export default function Login() {
         </p>
 
         <form
-          className="stack-section"
+          className="stack-section login-form"
           style={{ maxWidth: '480px' }}
           onSubmit={(e) => {
             e.preventDefault()
