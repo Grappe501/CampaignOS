@@ -48,20 +48,48 @@
   min-height: 52px;
   padding: 8px clamp(12px, 3vw, 20px);
   padding-top: max(8px, env(safe-area-inset-top));
-  background: var(--bg);
+  background: var(--brand-bar);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(236, 239, 249, 0.18);
 }
 
 .app-brand {
   font-weight: 600;
   font-size: 1.05rem;
-  color: var(--text-h);
+  color: #fff;
   text-decoration: none;
   min-height: 44px;
   min-width: 44px;
   display: inline-flex;
   align-items: center;
+}
+
+.app-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.app-brand-logo {
+  display: block;
+  width: auto;
+  height: 26px;
+  max-width: min(42vw, 220px);
+}
+
+.app-brand-text {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.app-brand:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 10px;
 }
 
 .app-menu-btn {
@@ -73,9 +101,9 @@
   padding: 0 12px;
   font: inherit;
   font-weight: 500;
-  color: var(--text-h);
-  background: var(--social-bg);
-  border: 1px solid var(--border);
+  color: #fff;
+  background: rgba(236, 239, 249, 0.12);
+  border: 1px solid rgba(236, 239, 249, 0.2);
   border-radius: 10px;
   cursor: pointer;
 }
@@ -161,7 +189,7 @@
   display: inline-flex;
   align-items: center;
   border-radius: 10px;
-  color: var(--text-h);
+  color: #fff;
   text-decoration: none;
   font-weight: 500;
 }
@@ -184,9 +212,9 @@
   padding: 0 18px;
   font: inherit;
   font-weight: 500;
-  color: var(--text-h);
-  background: var(--social-bg);
-  border: 1px solid var(--border);
+  color: #fff;
+  background: rgba(236, 239, 249, 0.12);
+  border: 1px solid rgba(236, 239, 249, 0.2);
   border-radius: 10px;
   cursor: pointer;
   width: 100%;
@@ -212,9 +240,12 @@
 }
 
 .btn-primary {
-  background: var(--accent-bg);
-  border-color: var(--accent-border);
-  color: var(--text-h);
+  background: #ffd12a;
+  border-color: rgba(255, 209, 42, 0.65);
+  color: var(--cj-ink);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .field-block {
@@ -323,6 +354,16 @@
   background: var(--social-bg);
   box-sizing: border-box;
   min-width: 0;
+}
+
+.card--brand {
+  background: radial-gradient(
+      1200px 220px at 0% 0%,
+      rgba(237, 163, 86, 0.18),
+      rgba(237, 163, 86, 0) 55%
+    ),
+    linear-gradient(180deg, rgba(236, 239, 249, 0.82), rgba(247, 240, 228, 0.52));
+  border-color: rgba(43, 57, 132, 0.22);
 }
 
 .summary-grid {
@@ -525,6 +566,42 @@
 
 .dash-identity {
   border-inline-start: 4px solid var(--accent);
+}
+
+.dash-identity-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dash-brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dash-candidate-headshot {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid rgba(237, 163, 86, 0.45);
+  box-shadow: var(--shadow);
+  background: rgba(247, 240, 228, 0.6);
+}
+
+@media (min-width: 768px) {
+  .dash-candidate-headshot {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+.dash-campaign-logo {
+  height: 28px;
+  width: auto;
+  max-width: min(74vw, 320px);
 }
 
 .dash-identity-strip {

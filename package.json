@@ -14,7 +14,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "netlify:env:push": "node scripts/netlify-env-push.mjs"
+    "netlify:env:push": "node scripts/netlify-env-push.mjs",
+    "ingest:chrisjones": "node scripts/ingest-chris-jones-homepage.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",

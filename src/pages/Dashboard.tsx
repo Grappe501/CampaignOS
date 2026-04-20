@@ -160,7 +160,11 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
       <AppHeader onSignOut={handleSignOut} />
       <main className="app-shell">
         <DashboardGrid>
-          <DashboardHeader profile={profile} email={accountEmail} />
+          <DashboardHeader
+            profile={profile}
+            email={accountEmail}
+            matchedVoter={voterMatch.matched}
+          />
 
           <NextStepCard step={nextStep} />
 

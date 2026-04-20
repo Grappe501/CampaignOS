@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 
 const DRAWER_ID = 'campaignos-nav-drawer'
 
@@ -28,7 +29,18 @@ export default function AppHeader({ onSignOut }: AppHeaderProps) {
   return (
     <header className="app-topbar">
       <Link to="/" className="app-brand">
-        CampaignOS
+        <span className="app-brand-lockup" aria-label="CampaignOS">
+          <img
+            className="app-brand-logo"
+            src={CHRIS_JONES_FOR_CONGRESS_PUBLIC.assets.logoPrimaryUrl}
+            alt=""
+            width={120}
+            height={28}
+            loading="eager"
+            decoding="async"
+          />
+          <span className="app-brand-text">CampaignOS</span>
+        </span>
       </Link>
 
       {onSignOut ? (

@@ -1,0 +1,126 @@
+{
+  "campaignSlug": "chris-jones-for-congress",
+  "campaignName": "Chris Jones for Congress",
+  "source": {
+    "homepageUrl": "https://chrisjonesforcongress.com/",
+    "cssTokenUrl": "https://chrisjonesforcongress.com/wp-content/uploads/elementor/css/post-96.css?ver=1775512398",
+    "fetchedAt": "2026-04-20"
+  },
+  "assets": {
+    "logoPrimaryUrl": "https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Jones-Logo-H-Orange-White.svg",
+    "logoAltUrl": "https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Jones-Logo-V-Blue-Orange.svg",
+    "candidateHeadshotUrl": "https://chrisjonesforcongress.com/wp-content/uploads/2025/09/jones-headshot-2-scaled.png",
+    "heroImageUrl": "https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Mobile-Hero-Image.png",
+    "ogImageUrl": "https://chrisjonesforcongress.com/wp-content/uploads/2025/09/Jones_SocialShare_OG.png"
+  },
+  "tokens": [
+    { "category": "color", "key": "primary", "value": "#2B3984" },
+    { "category": "color", "key": "secondary", "value": "#4F69B2" },
+    { "category": "color", "key": "accent", "value": "#EDA356" },
+    { "category": "color", "key": "ink", "value": "#010323" },
+    { "category": "color", "key": "paper", "value": "#F7F0E4" },
+    { "category": "color", "key": "soft", "value": "#ECEFF9" },
+    {
+      "category": "font",
+      "key": "ui",
+      "value": "Manrope (Google Fonts) + system sans fallback"
+    }
+  ],
+  "messages": [
+    { "kind": "slogan", "text": "A Bigger Table. A Brighter Future.", "sortOrder": 0 },
+    {
+      "kind": "hero",
+      "text": "I’m a bridge builder, a fighter for us, and a visionary for the future of Arkansas.",
+      "sortOrder": 0
+    },
+    {
+      "kind": "hero",
+      "text": "Our campaign is about expanding opportunity, strengthening our communities, and proving that when Arkansans come together, we can fly.",
+      "sortOrder": 1
+    }
+  ],
+  "navigationLabels": ["Home", "Meet Chris", "Store"],
+  "bioFacts": [
+    { "fact": "Grew up in Pine Bluff as the son of a minister.", "sortOrder": 0 },
+    { "fact": "Values of service and community.", "sortOrder": 1 },
+    { "fact": "Path led to science while staying rooted in Arkansas.", "sortOrder": 2 },
+    {
+      "fact": "Bridge-building narrative: faith and science, rural and urban, young and old; respecting tradition while bringing new ideas.",
+      "sortOrder": 3
+    }
+  ],
+  "issuePillars": [
+    {
+      "key": "jobs_local_economy",
+      "title": "Jobs & Local Economy",
+      "summary": "We can build an economy that lifts every community. Good jobs, fair wages, small business growth, high-quality internet access, and hospitals that stay open in rural towns."
+    },
+    {
+      "key": "families_health",
+      "title": "Families & Health",
+      "summary": "Every family deserves the chance to thrive. Stronger schools, a full range of comprehensive maternal health support, addiction support and recovery, and food security must be part of the foundation for healthy communities."
+    },
+    {
+      "key": "schools_innovation",
+      "title": "Schools & Innovation",
+      "summary": "Our government should invest in our people. Early childhood education, hands-on apprenticeships, and training in both technology and the trades will prepare our children and our workforce for tomorrow."
+    },
+    {
+      "key": "democracy_for_people",
+      "title": "Democracy for the People",
+      "summary": "Democracy belongs to all of us. Fair maps, secure and accessible elections, a government you can trust, and leaders who listen are the guardrails that protect our voice and our future."
+    }
+  ],
+  "ctas": [
+    {
+      "key": "get_to_know_me",
+      "label": "Get to Know Me",
+      "url": "https://chrisjonesforcongress.com/about/",
+      "kind": "learn_more",
+      "sortOrder": 0
+    },
+    {
+      "key": "volunteer",
+      "label": "Volunteer",
+      "url": "https://chrisjonesforcongress.com/volunteer/",
+      "kind": "volunteer",
+      "sortOrder": 1
+    },
+    {
+      "key": "donate",
+      "label": "Donate",
+      "url": "https://chrisjonesforcongress.com/donate/",
+      "kind": "donate",
+      "sortOrder": 2
+    }
+  ],
+  "contactPoints": [
+    {
+      "kind": "mailing_address",
+      "label": "Mailing address",
+      "value": "P.O. Box 21803, Little Rock, AR 72221",
+      "url": "https://chrisjonesforcongress.com/contact-us/"
+    }
+  ],
+  "socialLinks": [
+    {
+      "platform": "facebook",
+      "label": "Facebook",
+      "url": "https://chrisjonesforcongress.com/facebook/"
+    },
+    { "platform": "x", "label": "X", "url": "https://chrisjonesforcongress.com/x/" },
+    {
+      "platform": "instagram",
+      "label": "Instagram",
+      "url": "https://chrisjonesforcongress.com/instagram/"
+    }
+  ],
+  "documents": [
+    {
+      "sourceUrl": "https://chrisjonesforcongress.com/",
+      "title": "Homepage",
+      "tags": ["homepage", "public", "branding", "bio", "issues", "cta"]
+    }
+  ]
+}
+

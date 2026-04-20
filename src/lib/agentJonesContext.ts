@@ -1,5 +1,6 @@
 import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from './dashboardState'
+import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 
 /** Dashboard sections the model may suggest scrolling to — keep in sync with `netlify/functions/agent-jones.ts` SCROLL_IDS. */
 export const AGENT_JONES_SCROLL_TARGET_IDS = [
@@ -42,6 +43,14 @@ export type AgentJonesSafeContext = {
   progressSlice: DashboardProgressSlice
   voterLoading: boolean
   profileHints?: AgentJonesSafeProfileHints
+  campaign?: {
+    slogan?: string
+    shortBio?: string
+    issuePillars?: { title: string; summary: string }[]
+    ctas?: { label: string; url: string }[]
+    contact?: { addressLabel?: string; addressUrl?: string }
+    social?: { platform: string; label: string; url: string }[]
+  }
 } & AgentJonesTaskTrainingSummaries
 
 function trunc(s: unknown, max: number): string | null {
@@ -64,6 +73,28 @@ export function buildAgentJonesSafeContext(input: {
 }): AgentJonesSafeContext {
   const { progressSlice, voterLoading, profile, summaries } = input
 
+  const campaign: NonNullable<AgentJonesSafeContext['campaign']> = {
+    slogan: trunc(CHRIS_JONES_FOR_CONGRESS_PUBLIC.slogan, 120) ?? undefined,
+    shortBio: trunc(CHRIS_JONES_FOR_CONGRESS_PUBLIC.shortBio, 420) ?? undefined,
+    issuePillars: CHRIS_JONES_FOR_CONGRESS_PUBLIC.issuePillars.slice(0, 6).map((p) => ({
+      title: p.title,
+      summary: p.summary,
+    })),
+    ctas: CHRIS_JONES_FOR_CONGRESS_PUBLIC.ctas.slice(0, 6).map((c) => ({
+      label: c.label,
+      url: c.url,
+    })),
+    contact: {
+      addressLabel: trunc(CHRIS_JONES_FOR_CONGRESS_PUBLIC.contact.addressLabel, 160) ?? undefined,
+      addressUrl: trunc(CHRIS_JONES_FOR_CONGRESS_PUBLIC.contact.addressUrl, 240) ?? undefined,
+    },
+    social: CHRIS_JONES_FOR_CONGRESS_PUBLIC.social.slice(0, 8).map((s) => ({
+      platform: s.platform,
+      label: s.label,
+      url: s.url,
+    })),
+  }
+
   const taskTraining: AgentJonesTaskTrainingSummaries = {}
   const ctt = truncSummary(summaries?.currentTaskTitle, 120)
   const cts = truncSummary(summaries?.currentTaskStatus, 64)
@@ -78,6 +109,7 @@ export function buildAgentJonesSafeContext(input: {
     return {
       progressSlice,
       voterLoading,
+      campaign,
       ...taskTraining,
     }
   }
@@ -97,6 +129,7 @@ export function buildAgentJonesSafeContext(input: {
   return {
     progressSlice,
     voterLoading,
+    campaign,
     ...(Object.keys(hints).length > 0 ? { profileHints: hints } : {}),
     ...taskTraining,
   }
