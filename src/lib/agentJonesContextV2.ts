@@ -9,14 +9,22 @@ import type {
   AgentJonesUserScope,
 } from './agentJonesRoleDesk'
 import { buildAgentJonesTaskPressure } from './agentJonesTaskPressure'
-import { enrichLeadershipCommandWithV32 } from './agentJonesLeadershipCommand'
+import { enrichCampaignManagerCommandPass2 } from './agentJonesCampaignManagerCommand'
+import {
+  enrichLeadershipCommandWithV32,
+  enrichLeadershipCommandWithV33,
+  enrichLeadershipCommandWithV34,
+} from './agentJonesLeadershipCommand'
 import { buildAgentJonesV31Pack } from './agentJonesV31Pack'
 import {
   agentJonesV32CommandScope,
   buildAgentJonesV32Pack,
 } from './agentJonesV32Pack'
 import { buildAgentJonesV32ProactiveSupplements, mergeProactiveAlertLists } from './agentJonesProactiveV32'
+import { buildAgentJonesV33ProactiveSupplements } from './agentJonesProactiveV33'
 import { buildAgentJonesV3Brain } from './agentJonesV3Brain'
+import { buildAgentJonesV33Pack } from './agentJonesV33Pack'
+import { buildAgentJonesV34Pack } from './agentJonesV34Pack'
 
 /** Bounded relational organizing summary — no PII beyond counts and stage hints. */
 export type AgentJonesRelationalPower5Context = {
@@ -352,6 +360,152 @@ export type AgentJonesCampaignManagerCommand = {
   field_readiness_framing?: string | null
   /** Coverage + timing pressure from visible boards / calendar layer. */
   coverage_task_pressure_line?: string | null
+  /** v3.3 Pass 2 — comparative top row focus for HQ (session-safe). */
+  recommended_area_focus?: string | null
+  /** v3.3 Pass 2 — turnout / persuasion / recruitment posture (heuristic). */
+  segmentation_posture_line?: string | null
+  /** v3.3 Pass 2 — event staffing + weak-field overlap (one line). */
+  event_deployment_line?: string | null
+}
+
+/** v3.3 — comparative area row (bounded scores; nulls when not derivable). */
+export type AgentJonesAreaScore = {
+  area_label: string
+  area_type: 'turf' | 'ward' | 'precinct' | 'county' | 'district' | 'region'
+  priority_band: 'critical' | 'high' | 'watch' | 'stable'
+  opportunity_score?: number | null
+  readiness_score?: number | null
+  coverage_score?: number | null
+  pressure_score?: number | null
+  trend?: 'improving' | 'steady' | 'slipping' | null
+  recommendation_headline?: string | null
+}
+
+/** v3.3 — persuasion / turnout / posture framing (operational guidance, not voter truth). */
+export type AgentJonesSegmentationSummary = {
+  area_label?: string | null
+  primary_mode?:
+    | 'turnout'
+    | 'persuasion'
+    | 'recruitment'
+    | 'leadership'
+    | 'event_mobilization'
+    | null
+  secondary_mode?:
+    | 'turnout'
+    | 'persuasion'
+    | 'recruitment'
+    | 'leadership'
+    | 'event_mobilization'
+    | null
+  rationale_points?: string[]
+  confidence_note?: string | null
+  /** Explicit turnout vs persuasion balance line when both matter (operational, not voter truth). */
+  turnout_persuasion_balance?: string | null
+}
+
+/** v3.3 — event staffing / deployment hints from timing + coverage layer. */
+export type AgentJonesEventDeploymentSummary = {
+  highest_priority_event_label?: string | null
+  highest_priority_event_reason?: string | null
+  staffing_pressure_count?: number | null
+  overlap_with_field_pressure?: string[]
+  recommended_event_action?: string | null
+  /** Stripped field weakest-area proxy when present. */
+  weak_field_area_label?: string | null
+  /** Narrative link between weak field and staffing/events (no microtargeting). */
+  weak_field_overlap_note?: string | null
+}
+
+/** v3.3 — fused field + calendar + task pressure (command headline). */
+export type AgentJonesCommandFusionSummary = {
+  top_combined_pressure_headline?: string | null
+  combined_pressure_areas?: string[]
+  deadline_overlap_count?: number | null
+  event_overlap_count?: number | null
+  task_overlap_count?: number | null
+  /** Visible assignment rows flagged for event/adjacent staffing (coverage boards). */
+  coverage_staffing_pressure_count?: number | null
+  /** Assignment timing / governance warnings in the calendar layer (session). */
+  governance_timing_signal_count?: number | null
+  recommended_intervention?: string | null
+}
+
+/** v3.3 — district / session-scope theater narrative. */
+export type AgentJonesCampaignTheaterSummary = {
+  theater_label?: string | null
+  strongest_zone_labels?: string[]
+  weakest_zone_labels?: string[]
+  opportunity_zone_labels?: string[]
+  recovery_zone_labels?: string[]
+  readiness_headline?: string | null
+  command_headline?: string | null
+  /** When multiple ranked areas exist — honest scope note (Pass 3). */
+  multi_area_note?: string | null
+}
+
+/** v3.4 — phase-aware campaign mode (derived; not turnout math). */
+export type AgentJonesCampaignPhaseSummary = {
+  campaign_mode?:
+    | 'persuasion'
+    | 'turnout_build'
+    | 'early_vote'
+    | 'gotv'
+    | 'election_day'
+    | 'recovery'
+    | null
+  mode_headline?: string | null
+  days_to_next_major_milestone?: number | null
+  next_major_milestone_label?: string | null
+  urgency_level?: 'watch' | 'high' | 'critical' | null
+  recommended_focus_areas?: string[]
+}
+
+/** v3.4 — election + session timing countdown (bounded). */
+export type AgentJonesCountdownSummary = {
+  next_countdown_label?: string | null
+  days_remaining?: number | null
+  countdown_window?: '7d' | '96h' | '48h' | '24h' | 'same_day' | null
+  countdown_pressure_headline?: string | null
+  action_window_notes?: string[]
+  /** When the timing layer has no surfaced assignment milestones — election clock only. */
+  countdown_scope_note?: string | null
+}
+
+/** v3.4 — resource / posture tradeoffs (heuristic). */
+export type AgentJonesTradeoffSummary = {
+  top_tradeoff_headline?: string | null
+  preferred_primary_action?: string | null
+  deferred_secondary_action?: string | null
+  rationale_points?: string[]
+  confidence_note?: string | null
+}
+
+/** v3.4 — intervention order from visible signals only. */
+export type AgentJonesInterventionSequence = {
+  sequence_headline?: string | null
+  ordered_steps?: string[]
+  primary_owner?: string | null
+  downstream_dependencies?: string[]
+  unblock_value_note?: string | null
+}
+
+/** v3.4 — GOTV / mobilization hints (no poll-level precision). */
+export type AgentJonesGotvSummary = {
+  gotv_mode_active?: boolean | null
+  highest_pressure_area_labels?: string[]
+  volunteer_deployment_headline?: string | null
+  staffing_gap_labels?: string[]
+  turnout_risk_headline?: string | null
+  best_next_gotv_actions?: string[]
+}
+
+/** v3.4 — who should act first (coaching labels, not permissions). */
+export type AgentJonesDeskRoutingSummary = {
+  first_owner_role?: string | null
+  second_owner_role?: string | null
+  escalation_route?: string[]
+  route_headline?: string | null
 }
 
 /** Coordinator oversight — counts only, no assignee PII. */
@@ -481,6 +635,21 @@ export type AgentJonesContextV2 = {
   demographic_summary?: AgentJonesDemographicSummary
   escalation_summary?: AgentJonesEscalationSummary
   campaign_manager_command?: AgentJonesCampaignManagerCommand
+  /** v3.3 — campaign commander layer (leadership / command-scoped desks only). */
+  area_ranking?: AgentJonesAreaScore[]
+  /** Pass 1 — when ranking rows are missing or thin. */
+  area_ranking_note?: string
+  segmentation_summary?: AgentJonesSegmentationSummary
+  event_deployment?: AgentJonesEventDeploymentSummary
+  command_fusion?: AgentJonesCommandFusionSummary
+  campaign_theater?: AgentJonesCampaignTheaterSummary
+  /** v3.4 — chief of staff / GOTV command layer (command-scoped desks). */
+  campaign_phase?: AgentJonesCampaignPhaseSummary
+  countdown_summary?: AgentJonesCountdownSummary
+  tradeoff_summary?: AgentJonesTradeoffSummary
+  intervention_sequence?: AgentJonesInterventionSequence
+  gotv_summary?: AgentJonesGotvSummary
+  desk_routing?: AgentJonesDeskRoutingSummary
 }
 
 function trunc(s: unknown, max: number): string | null {
@@ -578,6 +747,43 @@ export function buildAgentJonesContextV2(input: {
         })
       : null
 
+  const v33 =
+    operating != null && v32
+      ? buildAgentJonesV33Pack({
+          surface,
+          operating,
+          leadershipSnapshot: leadershipSnapshot ?? null,
+          geo: v32.geo_intelligence,
+          field: v32.field_intelligence,
+          coverage: v32.coverage_intelligence,
+          demographic: v32.demographic_summary,
+          calendarSummary: v31?.calendar_summary ?? null,
+          taskPressure,
+          volunteerMission: volunteerMission ?? null,
+          campaignManagerCommand: v32.campaign_manager_command ?? null,
+        })
+      : null
+
+  const v33Brain =
+    v33 && Object.keys(v33).length > 0 ? v33 : null
+
+  const v34 =
+    operating != null && v32
+      ? buildAgentJonesV34Pack({
+          surface,
+          operating,
+          v33: v33Brain,
+          calendarSummary: v31?.calendar_summary ?? null,
+          coordinatorOps: coordinatorOps ?? null,
+          leadershipSnapshot: leadershipSnapshot ?? null,
+          field: v32.field_intelligence,
+          coverage: v32.coverage_intelligence,
+          escalation: v32.escalation_summary,
+        })
+      : null
+
+  const v34Brain = v34 && Object.keys(v34).length > 0 ? v34 : null
+
   const proactiveAlerts =
     v31 && v32 && operating
       ? (() => {
@@ -586,7 +792,7 @@ export function buildAgentJonesContextV2(input: {
             normalizedRole: operating.normalized_role,
             userScope: operating.user_scope,
           })
-          return mergeProactiveAlertLists(
+          const base = mergeProactiveAlertLists(
             v31.proactive_alerts,
             buildAgentJonesV32ProactiveSupplements({
               operating,
@@ -598,6 +804,16 @@ export function buildAgentJonesContextV2(input: {
               escalation: v32.escalation_summary,
             }),
             cmdScope ? 6 : 5,
+          )
+          if (!v33Brain) return base
+          return mergeProactiveAlertLists(
+            base,
+            buildAgentJonesV33ProactiveSupplements({
+              surface,
+              operating,
+              fusion: v33Brain.command_fusion,
+            }),
+            6,
           )
         })()
       : (v31?.proactive_alerts ?? [])
@@ -619,17 +835,29 @@ export function buildAgentJonesContextV2(input: {
                   coverage: v32.coverage_intelligence,
                 }
               : null,
+          v33: v33Brain,
+          v34: v34Brain,
         })
       : null
 
-  const leadership_command_out = enrichLeadershipCommandWithV32({
-    base: v31?.leadership_command ?? null,
+  const leadership_command_out = enrichLeadershipCommandWithV34({
+    base: enrichLeadershipCommandWithV33({
+      base: enrichLeadershipCommandWithV32({
+        base: v31?.leadership_command ?? null,
+        operating: operating ?? null,
+        geo: v32?.geo_intelligence ?? null,
+        field: v32?.field_intelligence ?? null,
+        coverage: v32?.coverage_intelligence ?? null,
+        escalation: v32?.escalation_summary ?? null,
+        surface,
+      }),
+      operating: operating ?? null,
+      surface,
+      v33: v33Brain,
+    }),
     operating: operating ?? null,
-    geo: v32?.geo_intelligence ?? null,
-    field: v32?.field_intelligence ?? null,
-    coverage: v32?.coverage_intelligence ?? null,
-    escalation: v32?.escalation_summary ?? null,
     surface,
+    v34: v34Brain,
   })
 
   const exceptionRequestedAt = trunc(profile?.exception_requested_at, 40)
@@ -690,8 +918,39 @@ export function buildAgentJonesContextV2(input: {
     ...(v32?.demographic_summary ? { demographic_summary: v32.demographic_summary } : {}),
     ...(v32?.escalation_summary ? { escalation_summary: v32.escalation_summary } : {}),
     ...(v32?.campaign_manager_command
-      ? { campaign_manager_command: v32.campaign_manager_command }
+      ? {
+          campaign_manager_command: enrichCampaignManagerCommandPass2(
+            v32.campaign_manager_command,
+            {
+              area_ranking: v33?.area_ranking,
+              segmentation_summary: v33?.segmentation_summary,
+              event_deployment: v33?.event_deployment,
+              campaign_phase: v34Brain?.campaign_phase ?? null,
+              countdown_summary: v34Brain?.countdown_summary ?? null,
+              gotv_summary: v34Brain?.gotv_summary ?? null,
+              tradeoff_summary: v34Brain?.tradeoff_summary ?? null,
+              intervention_sequence: v34Brain?.intervention_sequence ?? null,
+              desk_routing: v34Brain?.desk_routing ?? null,
+            },
+          ),
+        }
       : {}),
+    ...(v33?.area_ranking?.length ? { area_ranking: v33.area_ranking } : {}),
+    ...(v33?.area_ranking_note ? { area_ranking_note: v33.area_ranking_note } : {}),
+    ...(v33?.segmentation_summary
+      ? { segmentation_summary: v33.segmentation_summary }
+      : {}),
+    ...(v33?.event_deployment ? { event_deployment: v33.event_deployment } : {}),
+    ...(v33?.command_fusion ? { command_fusion: v33.command_fusion } : {}),
+    ...(v33?.campaign_theater ? { campaign_theater: v33.campaign_theater } : {}),
+    ...(v34Brain?.campaign_phase ? { campaign_phase: v34Brain.campaign_phase } : {}),
+    ...(v34Brain?.countdown_summary ? { countdown_summary: v34Brain.countdown_summary } : {}),
+    ...(v34Brain?.tradeoff_summary ? { tradeoff_summary: v34Brain.tradeoff_summary } : {}),
+    ...(v34Brain?.intervention_sequence
+      ? { intervention_sequence: v34Brain.intervention_sequence }
+      : {}),
+    ...(v34Brain?.gotv_summary ? { gotv_summary: v34Brain.gotv_summary } : {}),
+    ...(v34Brain?.desk_routing ? { desk_routing: v34Brain.desk_routing } : {}),
   }
 }
 

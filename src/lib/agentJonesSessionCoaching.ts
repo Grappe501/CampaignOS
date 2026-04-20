@@ -15,10 +15,24 @@ export function agentJonesV32IntelCoachingTag(v32IntelEpoch: string): string {
 export function composeAgentJonesCoachingSignalEpoch(
   operatingEpoch: string,
   v32IntelEpoch: string,
+  v33IntelEpoch?: string,
+  v34IntelEpoch?: string,
   max = 320,
 ): string {
-  const tag = agentJonesV32IntelCoachingTag(v32IntelEpoch)
-  const composed = tag ? `${operatingEpoch}|v32:${tag}` : operatingEpoch
+  const tag32 = agentJonesV32IntelCoachingTag(v32IntelEpoch)
+  let composed = tag32 ? `${operatingEpoch}|v32:${tag32}` : operatingEpoch
+  const tag33 = (v33IntelEpoch ?? '').trim()
+    ? agentJonesV32IntelCoachingTag(v33IntelEpoch ?? '')
+    : ''
+  if (tag33) {
+    composed = `${composed}|v33:${tag33}`
+  }
+  const tag34 = (v34IntelEpoch ?? '').trim()
+    ? agentJonesV32IntelCoachingTag(v34IntelEpoch ?? '')
+    : ''
+  if (tag34) {
+    composed = `${composed}|v34:${tag34}`
+  }
   return composed.length > max ? composed.slice(0, max) : composed
 }
 

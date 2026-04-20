@@ -211,6 +211,18 @@ export default function AgentJonesV32Pass1Panel({
           Opportunity anchor (session proxy): {campaignManagerCommand.top_opportunity_area_hint}
         </p>
       ) : null}
+      {campaignManagerCommand.recommended_area_focus ? (
+        <p className="agent-jones-v32-pass1-meta">
+          <span className="agent-jones-v31-calendar-k">HQ area focus</span>{' '}
+          {campaignManagerCommand.recommended_area_focus}
+        </p>
+      ) : null}
+      {campaignManagerCommand.segmentation_posture_line ? (
+        <p className="agent-jones-v32-pass1-note">{campaignManagerCommand.segmentation_posture_line}</p>
+      ) : null}
+      {campaignManagerCommand.event_deployment_line ? (
+        <p className="agent-jones-v32-pass1-note">{campaignManagerCommand.event_deployment_line}</p>
+      ) : null}
       {campaignManagerCommand.command_lines.map((line, i) => (
         <p key={i} className="agent-jones-v32-pass1-line">
           {line}

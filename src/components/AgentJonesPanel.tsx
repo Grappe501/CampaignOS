@@ -7,7 +7,11 @@ import {
   scrollToDashboardId,
   type AgentJonesPrompt,
 } from '../lib/agentJonesGuidance'
-import { enrichLeadershipCommandWithV32 } from '../lib/agentJonesLeadershipCommand'
+import {
+  enrichLeadershipCommandWithV32,
+  enrichLeadershipCommandWithV33,
+  enrichLeadershipCommandWithV34,
+} from '../lib/agentJonesLeadershipCommand'
 import { buildAgentJonesOperatingContext } from '../lib/agentJonesPriorities'
 import { buildAgentJonesTaskPressure } from '../lib/agentJonesTaskPressure'
 import { buildAgentJonesV31Pack } from '../lib/agentJonesV31Pack'
@@ -16,7 +20,17 @@ import {
   buildAgentJonesV32IntelEpoch,
   buildAgentJonesV32Pack,
 } from '../lib/agentJonesV32Pack'
+import { buildAgentJonesV33IntelEpoch, buildAgentJonesV33Pack } from '../lib/agentJonesV33Pack'
+import { buildAgentJonesV34Pack } from '../lib/agentJonesV34Pack'
+import {
+  buildAgentJonesV34AtAGlanceLine,
+  buildAgentJonesV34CoachingEpoch,
+  prioritizeAgentJonesNavigationHintsForV34,
+} from '../lib/agentJonesV34UiHelpers'
+import { buildAgentJonesV34ProactiveSupplements } from '../lib/agentJonesProactiveV34'
+import { enrichCampaignManagerCommandPass2 } from '../lib/agentJonesCampaignManagerCommand'
 import { buildAgentJonesV32ProactiveSupplements, mergeProactiveAlertLists } from '../lib/agentJonesProactiveV32'
+import { buildAgentJonesV33ProactiveSupplements } from '../lib/agentJonesProactiveV33'
 import { buildAgentJonesV3Brain } from '../lib/agentJonesV3Brain'
 import {
   buildAgentJonesContextV2,
@@ -65,6 +79,12 @@ import AgentJonesProactiveAlerts from './agentJones/AgentJonesProactiveAlerts'
 import AgentJonesLeadershipSummary from './agentJones/AgentJonesLeadershipSummary'
 import AgentJonesReadinessCoverageBlock from './agentJones/AgentJonesReadinessCoverage'
 import AgentJonesV32Pass1Panel from './agentJones/AgentJonesV32Pass1Panel'
+import AgentJonesAreaRanking from './agentJones/AgentJonesAreaRanking'
+import AgentJonesSegmentationSummary from './agentJones/AgentJonesSegmentationSummary'
+import AgentJonesDeploymentSummary from './agentJones/AgentJonesDeploymentSummary'
+import AgentJonesTheaterSummary from './agentJones/AgentJonesTheaterSummary'
+import AgentJonesCommandFusionBlock from './agentJones/AgentJonesCommandFusionBlock'
+import AgentJonesV34Briefing from './agentJones/AgentJonesV34Briefing'
 import {
   buildAgentJonesSessionCoachingPayload,
   composeAgentJonesCoachingSignalEpoch,
@@ -205,6 +225,11 @@ export type AgentJonesPanelProps = {
   coordinatorOps?: AgentJonesCoordinatorOpsContext | null
   leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
   coordinatorHasSupervisorScope?: boolean
+  /**
+   * `floating` — conversation-first: answers + question, desk intel under
+   * “Deeper understanding”. `standard` — full dashboard panel (legacy).
+   */
+  uiMode?: 'standard' | 'floating'
 }
 
 export default function AgentJonesPanel({
@@ -225,6 +250,7 @@ export default function AgentJonesPanel({
   coordinatorOps,
   leadershipSnapshot,
   coordinatorHasSupervisorScope = false,
+  uiMode = 'standard',
 }: AgentJonesPanelProps) {
   const location = useLocation()
   const headingId = useId()
@@ -347,6 +373,84 @@ export default function AgentJonesPanel({
     ],
   )
 
+  const v33Pack = useMemo(
+    () =>
+      buildAgentJonesV33Pack({
+        surface: surface ?? 'volunteer_dashboard',
+        operating,
+        leadershipSnapshot: leadershipSnapshot ?? null,
+        geo: v32Pack.geo_intelligence,
+        field: v32Pack.field_intelligence,
+        coverage: v32Pack.coverage_intelligence,
+        demographic: v32Pack.demographic_summary,
+        calendarSummary: v31Pack.calendar_summary ?? null,
+        taskPressure,
+        volunteerMission: volunteerMission ?? null,
+        campaignManagerCommand: v32Pack.campaign_manager_command ?? null,
+      }),
+    [
+      surface,
+      operating,
+      leadershipSnapshot,
+      v32Pack.geo_intelligence,
+      v32Pack.field_intelligence,
+      v32Pack.coverage_intelligence,
+      v32Pack.demographic_summary,
+      v32Pack.campaign_manager_command,
+      v31Pack.calendar_summary,
+      taskPressure,
+      volunteerMission,
+    ],
+  )
+
+  const v33BrainForPanel =
+    v33Pack && Object.keys(v33Pack).length > 0 ? v33Pack : null
+
+  const v34Pack = useMemo(
+    () =>
+      buildAgentJonesV34Pack({
+        surface: surface ?? 'volunteer_dashboard',
+        operating,
+        v33: v33BrainForPanel,
+        calendarSummary: v31Pack.calendar_summary ?? null,
+        coordinatorOps: coordinatorOps ?? null,
+        leadershipSnapshot: leadershipSnapshot ?? null,
+        field: v32Pack.field_intelligence,
+        coverage: v32Pack.coverage_intelligence,
+        escalation: v32Pack.escalation_summary,
+      }),
+    [
+      surface,
+      operating,
+      v33BrainForPanel,
+      v31Pack.calendar_summary,
+      coordinatorOps,
+      leadershipSnapshot,
+      v32Pack.field_intelligence,
+      v32Pack.coverage_intelligence,
+      v32Pack.escalation_summary,
+    ],
+  )
+
+  const v34BrainForPanel =
+    v34Pack && Object.keys(v34Pack).length > 0 ? v34Pack : null
+
+  const campaignManagerCommandForPanel = useMemo(() => {
+    const raw = v32Pack.campaign_manager_command ?? null
+    if (!raw) return null
+    return enrichCampaignManagerCommandPass2(raw, {
+      area_ranking: v33BrainForPanel?.area_ranking,
+      segmentation_summary: v33BrainForPanel?.segmentation_summary,
+      event_deployment: v33BrainForPanel?.event_deployment,
+      campaign_phase: v34BrainForPanel?.campaign_phase ?? null,
+      countdown_summary: v34BrainForPanel?.countdown_summary ?? null,
+      gotv_summary: v34BrainForPanel?.gotv_summary ?? null,
+      tradeoff_summary: v34BrainForPanel?.tradeoff_summary ?? null,
+      intervention_sequence: v34BrainForPanel?.intervention_sequence ?? null,
+      desk_routing: v34BrainForPanel?.desk_routing ?? null,
+    })
+  }, [v32Pack.campaign_manager_command, v33BrainForPanel, v34BrainForPanel])
+
   const v3Brain = useMemo(
     () =>
       buildAgentJonesV3Brain({
@@ -363,20 +467,50 @@ export default function AgentJonesPanel({
                 coverage: v32Pack.coverage_intelligence,
               }
             : null,
+        v33: v33BrainForPanel,
+        v34: v34BrainForPanel,
       }),
-    [location.pathname, surface, operating, v32Pack],
+    [location.pathname, surface, operating, v32Pack, v33BrainForPanel, v34BrainForPanel],
+  )
+
+  const navigationHintsForPanel = useMemo(() => {
+    if (!v34BrainForPanel || Object.keys(v34BrainForPanel).length === 0) {
+      return v3Brain.navigation_hints
+    }
+    return prioritizeAgentJonesNavigationHintsForV34(
+      v3Brain.navigation_hints,
+      v34BrainForPanel,
+    )
+  }, [v3Brain.navigation_hints, v34BrainForPanel])
+
+  const v34AtAGlance = useMemo(
+    () =>
+      v34BrainForPanel && Object.keys(v34BrainForPanel).length > 0
+        ? buildAgentJonesV34AtAGlanceLine(v34BrainForPanel)
+        : null,
+    [v34BrainForPanel],
   )
 
   const leadershipCommandDisplay = useMemo(
     () =>
-      enrichLeadershipCommandWithV32({
-        base: v31Pack.leadership_command ?? null,
+      enrichLeadershipCommandWithV34({
+        base: enrichLeadershipCommandWithV33({
+          base: enrichLeadershipCommandWithV32({
+            base: v31Pack.leadership_command ?? null,
+            operating,
+            geo: v32Pack.geo_intelligence,
+            field: v32Pack.field_intelligence,
+            coverage: v32Pack.coverage_intelligence,
+            escalation: v32Pack.escalation_summary,
+            surface: surface ?? 'volunteer_dashboard',
+          }),
+          operating,
+          surface: surface ?? 'volunteer_dashboard',
+          v33: v33BrainForPanel,
+        }),
         operating,
-        geo: v32Pack.geo_intelligence,
-        field: v32Pack.field_intelligence,
-        coverage: v32Pack.coverage_intelligence,
-        escalation: v32Pack.escalation_summary,
         surface: surface ?? 'volunteer_dashboard',
+        v34: v34BrainForPanel,
       }),
     [
       v31Pack.leadership_command,
@@ -386,6 +520,8 @@ export default function AgentJonesPanel({
       v32Pack.coverage_intelligence,
       v32Pack.escalation_summary,
       surface,
+      v33BrainForPanel,
+      v34BrainForPanel,
     ],
   )
 
@@ -396,7 +532,7 @@ export default function AgentJonesPanel({
       normalizedRole: operating.normalized_role,
       userScope: operating.user_scope,
     })
-    return mergeProactiveAlertLists(
+    let merged = mergeProactiveAlertLists(
       v31Pack.proactive_alerts,
       buildAgentJonesV32ProactiveSupplements({
         operating,
@@ -409,6 +545,30 @@ export default function AgentJonesPanel({
       }),
       cmdScope ? 6 : 5,
     )
+    if (v33BrainForPanel?.command_fusion) {
+      merged = mergeProactiveAlertLists(
+        merged,
+        buildAgentJonesV33ProactiveSupplements({
+          surface: surf,
+          operating,
+          fusion: v33BrainForPanel.command_fusion,
+        }),
+        6,
+      )
+    }
+    if (v34BrainForPanel && Object.keys(v34BrainForPanel).length > 0) {
+      merged = mergeProactiveAlertLists(
+        merged,
+        buildAgentJonesV34ProactiveSupplements({
+          surface: surf,
+          operating,
+          v34: v34BrainForPanel,
+          commandFusion: v33BrainForPanel?.command_fusion,
+        }),
+        6,
+      )
+    }
+    return merged
   }, [
     v31Pack.proactive_alerts,
     operating,
@@ -417,6 +577,8 @@ export default function AgentJonesPanel({
     v32Pack.field_intelligence,
     v32Pack.coverage_intelligence,
     v32Pack.escalation_summary,
+    v33BrainForPanel,
+    v34BrainForPanel,
   ])
 
   const leadershipPanelIntel = useMemo(() => {
@@ -424,7 +586,29 @@ export default function AgentJonesPanel({
     return s === 'admin_desk' || s === 'candidate_desk' || s === 'coordinator_desk'
   }, [surface])
 
+  const chiefPriorityForNextActions = useMemo(() => {
+    if (
+      !leadershipPanelIntel ||
+      !v34BrainForPanel ||
+      Object.keys(v34BrainForPanel).length === 0
+    ) {
+      return null
+    }
+    const ri = leadershipCommandDisplay?.recommended_intervention?.trim()
+    return ri ? ri.slice(0, 360) : null
+  }, [leadershipPanelIntel, v34BrainForPanel, leadershipCommandDisplay?.recommended_intervention])
+
   const v32IntelEpoch = useMemo(() => buildAgentJonesV32IntelEpoch(v32Pack), [v32Pack])
+
+  const v33CommandVisible = useMemo(
+    () =>
+      agentJonesV32CommandScope({
+        surface: surface ?? 'volunteer_dashboard',
+        normalizedRole: operating.normalized_role,
+        userScope: operating.user_scope,
+      }),
+    [surface, operating.normalized_role, operating.user_scope],
+  )
 
   const bundle = useMemo(
     () =>
@@ -491,17 +675,39 @@ export default function AgentJonesPanel({
 
   const contextForApi = useCallback(
     (ctx: AgentJonesContextV2): AgentJonesContextV2 => {
+      const v33Epoch = buildAgentJonesV33IntelEpoch({
+        area_ranking: ctx.area_ranking,
+        area_ranking_note: ctx.area_ranking_note,
+        segmentation_summary: ctx.segmentation_summary,
+        event_deployment: ctx.event_deployment,
+        command_fusion: ctx.command_fusion,
+        campaign_theater: ctx.campaign_theater,
+      })
+      const v34Epoch = buildAgentJonesV34CoachingEpoch({
+        campaign_phase: ctx.campaign_phase,
+        countdown_summary: ctx.countdown_summary,
+        tradeoff_summary: ctx.tradeoff_summary,
+        intervention_sequence: ctx.intervention_sequence,
+        gotv_summary: ctx.gotv_summary,
+      })
       const coaching = buildAgentJonesSessionCoachingPayload({
         signalEpoch: composeAgentJonesCoachingSignalEpoch(
           operating.signal_epoch,
           v32IntelEpoch,
+          v33Epoch || undefined,
+          v34Epoch || undefined,
         ),
         persistedEpoch: coachingMeta.epoch,
         persistedPhrases: coachingMeta.phrases,
       })
       return coaching ? { ...ctx, session_coaching: coaching } : ctx
     },
-    [operating.signal_epoch, v32IntelEpoch, coachingMeta.epoch, coachingMeta.phrases],
+    [
+      operating.signal_epoch,
+      v32IntelEpoch,
+      coachingMeta.epoch,
+      coachingMeta.phrases,
+    ],
   )
 
   const runRecommendedActions = useCallback(
@@ -908,107 +1114,50 @@ export default function AgentJonesPanel({
   const rootClass =
     sectionClassName ?? 'card agent-jones-card stack-section agent-jones-premium'
 
-  return (
-    <section
-      className={rootClass}
-      aria-labelledby={headingId}
+  const transcriptBlock = (
+    <div
+      className="agent-jones-transcript"
+      role="log"
+      aria-label="Conversation"
+      aria-live="polite"
     >
-      <p className="subtitle agent-jones-eyebrow">{deskFraming.eyebrow}</p>
-      <h2 id={headingId} className="agent-jones-title">
-        Agent Jones
-      </h2>
-      <p className="agent-jones-lede">{deskFraming.lede}</p>
-
-      <div
-        className={`agent-jones-access-pill agent-jones-access-pill--${caps.internetAccessTier}`}
-        role="status"
-      >
-        <span className="agent-jones-access-pill-label">{caps.accessModeLabel}</span>
-        <span className="agent-jones-access-pill-desc">{caps.accessModeDescription}</span>
-      </div>
-
-      <AgentJonesSummaryStrip
-        summary={v3Brain.desk_summary}
-        taskPressureHeadline={taskPressure.headline}
-      />
-      {leadershipPanelIntel && leadershipCommandDisplay ? (
-        <AgentJonesLeadershipSummary command={leadershipCommandDisplay} />
-      ) : null}
-      <AgentJonesV32Pass1Panel
-        geo={v32Pack.geo_intelligence}
-        field={v32Pack.field_intelligence}
-        coverage={v32Pack.coverage_intelligence}
-        demographic={v32Pack.demographic_summary}
-        escalation={v32Pack.escalation_summary}
-        campaignManagerCommand={v32Pack.campaign_manager_command}
-        panelLayout={leadershipPanelIntel ? 'leadership' : 'default'}
-      />
-      {v31Pack.calendar_summary ? (
-        <AgentJonesCalendarSummaryBlock summary={v31Pack.calendar_summary} />
-      ) : null}
-      {proactiveAlertsMerged.length ? (
-        <AgentJonesProactiveAlerts alerts={proactiveAlertsMerged} />
-      ) : null}
-      {!leadershipPanelIntel && leadershipCommandDisplay ? (
-        <AgentJonesLeadershipSummary command={leadershipCommandDisplay} />
-      ) : null}
-      {v31Pack.readiness_coverage ? (
-        <AgentJonesReadinessCoverageBlock coverage={v31Pack.readiness_coverage} />
-      ) : null}
-      <AgentJonesPriorityCards signals={v3Brain.priority_signals} />
-      <AgentJonesNextActions
-        hints={v3Brain.navigation_hints}
-        nextStepLines={operating.command_summary.next_steps}
-      />
-
-      <p className="subtitle agent-jones-internal-notice" role="note">
-        {AGENT_JONES_ACCESS_NOTICE}
-      </p>
-      <div className="agent-jones-context-block">
-        <p className="agent-jones-context-line">{bundle.greeting}</p>
-        <p id="agent-jones-state" className="agent-jones-context-line agent-jones-context-line--meta">
-          {bundle.stateExplanation}
+      {transcript.length === 0 && !aiLoading ? (
+        <p className="agent-jones-transcript-empty">
+          {uiMode === 'floating'
+            ? 'No messages yet — ask below or tap a suggestion.'
+            : 'No messages yet. Tap a suggested brief, type below, or use hold-to-speak.'}
         </p>
-      </div>
+      ) : null}
+      {transcript.map((turn) => (
+        <div
+          key={turn.id}
+          className={`agent-jones-turn agent-jones-turn--${turn.role}`}
+        >
+          {turn.role === 'user' ? (
+            <span className="agent-jones-turn-label">You</span>
+          ) : (
+            <span className="agent-jones-turn-label">Agent Jones</span>
+          )}
+          {turn.insight ? (
+            <div className="agent-jones-insight agent-jones-insight--compact" role="note">
+              <span className="agent-jones-insight-pill">{turn.insight.type}</span>
+              <span className="agent-jones-insight-text">{turn.insight.message}</span>
+            </div>
+          ) : null}
+          <p className="agent-jones-turn-text">{turn.text}</p>
+        </div>
+      ))}
+      {aiLoading ? (
+        <p className="agent-jones-loading agent-jones-loading--inline">
+          <span className="agent-jones-loading-dot" aria-hidden />
+          Synthesizing response…
+        </p>
+      ) : null}
+    </div>
+  )
 
-      <div
-        className="agent-jones-transcript"
-        role="log"
-        aria-label="Conversation"
-        aria-live="polite"
-      >
-        {transcript.length === 0 && !aiLoading ? (
-          <p className="agent-jones-transcript-empty">
-            No messages yet. Tap a suggested brief, type below, or use hold-to-speak.
-          </p>
-        ) : null}
-        {transcript.map((turn) => (
-          <div
-            key={turn.id}
-            className={`agent-jones-turn agent-jones-turn--${turn.role}`}
-          >
-            {turn.role === 'user' ? (
-              <span className="agent-jones-turn-label">You</span>
-            ) : (
-              <span className="agent-jones-turn-label">Agent Jones</span>
-            )}
-            {turn.insight ? (
-              <div className="agent-jones-insight agent-jones-insight--compact" role="note">
-                <span className="agent-jones-insight-pill">{turn.insight.type}</span>
-                <span className="agent-jones-insight-text">{turn.insight.message}</span>
-              </div>
-            ) : null}
-            <p className="agent-jones-turn-text">{turn.text}</p>
-          </div>
-        ))}
-        {aiLoading ? (
-          <p className="agent-jones-loading agent-jones-loading--inline">
-            <span className="agent-jones-loading-dot" aria-hidden />
-            Synthesizing response…
-          </p>
-        ) : null}
-      </div>
-
+  const questionBlock = (
+    <>
       <SuggestedPromptList
         prompts={gridPrompts}
         activeId={activePromptId}
@@ -1079,9 +1228,17 @@ export default function AgentJonesPanel({
               ? 'Transcribing…'
               : 'Hold to speak'}
         </button>
-        <p className="subtitle agent-jones-voice-hint" style={{ margin: 0 }}>
-          Hold-to-speak: audio transcribes via Netlify (OpenAI). At most 600
-          characters per message — same privacy envelope as typed prompts.
+        <p
+          className={
+            uiMode === 'floating'
+              ? 'subtitle agent-jones-voice-hint agent-jones-voice-hint--floating'
+              : 'subtitle agent-jones-voice-hint'
+          }
+          style={{ margin: 0 }}
+        >
+          {uiMode === 'floating'
+            ? 'Hold to speak — transcribes like typing (600 characters max).'
+            : 'Hold-to-speak: audio transcribes via Netlify (OpenAI). At most 600 characters per message — same privacy envelope as typed prompts.'}
         </p>
         {voice.lastError ? (
           <p className="subtitle agent-jones-error-line" style={{ margin: 0 }}>
@@ -1089,29 +1246,199 @@ export default function AgentJonesPanel({
           </p>
         ) : null}
       </div>
+    </>
+  )
 
-      {reply?.response && actionButtons?.length ? (
+  const recommendedActionsBlock =
+    reply?.response && actionButtons?.length ? (
+      <div className="agent-jones-actions" aria-label="Recommended actions">
+        {actionButtons.slice(0, 3).map((a, i) => (
+          <button
+            key={`${a.type}-${a.targetId ?? ''}-${i}`}
+            type="button"
+            className="btn-touch btn-primary agent-jones-action-btn"
+            onClick={() => {
+              if (a.type === 'scroll' && a.targetId) scrollToDashboardId(a.targetId)
+              if (a.type === 'navigate' && a.targetId) window.location.assign(a.targetId)
+            }}
+          >
+            {a.type === 'scroll'
+              ? scrollActionLabel(a.targetId)
+              : `Open ${(a.targetId ?? '/').replace(/^\//, '') || 'page'}`}
+          </button>
+        ))}
+      </div>
+    ) : null
+
+  const deskIntelCore = (
+    <>
+      <div
+        className={`agent-jones-access-pill agent-jones-access-pill--${caps.internetAccessTier}`}
+        role="status"
+      >
+        <span className="agent-jones-access-pill-label">{caps.accessModeLabel}</span>
+        <span className="agent-jones-access-pill-desc">{caps.accessModeDescription}</span>
+      </div>
+
+      <AgentJonesSummaryStrip
+        summary={v3Brain.desk_summary}
+        taskPressureHeadline={taskPressure.headline}
+      />
+      {v34AtAGlance ? (
+        <p className="agent-jones-v34-at-a-glance" role="status">
+          {v34AtAGlance}
+        </p>
+      ) : null}
+      {v34BrainForPanel && Object.keys(v34BrainForPanel).length > 0 ? (
+        leadershipPanelIntel ? (
+          <details className="agent-jones-v34-details">
+            <summary className="agent-jones-v34-details-summary">
+              Chief of staff detail — phase, tradeoffs, sequence, GOTV
+            </summary>
+            <AgentJonesV34Briefing pack={v34BrainForPanel} />
+          </details>
+        ) : (
+          <AgentJonesV34Briefing pack={v34BrainForPanel} />
+        )
+      ) : null}
+      {leadershipPanelIntel ? (
+        <AgentJonesNextActions
+          hints={navigationHintsForPanel}
+          nextStepLines={operating.command_summary.next_steps}
+          chiefPriorityLine={chiefPriorityForNextActions}
+        />
+      ) : null}
+      {leadershipPanelIntel && leadershipCommandDisplay ? (
+        <AgentJonesLeadershipSummary
+          command={leadershipCommandDisplay}
+          suppressRecommendedIntervention={Boolean(chiefPriorityForNextActions)}
+        />
+      ) : null}
+      <AgentJonesV32Pass1Panel
+        geo={v32Pack.geo_intelligence}
+        field={v32Pack.field_intelligence}
+        coverage={v32Pack.coverage_intelligence}
+        demographic={v32Pack.demographic_summary}
+        escalation={v32Pack.escalation_summary}
+        campaignManagerCommand={campaignManagerCommandForPanel}
+        panelLayout={leadershipPanelIntel ? 'leadership' : 'default'}
+      />
+      {v33CommandVisible &&
+      (v33Pack.area_ranking?.length ||
+        v33Pack.area_ranking_note ||
+        v33Pack.segmentation_summary ||
+        v33Pack.event_deployment ||
+        v33Pack.command_fusion ||
+        v33Pack.campaign_theater) ? (
         <div
-          className="agent-jones-actions"
-          aria-label="Recommended actions"
+          className="agent-jones-v31-calendar agent-jones-v33-commander"
+          role="region"
+          aria-label="Campaign commander intelligence"
         >
-          {actionButtons.slice(0, 3).map((a, i) => (
-            <button
-              key={`${a.type}-${a.targetId ?? ''}-${i}`}
-              type="button"
-              className="btn-touch btn-primary agent-jones-action-btn"
-              onClick={() => {
-                if (a.type === 'scroll' && a.targetId) scrollToDashboardId(a.targetId)
-                if (a.type === 'navigate' && a.targetId) window.location.assign(a.targetId)
-              }}
-            >
-              {a.type === 'scroll'
-                ? scrollActionLabel(a.targetId)
-                : `Open ${(a.targetId ?? '/').replace(/^\//, '') || 'page'}`}
-            </button>
-          ))}
+          <p className="agent-jones-v3-section-label">Commander view (v3.3)</p>
+          {v33Pack.area_ranking?.length || v33Pack.area_ranking_note ? (
+            <AgentJonesAreaRanking
+              areas={v33Pack.area_ranking ?? []}
+              note={v33Pack.area_ranking_note}
+            />
+          ) : null}
+          {v33Pack.segmentation_summary ? (
+            <AgentJonesSegmentationSummary summary={v33Pack.segmentation_summary} />
+          ) : null}
+          {v33Pack.event_deployment ? (
+            <AgentJonesDeploymentSummary deployment={v33Pack.event_deployment} />
+          ) : null}
+          {v33Pack.command_fusion ? (
+            <AgentJonesCommandFusionBlock fusion={v33Pack.command_fusion} />
+          ) : null}
+          {v33Pack.campaign_theater ? (
+            <AgentJonesTheaterSummary theater={v33Pack.campaign_theater} />
+          ) : null}
         </div>
       ) : null}
+      {v31Pack.calendar_summary ? (
+        <AgentJonesCalendarSummaryBlock summary={v31Pack.calendar_summary} />
+      ) : null}
+      {proactiveAlertsMerged.length ? (
+        <AgentJonesProactiveAlerts alerts={proactiveAlertsMerged} />
+      ) : null}
+      {!leadershipPanelIntel && leadershipCommandDisplay ? (
+        <AgentJonesLeadershipSummary command={leadershipCommandDisplay} />
+      ) : null}
+      {v31Pack.readiness_coverage ? (
+        <AgentJonesReadinessCoverageBlock coverage={v31Pack.readiness_coverage} />
+      ) : null}
+      <AgentJonesPriorityCards signals={v3Brain.priority_signals} />
+      {!leadershipPanelIntel ? (
+        <AgentJonesNextActions
+          hints={navigationHintsForPanel}
+          nextStepLines={operating.command_summary.next_steps}
+        />
+      ) : null}
+
+      <p className="subtitle agent-jones-internal-notice" role="note">
+        {AGENT_JONES_ACCESS_NOTICE}
+      </p>
+      <div className="agent-jones-context-block">
+        <p className="agent-jones-context-line">{bundle.greeting}</p>
+        <p id="agent-jones-state" className="agent-jones-context-line agent-jones-context-line--meta">
+          {bundle.stateExplanation}
+        </p>
+      </div>
+    </>
+  )
+
+  const deskIntelForDeeper = (
+    <>
+      <p className="agent-jones-lede agent-jones-lede--deeper">{deskFraming.lede}</p>
+      {deskIntelCore}
+    </>
+  )
+
+  if (uiMode === 'floating') {
+    return (
+      <section className={rootClass} aria-labelledby={headingId}>
+        <h2 id={headingId} className="sr-only">
+          Agent Jones
+        </h2>
+        <p className="agent-jones-floating-desk-hint">{deskFraming.eyebrow}</p>
+
+        <div className="agent-jones-floating-qa">
+          <p className="agent-jones-floating-region-label">Answer</p>
+          {transcriptBlock}
+          <p className="agent-jones-floating-region-label">Your question</p>
+          {questionBlock}
+          {recommendedActionsBlock}
+          {aiError ? (
+            <p className="subtitle agent-jones-error-line" role="alert">
+              {aiError} — showing roster-safe fallback when available.
+            </p>
+          ) : null}
+
+          <details className="agent-jones-deeper">
+            <summary className="agent-jones-deeper-summary">
+              Deeper understanding — desk and commander signals
+            </summary>
+            <div className="agent-jones-deeper-body">{deskIntelForDeeper}</div>
+          </details>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className={rootClass} aria-labelledby={headingId}>
+      <p className="subtitle agent-jones-eyebrow">{deskFraming.eyebrow}</p>
+      <h2 id={headingId} className="agent-jones-title">
+        Agent Jones
+      </h2>
+      <p className="agent-jones-lede">{deskFraming.lede}</p>
+
+      {deskIntelCore}
+
+      {transcriptBlock}
+      {questionBlock}
+      {recommendedActionsBlock}
 
       {aiError ? (
         <p className="subtitle agent-jones-error-line" role="alert">

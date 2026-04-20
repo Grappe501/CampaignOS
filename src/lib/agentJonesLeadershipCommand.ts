@@ -11,6 +11,9 @@ import type {
   AgentJonesSurface,
 } from './agentJonesContextV2'
 import type { AgentJonesNormalizedRole } from './agentJonesRoleDesk'
+import type { AgentJonesV33Pack } from './agentJonesV33Pack'
+import type { AgentJonesV34Pack } from './agentJonesV34Pack'
+import { agentJonesV32CommandScope } from './agentJonesV32Pack'
 
 function shouldSurfaceEscalationInLeadership(
   surface: AgentJonesSurface | null | undefined,
@@ -272,5 +275,206 @@ export function enrichLeadershipCommandWithV32(input: {
   return {
     ...base,
     synthesis_lines: [...base.synthesis_lines, ...add].slice(0, 9),
+  }
+}
+
+function segmentationModeLabel(m: string): string {
+  return m.replace(/_/g, ' ')
+}
+
+/** Appends v3.3 commander-layer lines (ranking, posture, fusion, theater, events) after v3.2 enrichment. */
+export function enrichLeadershipCommandWithV33(input: {
+  base: AgentJonesLeadershipCommand | null
+  operating: AgentJonesOperatingContext | null
+  surface: AgentJonesSurface
+  v33: AgentJonesV33Pack | null
+}): AgentJonesLeadershipCommand | null {
+  const { base, operating, surface, v33 } = input
+  if (!base || !operating || !isAgentJonesLeadershipPackRole(operating.normalized_role)) {
+    return base
+  }
+  if (
+    !agentJonesV32CommandScope({
+      surface,
+      normalizedRole: operating.normalized_role,
+      userScope: operating.user_scope,
+    })
+  ) {
+    return base
+  }
+  if (
+    !v33 ||
+    (!v33.area_ranking?.length &&
+      !v33.area_ranking_note &&
+      !v33.segmentation_summary &&
+      !v33.command_fusion &&
+      !v33.campaign_theater &&
+      !v33.event_deployment)
+  ) {
+    return base
+  }
+
+  const add: string[] = []
+  const note = v33.area_ranking_note?.trim()
+  if (note) {
+    add.push(`Area ranking (honest limit): ${note.slice(0, 280)}`)
+  }
+  const top = v33.area_ranking?.[0]
+  if (top) {
+    const head = top.recommendation_headline?.trim().slice(0, 140)
+    add.push(
+      `Comparative area (v3.3): ${top.area_label} — ${top.priority_band} priority (${top.area_type})${head ? ` — ${head}` : ''}.`,
+    )
+  }
+  const seg = v33.segmentation_summary
+  if (seg?.primary_mode) {
+    const sec = seg.secondary_mode ? `; secondarily ${segmentationModeLabel(seg.secondary_mode)}` : ''
+    add.push(
+      `Targeting posture (session heuristic): emphasize ${segmentationModeLabel(seg.primary_mode)}${sec}.`,
+    )
+  }
+  if (seg?.turnout_persuasion_balance?.trim()) {
+    add.push(
+      `Turnout/persuasion balance (heuristic): ${seg.turnout_persuasion_balance.trim().slice(0, 260)}`,
+    )
+  }
+  const wfNote = v33.event_deployment?.weak_field_overlap_note?.trim()
+  if (wfNote) {
+    add.push(`Weak-field ↔ deployment overlap: ${wfNote.slice(0, 240)}`)
+  }
+  const fusionH = v33.command_fusion?.top_combined_pressure_headline?.trim()
+  if (fusionH) {
+    add.push(`Fused pressure headline: ${fusionH.slice(0, 240)}`)
+  }
+  const theater = v33.campaign_theater?.command_headline?.trim()
+  if (theater) {
+    const fLow = (fusionH ?? '').toLowerCase()
+    const tLow = theater.toLowerCase()
+    const redundant =
+      fusionH &&
+      (fLow.includes(tLow.slice(0, Math.min(36, tLow.length))) ||
+        tLow.includes(fLow.slice(0, Math.min(36, fLow.length))))
+    if (!redundant) {
+      add.push(`Theater command line: ${theater.slice(0, 220)}`)
+    }
+  }
+  const dep = v33.event_deployment?.highest_priority_event_label?.trim()
+  if (dep) {
+    const why = v33.event_deployment?.highest_priority_event_reason?.trim().slice(0, 160)
+    add.push(`Event deployment focus: ${dep}${why ? ` — ${why}` : ''}`)
+  }
+
+  let recommended_intervention = base.recommended_intervention
+  if (!recommended_intervention?.trim() && v33.command_fusion?.recommended_intervention?.trim()) {
+    recommended_intervention = v33.command_fusion.recommended_intervention.trim().slice(0, 360)
+  }
+  if (!recommended_intervention?.trim() && v33.event_deployment?.recommended_event_action?.trim()) {
+    recommended_intervention = v33.event_deployment.recommended_event_action.trim().slice(0, 360)
+  }
+
+  if (!add.length && recommended_intervention === base.recommended_intervention) return base
+
+  return {
+    ...base,
+    synthesis_lines: [...base.synthesis_lines, ...add].slice(0, 11),
+    recommended_intervention: recommended_intervention ?? base.recommended_intervention,
+  }
+}
+
+/** v3.4 chief-of-staff lines — phase, countdown, tradeoffs, sequencing (bounded). */
+export function enrichLeadershipCommandWithV34(input: {
+  base: AgentJonesLeadershipCommand | null
+  operating: AgentJonesOperatingContext | null
+  surface: AgentJonesSurface
+  v34: AgentJonesV34Pack | null
+}): AgentJonesLeadershipCommand | null {
+  const { base, operating, surface, v34 } = input
+  if (!base || !operating || !isAgentJonesLeadershipPackRole(operating.normalized_role)) {
+    return base
+  }
+  if (
+    !agentJonesV32CommandScope({
+      surface,
+      normalizedRole: operating.normalized_role,
+      userScope: operating.user_scope,
+    })
+  ) {
+    return base
+  }
+  if (!v34 || Object.keys(v34).length === 0) return base
+
+  const add: string[] = []
+  const ph = v34.campaign_phase
+  const cd = v34.countdown_summary
+  const tr = v34.tradeoff_summary
+  const seq = v34.intervention_sequence
+  const dr = v34.desk_routing
+  const gv = v34.gotv_summary
+
+  if (ph?.campaign_mode && ph.mode_headline) {
+    add.push(
+      `Campaign mode (${ph.campaign_mode.replace(/_/g, ' ')}): ${ph.mode_headline.slice(0, 260)}`,
+    )
+  }
+  if (cd?.countdown_pressure_headline) {
+    add.push(`Countdown: ${cd.countdown_pressure_headline.slice(0, 220)}`)
+  } else if (cd?.countdown_scope_note?.trim()) {
+    add.push(`Countdown: ${cd.countdown_scope_note.trim().slice(0, 220)}`)
+  }
+  if (tr?.top_tradeoff_headline) {
+    add.push(`Tradeoff: ${tr.top_tradeoff_headline.slice(0, 220)}`)
+  }
+  if (tr?.preferred_primary_action?.trim()) {
+    add.push(`Push now (heuristic): ${tr.preferred_primary_action.trim().slice(0, 220)}`)
+  }
+  if (tr?.deferred_secondary_action?.trim()) {
+    add.push(`Defer for now: ${tr.deferred_secondary_action.trim().slice(0, 220)}`)
+  }
+  if (seq?.sequence_headline) {
+    add.push(`Intervention order: ${seq.sequence_headline.slice(0, 200)}`)
+  }
+  const s0 = seq?.ordered_steps?.[0]?.trim()
+  if (s0) add.push(`First step: ${s0.slice(0, 220)}`)
+  const s1 = seq?.ordered_steps?.[1]?.trim()
+  if (s1) add.push(`Then: ${s1.slice(0, 220)}`)
+  if (dr?.route_headline) {
+    add.push(`Desk routing: ${dr.route_headline.slice(0, 200)}`)
+  }
+  if (dr?.first_owner_role && dr?.second_owner_role) {
+    add.push(
+      `Act first / second (coaching labels): ${dr.first_owner_role} → ${dr.second_owner_role}.`,
+    )
+  }
+  const escLead = dr?.escalation_route?.[0]?.trim()
+  if (escLead) {
+    add.push(`Escalation path (visible): ${escLead.slice(0, 220)}`)
+  }
+  if (gv?.turnout_risk_headline?.trim()) {
+    add.push(`GOTV signals: ${gv.turnout_risk_headline.trim().slice(0, 220)}`)
+  } else if (gv?.volunteer_deployment_headline?.trim()) {
+    add.push(`GOTV deployment: ${gv.volunteer_deployment_headline.trim().slice(0, 220)}`)
+  }
+  const gotvAct = gv?.best_next_gotv_actions?.[0]?.trim()
+  if (gotvAct) {
+    add.push(`GOTV next check: ${gotvAct.slice(0, 200)}`)
+  }
+
+  let recommended_intervention = base.recommended_intervention
+  if (!recommended_intervention?.trim() && seq?.ordered_steps?.[0]) {
+    recommended_intervention = seq.ordered_steps[0].trim().slice(0, 360)
+  }
+  if (!recommended_intervention?.trim() && tr?.preferred_primary_action?.trim()) {
+    recommended_intervention = tr.preferred_primary_action.trim().slice(0, 360)
+  }
+  if (!recommended_intervention?.trim() && dr?.route_headline?.trim()) {
+    recommended_intervention = dr.route_headline.trim().slice(0, 360)
+  }
+
+  if (!add.length && recommended_intervention === base.recommended_intervention) return base
+
+  return {
+    ...base,
+    synthesis_lines: [...base.synthesis_lines, ...add].slice(0, 20),
+    recommended_intervention: recommended_intervention ?? base.recommended_intervention,
   }
 }

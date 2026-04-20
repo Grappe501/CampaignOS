@@ -4,16 +4,25 @@ import type { AgentJonesNavigationHint } from '../../lib/agentJonesContextV2'
 export default function AgentJonesNextActions({
   hints,
   nextStepLines,
+  chiefPriorityLine,
 }: {
   hints: AgentJonesNavigationHint[]
   nextStepLines: string[]
+  /** Phase-aware “first move” already synthesized in leadership_command — surfaces above taps. */
+  chiefPriorityLine?: string | null
 }) {
   const lines = nextStepLines.slice(0, 3)
+  const chief = chiefPriorityLine?.trim().slice(0, 360) ?? ''
 
-  if (!hints.length && !lines.length) return null
+  if (!hints.length && !lines.length && !chief) return null
 
   return (
     <div className="agent-jones-v3-next-actions">
+      {chief ? (
+        <p className="agent-jones-next-actions-chief" role="status">
+          <span className="agent-jones-next-actions-chief-k">Strategic priority</span> {chief}
+        </p>
+      ) : null}
       {hints.length ? (
         <>
           <p className="agent-jones-v3-section-label">Next actions</p>

@@ -152,7 +152,8 @@ export default function FloatingAgentJones({
               leadershipSnapshot={leadershipSnapshot}
               coordinatorHasSupervisorScope={coordinatorHasSupervisorScope}
               persistSession
-              sectionClassName="agent-jones-floating-surface stack-section agent-jones-premium"
+              uiMode="floating"
+              sectionClassName="agent-jones-floating-surface stack-section agent-jones-premium agent-jones-floating-qa-root"
               onProfileRefresh={onProfileRefresh}
               relationalPower5={relationalPower5}
               volunteerMission={volunteerMission}

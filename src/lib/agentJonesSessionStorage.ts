@@ -8,6 +8,7 @@ export type AgentJonesTranscriptEntry = {
   role: 'user' | 'assistant'
   text: string
   at: number
+  insight?: AgentJonesResponse['insight']
 }
 
 export type PersistedAgentJonesState = {

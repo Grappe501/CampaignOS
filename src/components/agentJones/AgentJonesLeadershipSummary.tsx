@@ -2,10 +2,15 @@ import type { AgentJonesLeadershipCommand } from '../../lib/agentJonesContextV2'
 
 export default function AgentJonesLeadershipSummary({
   command,
+  suppressRecommendedIntervention = false,
 }: {
   command: AgentJonesLeadershipCommand
+  /** When true, hide the duplicate “First move” line (shown under Next actions instead). */
+  suppressRecommendedIntervention?: boolean
 }) {
-  if (!command.synthesis_lines.length && !command.recommended_intervention) return null
+  const showIntervention =
+    Boolean(command.recommended_intervention) && !suppressRecommendedIntervention
+  if (!command.synthesis_lines.length && !showIntervention) return null
 
   return (
     <div className="agent-jones-v31-leadership" role="region" aria-label="Leadership synthesis">
@@ -17,7 +22,7 @@ export default function AgentJonesLeadershipSummary({
           ))}
         </ul>
       ) : null}
-      {command.recommended_intervention ? (
+      {showIntervention ? (
         <p className="agent-jones-v31-leadership-focus">
           <span className="agent-jones-v31-leadership-focus-k">First move</span>{' '}
           {command.recommended_intervention}
