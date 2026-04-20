@@ -40,7 +40,10 @@ export function useVoterMatch(campaignProfileId: string | undefined) {
   }, [campaignProfileId])
 
   useEffect(() => {
-    void loadMatched()
+    const id = window.setTimeout(() => {
+      void loadMatched()
+    }, 0)
+    return () => window.clearTimeout(id)
   }, [loadMatched])
 
   const search = useCallback(

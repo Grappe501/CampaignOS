@@ -32,11 +32,18 @@ export default function App() {
   }, [])
 
   if (session === undefined) {
-    return <div>Loading...</div>
+    return (
+      <div className="app-viewport">
+        <div className="loading-screen" role="status" aria-live="polite">
+          Loading…
+        </div>
+      </div>
+    )
   }
 
   return (
     <BrowserRouter>
+      <div className="app-viewport">
       <Routes>
         <Route
           path="/login"
@@ -62,6 +69,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </div>
     </BrowserRouter>
   )
 }

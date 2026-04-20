@@ -7,6 +7,8 @@ export type CampaignProfile = {
   primary_role?: string | null
   primary_team?: string | null
   voter_status?: string | null
+  active_space?: string | null
+  onboarding_status?: string | null
 } & Record<string, unknown>
 
 export function useProfile() {

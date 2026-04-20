@@ -1,21 +1,12 @@
-import type { CSSProperties } from 'react'
 import type { MatchedVoterDisplayRow } from '../lib/voterMatch'
 
-const cardStyle: CSSProperties = {
-  marginTop: 16,
-  padding: 16,
-  border: '1px solid var(--border)',
-  borderRadius: 8,
-  textAlign: 'left',
-  background: 'var(--social-bg)',
-}
-
-const dlStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'auto 1fr',
-  gap: '6px 16px',
-  margin: 0,
-  fontSize: 15,
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="voter-kv">
+      <div className="voter-k">{label}</div>
+      <p className="voter-v">{value}</p>
+    </div>
+  )
 }
 
 export default function VoterWidget({
@@ -25,45 +16,35 @@ export default function VoterWidget({
 }) {
   if (!voter) return null
 
+  const stateZip =
+    [voter.res_state, voter.res_zip5].filter(Boolean).join(' ') || '—'
+
   return (
-    <section style={cardStyle} aria-label="Matched voter registration">
-      <h2 style={{ marginTop: 0 }}>Your voter record</h2>
-      <dl style={dlStyle}>
-        <dt style={{ color: 'var(--text)' }}>Name</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>
-          {voter.name_first} {voter.name_last}
-        </dd>
-        <dt style={{ color: 'var(--text)' }}>County</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>{voter.county ?? '—'}</dd>
-        <dt style={{ color: 'var(--text)' }}>City</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>{voter.res_city ?? '—'}</dd>
-        <dt style={{ color: 'var(--text)' }}>State / ZIP</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>
-          {[voter.res_state, voter.res_zip5].filter(Boolean).join(' ') || '—'}
-        </dd>
-        <dt style={{ color: 'var(--text)' }}>Precinct</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>
-          {voter.precinct_name ?? '—'}
-        </dd>
-        <dt style={{ color: 'var(--text)' }}>Status</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>
-          {voter.registrant_status ?? '—'}
-        </dd>
-        <dt style={{ color: 'var(--text)' }}>Congressional</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>
-          {voter.congressional_district ?? '—'}
-        </dd>
-        <dt style={{ color: 'var(--text)' }}>State Senate</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>
-          {voter.state_senate_district ?? '—'}
-        </dd>
-        <dt style={{ color: 'var(--text)' }}>State House</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>
-          {voter.state_representative_district ?? '—'}
-        </dd>
-        <dt style={{ color: 'var(--text)' }}>Match</dt>
-        <dd style={{ margin: 0, color: 'var(--text-h)' }}>{voter.match_status}</dd>
-      </dl>
+    <section className="card stack-section" aria-label="Matched voter registration">
+      <h2
+        className="page-title"
+        style={{ fontSize: 'clamp(1.35rem, 3vw + 0.5rem, 1.75rem)', marginBottom: 4 }}
+      >
+        Your voter record
+      </h2>
+      <div>
+        <Row label="Name" value={`${voter.name_first} ${voter.name_last}`} />
+        <Row label="County" value={voter.county ?? '—'} />
+        <Row label="City" value={voter.res_city ?? '—'} />
+        <Row label="State / ZIP" value={stateZip} />
+        <Row label="Precinct" value={voter.precinct_name ?? '—'} />
+        <Row label="Status" value={voter.registrant_status ?? '—'} />
+        <Row
+          label="Congressional"
+          value={voter.congressional_district ?? '—'}
+        />
+        <Row label="State Senate" value={voter.state_senate_district ?? '—'} />
+        <Row
+          label="State House"
+          value={voter.state_representative_district ?? '—'}
+        />
+        <Row label="Match" value={voter.match_status ?? '—'} />
+      </div>
     </section>
   )
 }
