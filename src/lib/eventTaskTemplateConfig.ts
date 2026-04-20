@@ -142,9 +142,28 @@ function uniqueStagesInOrder(tasks: EventTaskTemplate[]): EventStageSlug[] {
 function defaultVisibilityForType(key: CampaignEventTypeKey): CalendarVisibilitySegment {
   if (key === 'house_party_fundraising') return 'finance_private'
   if (key === 'lunch_meeting' || key === 'coffee_meeting') return 'internal_staff'
-  if (key === 'public_fair_festival' || key === 'campaign_rally') return 'public_visible'
+  if (
+    key === 'public_fair_festival' ||
+    key === 'campaign_rally' ||
+    key === 'volunteer_recruitment_event' ||
+    key === 'early_vote_rally' ||
+    key === 'canvass_launch_event' ||
+    key === 'campus_youth_activation' ||
+    key === 'digital_hybrid_event' ||
+    key === 'surrogate_appearance_event'
+  ) {
+    return 'public_visible'
+  }
   if (key === 'house_party_intro_candidate') return 'volunteer_visible'
-  if (key === 'county_party_meeting') return 'field_team'
+  if (
+    key === 'county_party_meeting' ||
+    key === 'community_listening_session' ||
+    key === 'faith_values_gathering' ||
+    key === 'coalition_partner_event'
+  ) {
+    return 'field_team'
+  }
+  if (key === 'gotv_staging_event') return 'field_team'
   return 'internal_staff'
 }
 
@@ -162,10 +181,19 @@ function operationalFlagsFromMatrix(def: CampaignEventTypeDefinition): EventType
     requiresCandidateConfirmation:
       def.key === 'campaign_rally' ||
       def.key === 'house_party_intro_candidate' ||
-      def.key === 'county_party_meeting',
+      def.key === 'county_party_meeting' ||
+      def.key === 'early_vote_rally' ||
+      def.key === 'surrogate_appearance_event',
     requiresHost: host,
     requiresVenueConfirmation: true,
-    requiresStaffingPlan: def.key === 'public_fair_festival' || def.key === 'campaign_rally',
+    requiresStaffingPlan:
+      def.key === 'public_fair_festival' ||
+      def.key === 'campaign_rally' ||
+      def.key === 'early_vote_rally' ||
+      def.key === 'gotv_staging_event' ||
+      def.key === 'canvass_launch_event' ||
+      def.key === 'surrogate_appearance_event' ||
+      def.key === 'faith_values_gathering',
     requiresPromotionPlan: promo,
     requiresFollowupPlan: true,
   }
@@ -302,7 +330,10 @@ function buildConfigForDefinition(def: CampaignEventTypeDefinition): EventTypeCo
     candidateInvolvedDefault:
       def.key === 'campaign_rally' ||
       def.key === 'house_party_intro_candidate' ||
-      def.key === 'county_party_meeting',
+      def.key === 'county_party_meeting' ||
+      def.key === 'early_vote_rally' ||
+      def.key === 'surrogate_appearance_event' ||
+      def.key === 'campus_youth_activation',
     defaultVisibilityScope: defaultVisibilityForType(def.key),
     requiredStages:
       uniqueStagesInOrder(tasks).length > 0

@@ -20,10 +20,21 @@ import CoordinatorDesk from './pages/CoordinatorDesk'
 import Login from './pages/Login'
 import Power5Desk from './pages/Power5Desk'
 import AdminDesk from './pages/AdminDesk'
+import CountyEventOperationsPage from './pages/CountyEventOperationsPage'
+import EventAnalyticsPage from './pages/EventAnalyticsPage'
 import EventCoordinatorDesk from './pages/EventCoordinatorDesk'
+import NeighborhoodEventHubPage from './pages/NeighborhoodEventHubPage'
+import CampaignEventCalendarPage from './pages/CampaignEventCalendarPage'
 import CampaignEventRecordPage from './pages/CampaignEventRecordPage'
+import EventCheckInPage from './pages/EventCheckInPage'
+import EventPromotionDeskPage from './pages/EventPromotionDeskPage'
+import EventReviewRequestsPage from './pages/EventReviewRequestsPage'
 import RoleHomeRedirect from './components/RoleHomeRedirect'
 import GlobalFloatingAgentJones from './components/GlobalFloatingAgentJones'
+import { CampaignEventsProvider } from './context/CampaignEventsContext'
+import VolunteerCommandCoordinatorPage from './pages/VolunteerCommandCoordinatorPage'
+import VolunteerCommandTeamLeadPage from './pages/VolunteerCommandTeamLeadPage'
+import VolunteerSelfServicePage from './pages/VolunteerSelfServicePage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(() =>
@@ -65,6 +76,7 @@ export default function App() {
       <DevMockDashboardProvider>
       <div className="app-viewport">
         {isDevAuthBypassEnabled() ? <DevModeBanner /> : null}
+      <CampaignEventsProvider>
       <Routes>
         <Route
           path="/login"
@@ -169,10 +181,122 @@ export default function App() {
           }
         />
         <Route
+          path="/events/county-ops"
+          element={
+            session ? (
+              <CountyEventOperationsPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/neighborhood"
+          element={
+            session ? (
+              <NeighborhoodEventHubPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/analytics"
+          element={
+            session ? (
+              <EventAnalyticsPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
           path="/events/calendar"
           element={
             session ? (
-              <EventCoordinatorDesk
+              <CampaignEventCalendarPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/review-requests"
+          element={
+            session ? (
+              <EventReviewRequestsPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/promotion"
+          element={
+            session ? (
+              <EventPromotionDeskPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/:eventId/checkin"
+          element={
+            session ? (
+              <EventCheckInPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/:eventId/:detailSection"
+          element={
+            session ? (
+              <CampaignEventRecordPage
                 onDevSessionClear={
                   isDevAuthBypassEnabled()
                     ? () => setSession(null)
@@ -217,6 +341,54 @@ export default function App() {
           }
         />
         <Route
+          path="/volunteers/command"
+          element={
+            session ? (
+              <VolunteerCommandCoordinatorPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/volunteers/team-lead"
+          element={
+            session ? (
+              <VolunteerCommandTeamLeadPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/volunteers/me"
+          element={
+            session ? (
+              <VolunteerSelfServicePage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
           path="/"
           element={
             session ? <RoleHomeRedirect /> : <Navigate to="/login" replace />
@@ -225,6 +397,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {session ? <GlobalFloatingAgentJones /> : null}
+      </CampaignEventsProvider>
       </div>
       </DevMockDashboardProvider>
     </BrowserRouter>

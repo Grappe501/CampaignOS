@@ -3,6 +3,7 @@
  */
 
 import type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture'
+import { getDevStaffingAssignmentsForEvent } from './campaignEventStaffingDevFixtures'
 import {
   collectOperationsGapsForDesk,
   type CoordinatorOperationsGap,
@@ -61,8 +62,32 @@ export type MobilizeQueueSummary = {
   eligibleCount: number
   queuedCount: number
   publishedCount: number
+  /** Published on Mobilize with no sync error and no pending update/drift flag. */
+  publishedHealthyCount: number
   syncErrorCount: number
+  /** Distinct events needing a push or in update_required / drift. */
   updateRequiredCount: number
+  /** Rows with a Mobilize event id (linked remote). */
+  remoteLinkedCount: number
+  /** Coordinator attention: sync_error, update_required state, or mobilize_update_needed. */
+  attentionCount: number
+  /** mobilize_publish_state not_applicable (or empty). */
+  notApplicableCount: number
+}
+
+/** True when coordinators should intervene on Mobilize (honest row-level signals only). */
+export function eventNeedsMobilizeAttention(e: CampaignCalendarEventRecord): boolean {
+  const m = String(e.mobilize_publish_state ?? '').trim()
+  if (m === 'sync_error') return true
+  if (m === 'update_required') return true
+  if (e.mobilize_update_needed) return true
+  return false
+}
+
+export function eventIsMobilizePublishedHealthy(e: CampaignCalendarEventRecord): boolean {
+  const m = String(e.mobilize_publish_state ?? '').trim()
+  if (m !== 'published') return false
+  return !eventNeedsMobilizeAttention(e)
 }
 
 export type PostEventFollowupSummary = {
@@ -295,7 +320,12 @@ export function summarizeEventPressure(
       staffingGapCount += 1
     }
     const mob = String(e.mobilize_publish_state ?? '')
-    if (MOB_QUEUE_PRESSURE.has(mob)) mobilizeQueueCount += 1
+    if (
+      MOB_QUEUE_PRESSURE.has(mob) ||
+      (mob === 'published' && e.mobilize_update_needed)
+    ) {
+      mobilizeQueueCount += 1
+    }
     if (
       Boolean(e.candidate_flag) &&
       (e.staffing_state === 'at_risk' || e.staffing_state === 'unstaffed')
@@ -311,7 +341,9 @@ export function summarizeEventPressure(
     }
   }
 
-  const gaps = collectOperationsGapsForDesk(pool)
+  const gaps = collectOperationsGapsForDesk(pool, (e) =>
+    getDevStaffingAssignmentsForEvent(e.event_id),
+  )
   const logisticsGapCount = uniqueEventIds(gaps, new Set(['logistics']))
   const followupOverdueCount = new Set(
     gaps.filter((g) => g.category === 'followup').map((g) => g.event_id),
@@ -371,12 +403,23 @@ export function summarizeMobilizeQueue(
   let eligibleCount = 0
   let queuedCount = 0
   let publishedCount = 0
+  let publishedHealthyCount = 0
   let syncErrorCount = 0
   let updateRequiredCount = 0
+  let remoteLinkedCount = 0
+  let attentionCount = 0
+  let notApplicableCount = 0
 
   for (const e of pool) {
-    if (e.mobilize_update_needed) updateRequiredCount += 1
+    if (eventNeedsMobilizeAttention(e)) attentionCount += 1
+    if ((e.mobilize_event_id ?? '').trim().length > 0) remoteLinkedCount += 1
+
+    const needsUpdate =
+      Boolean(e.mobilize_update_needed) || String(e.mobilize_publish_state ?? '') === 'update_required'
+    if (needsUpdate) updateRequiredCount += 1
+
     const m = String(e.mobilize_publish_state ?? '')
+    if (!m || m === 'not_applicable') notApplicableCount += 1
     if (m === 'eligible') eligibleCount += 1
     else if (
       m === 'queued' ||
@@ -386,16 +429,56 @@ export function summarizeMobilizeQueue(
     ) {
       queuedCount += 1
     } else if (m === 'sync_error') syncErrorCount += 1
-    else if (m === 'published') publishedCount += 1
+    else if (m === 'published') {
+      publishedCount += 1
+      if (eventIsMobilizePublishedHealthy(e)) publishedHealthyCount += 1
+    }
   }
 
   return {
     eligibleCount,
     queuedCount,
     publishedCount,
+    publishedHealthyCount,
     syncErrorCount,
     updateRequiredCount,
+    remoteLinkedCount,
+    attentionCount,
+    notApplicableCount,
   }
+}
+
+export function buildMobilizePromotionBullets(summary: MobilizeQueueSummary): string[] {
+  const b: string[] = []
+  if (summary.attentionCount > 0) {
+    b.push(
+      `${summary.attentionCount} event${summary.attentionCount === 1 ? '' : 's'} need Mobilize attention (sync error, update required, or drift flag).`,
+    )
+  }
+  if (summary.syncErrorCount > 0) {
+    b.push(
+      `${summary.syncErrorCount} row${summary.syncErrorCount === 1 ? '' : 's'} in sync_error — fix credentials or remote event, then refresh.`,
+    )
+  }
+  if (summary.updateRequiredCount > 0) {
+    b.push(
+      `${summary.updateRequiredCount} event${summary.updateRequiredCount === 1 ? '' : 's'} need a Mobilize push or hash check.`,
+    )
+  }
+  if (summary.publishedHealthyCount > 0) {
+    b.push(
+      `${summary.publishedHealthyCount} published event${summary.publishedHealthyCount === 1 ? '' : 's'} look healthy in this snapshot (no error / pending update).`,
+    )
+  }
+  if (summary.remoteLinkedCount > 0 && summary.attentionCount === 0) {
+    b.push(
+      `${summary.remoteLinkedCount} event${summary.remoteLinkedCount === 1 ? '' : 's'} linked to a Mobilize id — use refresh_remote periodically to verify URLs.`,
+    )
+  }
+  if (b.length === 0) {
+    b.push('No Mobilize attention signals in this pool — or the coordinator list is empty.')
+  }
+  return b
 }
 
 export function summarizePostEventFollowup(
@@ -408,7 +491,9 @@ export function summarizePostEventFollowup(
   const supporter = new Set<string>()
   const media = new Set<string>()
 
-  for (const g of collectOperationsGapsForDesk(pool)) {
+  for (const g of collectOperationsGapsForDesk(pool, (e) =>
+    getDevStaffingAssignmentsForEvent(e.event_id),
+  )) {
     if (g.category === 'followup') attendance.add(g.event_id)
     if (g.category === 'attendance' && g.message.toLowerCase().includes('donor')) {
       donor.add(g.event_id)
@@ -696,7 +781,8 @@ export function buildMobilizeQueueSlice(
       m === 'queued_for_publish' ||
       m === 'draft_ready' ||
       m === 'update_required' ||
-      m === 'sync_error'
+      m === 'sync_error' ||
+      (m === 'published' && e.mobilize_update_needed)
     ) {
       samplePool.push(e)
     }

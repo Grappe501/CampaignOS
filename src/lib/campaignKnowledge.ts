@@ -112,7 +112,18 @@ export async function getCampaignKnowledgeSnippets(input: {
   }
 
   const { data } = await q
-  const rows = (data ?? []) as { content_text: string; tags: string[] | null }[]
+  let rows = (data ?? []) as { content_text: string; tags: string[] | null }[]
+
+  if (tags.length && rows.length === 0) {
+    const { data: fallback } = await supabase
+      .from('campaign_knowledge_chunks')
+      .select('content_text,tags')
+      .eq('campaign_slug', input.campaignSlug)
+      .order('chunk_index', { ascending: true })
+      .limit(limit)
+    rows = (fallback ?? []) as { content_text: string; tags: string[] | null }[]
+  }
+
   const out = rows
     .map((r) => ({
       text: trunc(r.content_text, 360),
@@ -122,5 +133,131 @@ export async function getCampaignKnowledgeSnippets(input: {
     .slice(0, limit)
 
   return out
+}
+
+const KNOWLEDGE_STOPWORDS = new Set([
+  'the',
+  'and',
+  'for',
+  'are',
+  'but',
+  'not',
+  'you',
+  'all',
+  'can',
+  'her',
+  'was',
+  'one',
+  'our',
+  'out',
+  'day',
+  'get',
+  'has',
+  'him',
+  'his',
+  'how',
+  'its',
+  'may',
+  'new',
+  'now',
+  'old',
+  'see',
+  'two',
+  'who',
+  'way',
+  'use',
+  'she',
+  'many',
+  'then',
+  'them',
+  'these',
+  'some',
+  'what',
+  'when',
+  'where',
+  'which',
+  'while',
+  'this',
+  'that',
+  'with',
+  'from',
+  'have',
+  'will',
+  'your',
+  'about',
+  'into',
+  'tell',
+  'more',
+  'just',
+  'like',
+  'also',
+  'been',
+  'were',
+  'they',
+  'their',
+  'there',
+])
+
+function escapeIlikePattern(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
+function tokenizeForKnowledgeSearch(message: string): string[] {
+  const raw = message
+    .trim()
+    .toLowerCase()
+    .split(/[^a-z0-9]+/g)
+    .filter((w) => w.length >= 3 && !KNOWLEDGE_STOPWORDS.has(w))
+  return uniq(raw).slice(0, 12)
+}
+
+/**
+ * Pull chunks whose content matches tokens from the user's message (ILIKE).
+ * Falls back to the first chunks in document order when no token hits.
+ */
+export async function getCampaignKnowledgeSnippetsForMessage(input: {
+  campaignSlug: string
+  userMessage: string
+  limit?: number
+}): Promise<CampaignKnowledgeSnippet[]> {
+  const limit = Math.max(1, Math.min(8, input.limit ?? 5))
+  const slug = input.campaignSlug.trim()
+  if (!slug) return []
+
+  const tokens = tokenizeForKnowledgeSearch(input.userMessage)
+  const base = () =>
+    supabase
+      .from('campaign_knowledge_chunks')
+      .select('content_text,tags')
+      .eq('campaign_slug', slug)
+      .order('chunk_index', { ascending: true })
+      .limit(limit)
+
+  if (tokens.length) {
+    const orClause = tokens
+      .map((t) => `content_text.ilike.%${escapeIlikePattern(t)}%`)
+      .join(',')
+    const { data } = await base().or(orClause)
+    const rows = (data ?? []) as { content_text: string; tags: string[] | null }[]
+    if (rows.length) {
+      return rows
+        .map((r) => ({
+          text: trunc(r.content_text, 420),
+          tags: (Array.isArray(r.tags) ? r.tags : []).slice(0, 10).map(normalizeTag),
+        }))
+        .filter((r): r is CampaignKnowledgeSnippet => Boolean(r.text))
+        .slice(0, limit)
+    }
+  }
+
+  const { data } = await base()
+  const rows = (data ?? []) as { content_text: string; tags: string[] | null }[]
+  return rows
+    .map((r) => ({
+      text: trunc(r.content_text, 420),
+      tags: (Array.isArray(r.tags) ? r.tags : []).slice(0, 10).map(normalizeTag),
+    }))
+    .filter((r): r is CampaignKnowledgeSnippet => Boolean(r.text))
+    .slice(0, limit)
 }
 

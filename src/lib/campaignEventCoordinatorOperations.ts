@@ -4,6 +4,12 @@
  */
 
 import type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture'
+import type { StaffingAssignmentLike } from './eventStaffingMatrix'
+import {
+  isCampaignEventTypeKey,
+  requiredRolesUncovered,
+  evaluateStaffingMatrix,
+} from './eventStaffingMatrix'
 
 export type CoordinatorOperationsGap = {
   category: 'staffing' | 'logistics' | 'host' | 'followup' | 'attendance'
@@ -32,6 +38,7 @@ function eventEnded(event: CampaignCalendarEventRecord): boolean {
 
 export function collectOperationsGapsForEvent(
   event: CampaignCalendarEventRecord,
+  options?: { staffingAssignments?: readonly StaffingAssignmentLike[] },
 ): CoordinatorOperationsGap[] {
   const out: CoordinatorOperationsGap[] = []
 
@@ -51,6 +58,20 @@ export function collectOperationsGapsForEvent(
       event_id: event.event_id,
       title: event.title,
     })
+  }
+
+  const assigns = options?.staffingAssignments
+  if (assigns && assigns.length > 0 && isCampaignEventTypeKey(event.event_type)) {
+    const uncovered = requiredRolesUncovered(evaluateStaffingMatrix(event.event_type, assigns))
+    for (const slug of uncovered) {
+      out.push({
+        category: 'staffing',
+        severity: 'critical',
+        message: `Staffing matrix: required role “${slug.replace(/_/g, ' ')}” is still uncovered.`,
+        event_id: event.event_id,
+        title: event.title,
+      })
+    }
   }
 
   if (venueGap(event)) {
@@ -98,6 +119,13 @@ export function collectOperationsGapsForEvent(
 
 export function collectOperationsGapsForDesk(
   events: readonly CampaignCalendarEventRecord[],
+  getAssignments?: (
+    event: CampaignCalendarEventRecord,
+  ) => readonly StaffingAssignmentLike[] | undefined,
 ): CoordinatorOperationsGap[] {
-  return events.flatMap((e) => collectOperationsGapsForEvent(e))
+  return events.flatMap((e) =>
+    collectOperationsGapsForEvent(e, {
+      staffingAssignments: getAssignments?.(e),
+    }),
+  )
 }

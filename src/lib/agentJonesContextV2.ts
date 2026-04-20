@@ -582,6 +582,8 @@ export type AgentJonesContextV2 = {
     shortBio?: string
     issuePillars?: { title: string; summary: string }[]
     ctas?: { label: string; url: string }[]
+    /** Per-request rows from `campaign_knowledge_chunks` matched to the user's question. */
+    retrievedKnowledge?: { text: string; tags?: string[] }[]
     /** Welcome Kit + org outline model (server-safe excerpts). */
     onboardingBrief?: {
       flowSteps?: string[]

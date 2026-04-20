@@ -50,7 +50,10 @@ import {
   type AgentJonesResponse,
 } from '../lib/api/agentJones'
 import type { MatchedVoterDisplayRow } from '../lib/voterMatch'
-import { getRelevantCampaignContext } from '../lib/agentJonesKnowledge'
+import {
+  getRelevantCampaignContext,
+  getRelevantCampaignKnowledgeForQuestion,
+} from '../lib/agentJonesKnowledge'
 import { buildAgentJonesFallbackV2 } from '../lib/agentJonesBrain'
 import SuggestedPromptList from './agentJones/SuggestedPromptList'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
@@ -93,6 +96,27 @@ import {
 } from '../lib/agentJonesSessionCoaching'
 
 export const AGENT_JONES_CLEAR_EVENT = 'campaignos:agent-jones-clear'
+
+const AGENT_JONES_CAMPAIGN_SLUG = 'chris-jones-for-congress'
+
+async function withRetrievedKnowledgeForQuestion(
+  ctx: AgentJonesContextV2,
+  userMessage: string,
+): Promise<AgentJonesContextV2> {
+  try {
+    const retrievedKnowledge = await getRelevantCampaignKnowledgeForQuestion({
+      campaignSlug: AGENT_JONES_CAMPAIGN_SLUG,
+      userMessage,
+    })
+    if (!retrievedKnowledge.length) return ctx
+    return {
+      ...ctx,
+      campaign: { ...ctx.campaign, retrievedKnowledge },
+    }
+  } catch {
+    return ctx
+  }
+}
 
 function auditPatch(meta?: { lastPrompt?: string }) {
   return {
@@ -746,8 +770,9 @@ export default function AgentJonesPanel({
         if (!built) {
           throw new AgentJonesApiError('Agent Jones context not ready', 0, null)
         }
+        const enriched = await withRetrievedKnowledgeForQuestion(built, userMessage)
         const next = await callAgentJones({
-          context: contextForApi(built),
+          context: contextForApi(enriched),
           userMessage,
         })
         setReply(next)
@@ -891,7 +916,7 @@ export default function AgentJonesPanel({
       })
       try {
         const campaign = await getRelevantCampaignContext({
-          campaignSlug: 'chris-jones-for-congress',
+          campaignSlug: AGENT_JONES_CAMPAIGN_SLUG,
           context: { user: base.user, operational: base.operational },
         })
         if (!cancelled) {
@@ -986,8 +1011,9 @@ export default function AgentJonesPanel({
       if (!built) {
         throw new AgentJonesApiError('Agent Jones context not ready', 0, null)
       }
+      const enriched = await withRetrievedKnowledgeForQuestion(built, userMessage)
       const next = await callAgentJones({
-        context: contextForApi(built),
+        context: contextForApi(enriched),
         userMessage,
       })
       setReply(next)

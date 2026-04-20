@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { CampaignCalendarEventRecord } from '../../../lib/campaignCalendarArchitecture'
+import { campaignEventRecordSectionPath } from '../../../lib/campaignEventSystem'
 
 type EventDetailHeaderCardProps = {
   eventId: string
@@ -45,7 +46,9 @@ export default function EventDetailHeaderCard({
           <dd>
             {record
               ? `${new Date(record.start_at).toLocaleString()} — ${new Date(record.end_at).toLocaleString()} (${record.timezone})`
-              : '—'}
+              : isNew
+                ? 'Not set — choose a type below and save when intake is wired.'
+                : '—'}
           </dd>
         </div>
         <div>
@@ -65,6 +68,18 @@ export default function EventDetailHeaderCard({
           <dd>{record?.visibility_scope ?? '—'}</dd>
         </div>
         <div>
+          <dt>Public publish</dt>
+          <dd>{record?.public_publish_state?.trim() ? record.public_publish_state : '—'}</dd>
+        </div>
+        <div>
+          <dt>Hosts (row)</dt>
+          <dd>
+            {record?.host_user_ids?.length
+              ? `${record.host_user_ids.length} linked`
+              : '—'}
+          </dd>
+        </div>
+        <div>
           <dt>Mobilize</dt>
           <dd>{record?.mobilize_publish_state ?? '—'}</dd>
         </div>
@@ -81,6 +96,29 @@ export default function EventDetailHeaderCard({
       </p>
 
       <div className="event-coordinator-desk__quick-actions" aria-label="Quick actions">
+        <Link
+          to={campaignEventRecordSectionPath(eventId, 'tasks')}
+          className="btn-touch btn-touch--ghost"
+        >
+          Jump to tasks
+        </Link>
+        <Link
+          to={campaignEventRecordSectionPath(eventId, 'mobilize')}
+          className="btn-touch btn-touch--ghost"
+        >
+          Jump to Mobilize
+        </Link>
+        <Link
+          to={campaignEventRecordSectionPath(eventId, 'followup')}
+          className="btn-touch btn-touch--ghost"
+        >
+          Jump to follow-up
+        </Link>
+        {isUuid && !isNew ? (
+          <Link to={`/events/${eventId}/checkin`} className="btn-touch btn-touch--ghost">
+            Field check-in
+          </Link>
+        ) : null}
         <button type="button" className="btn-touch" disabled title="Coming soon">
           Edit basics
         </button>

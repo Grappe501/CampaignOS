@@ -1,12 +1,19 @@
-import { useMemo, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import type { CampaignProfile } from '../../hooks/useProfile'
-import { getDevCalendarEventById } from '../../lib/campaignCalendarDevFixtures'
+import { useEventById } from '../../hooks/useCampaignEvents'
+import { useEventOperationalTasks } from '../../hooks/useEventOperationalTasks'
+import { useEventStaffingAssignments } from '../../hooks/useEventStaffingAssignments'
+import type { CampaignCalendarEventRecord } from '../../lib/campaignCalendarArchitecture'
 import { collectOperationsGapsForEvent } from '../../lib/campaignEventCoordinatorOperations'
 import {
   CAMPAIGN_EVENT_NEW_RECORD_SLUG,
+  EVENT_RECORD_DETAIL_SECTION_DOM_IDS,
+  campaignEventRecordPath,
+  hasInvalidEventRecordDetailSectionSuffix,
   isAllowedEventRecordRouteParam,
   isUuidParam,
+  parseEventRecordDetailSectionFromPathname,
 } from '../../lib/campaignEventSystem'
 import {
   CAMPAIGN_EVENT_TYPE_MATRIX,
@@ -32,9 +39,15 @@ import {
 } from '../../lib/mobilizePublishEligibility'
 import EventCalendarVisibilityCard from './event-detail/EventCalendarVisibilityCard'
 import EventDetailHeaderCard from './event-detail/EventDetailHeaderCard'
+import EventDetailSectionNav from './event-detail/EventDetailSectionNav'
 import EventFollowupCard from './event-detail/EventFollowupCard'
 import EventHealthFlags from './event-detail/EventHealthFlags'
+import EventJonesIntelligenceCard from './event-detail/EventJonesIntelligenceCard'
 import EventLogisticsCard from './event-detail/EventLogisticsCard'
+import EventPublishPipelineCard from './event-detail/EventPublishPipelineCard'
+import EventReadinessCommandCard from './event-detail/EventReadinessCommandCard'
+import EventRunOfShowCard from './event-detail/EventRunOfShowCard'
+import EventTargetingAudienceCard from './event-detail/EventTargetingAudienceCard'
 import EventMobilizeCard from './event-detail/EventMobilizeCard'
 import EventOutcomesCard from './event-detail/EventOutcomesCard'
 import EventOverviewCard from './event-detail/EventOverviewCard'
@@ -62,6 +75,8 @@ function scaffoldEligibilityInput(type: CampaignEventTypeKey): MobilizeEligibili
   }
 }
 
+type RecordPatch = { eventId: string; patch: Partial<CampaignCalendarEventRecord> }
+
 export default function EventRecordDeskContent({
   profile: _profile,
 }: {
@@ -69,27 +84,72 @@ export default function EventRecordDeskContent({
 }) {
   void _profile
   const { eventId = '' } = useParams<{ eventId: string }>()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const queryType = parseTypeQuery(searchParams.get('type'))
-
-  const [pickedType, setPickedType] = useState<CampaignEventTypeKey | null>(null)
-  const selectedType = queryType ?? pickedType ?? 'public_fair_festival'
 
   const paramOk = isAllowedEventRecordRouteParam(eventId)
   const isNew = eventId === CAMPAIGN_EVENT_NEW_RECORD_SLUG
   const isUuid = isUuidParam(eventId)
 
-  const loadedRow = useMemo(() => {
-    if (!isUuid) return null
-    return getDevCalendarEventById(eventId)
-  }, [eventId, isUuid])
+  const { event: fetchedEvent, loading: eventLoading, error: eventFetchError } = useEventById(
+    paramOk && isUuid ? eventId : null,
+  )
+  const staffingAssignments = useEventStaffingAssignments(paramOk && isUuid ? eventId : null)
+
+  const [pickedType, setPickedType] = useState<CampaignEventTypeKey | null>(null)
+  const selectedType = queryType ?? pickedType ?? 'public_fair_festival'
+  const [recordPatch, setRecordPatch] = useState<RecordPatch | null>(null)
+  const [adhocTasks, setAdhocTasks] = useState<{ id: string; title: string }[]>([])
+
+  const loadedRow = paramOk && isUuid ? fetchedEvent : null
+
+  const activeDetailSection = useMemo(
+    () => parseEventRecordDetailSectionFromPathname(location.pathname, eventId),
+    [location.pathname, eventId],
+  )
+
+  const displayRecord = useMemo((): CampaignCalendarEventRecord | null => {
+    if (!loadedRow) return loadedRow
+    if (!recordPatch || recordPatch.eventId !== loadedRow.event_id) return loadedRow
+    return { ...loadedRow, ...recordPatch.patch }
+  }, [loadedRow, recordPatch])
 
   const effectiveType: CampaignEventTypeKey = useMemo(() => {
-    if (loadedRow && (TYPE_KEYS as readonly string[]).includes(loadedRow.event_type)) {
-      return loadedRow.event_type as CampaignEventTypeKey
+    if (displayRecord && (TYPE_KEYS as readonly string[]).includes(displayRecord.event_type)) {
+      return displayRecord.event_type as CampaignEventTypeKey
     }
     return selectedType
-  }, [loadedRow, selectedType])
+  }, [displayRecord, selectedType])
+
+  const {
+    taskRows,
+    completedTemplateSlugs,
+    loading: tasksLoading,
+    error: tasksError,
+    toggleTemplateComplete,
+  } = useEventOperationalTasks(
+    paramOk && isUuid ? eventId : null,
+    effectiveType,
+    displayRecord?.start_at ?? null,
+    Boolean(paramOk && isUuid && displayRecord && displayRecord.start_at),
+  )
+
+  const dbCriticalRatio = useMemo(() => {
+    if (!taskRows.length) return null
+    const critical = taskRows.filter((t) => t.is_critical && t.required)
+    if (!critical.length) return 1
+    const done = critical.filter((t) => t.status === 'completed' || t.status === 'skipped').length
+    return done / critical.length
+  }, [taskRows])
+
+  useEffect(() => {
+    if (!activeDetailSection) return
+    const domId = EVENT_RECORD_DETAIL_SECTION_DOM_IDS[activeDetailSection]
+    requestAnimationFrame(() => {
+      document.getElementById(domId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [activeDetailSection, location.pathname])
 
   const typeConfig = useMemo(() => getEventTypeConfig(effectiveType), [effectiveType])
   const tasksByStage = useMemo(
@@ -104,20 +164,20 @@ export default function EventRecordDeskContent({
 
   const taskInstances = useMemo(
     () =>
-      loadedRow
+      displayRecord
         ? buildEventTaskInstances({
-            event_id: loadedRow.event_id,
-            start_at: loadedRow.start_at,
+            event_id: displayRecord.event_id,
+            start_at: displayRecord.start_at,
             event_type: effectiveType,
           })
         : null,
-    [loadedRow, effectiveType],
+    [displayRecord, effectiveType],
   )
 
   const eligibilityInput = useMemo((): MobilizeEligibilityInput => {
-    if (loadedRow) return mobilizeEligibilityInputFromRecord(loadedRow)
+    if (displayRecord) return mobilizeEligibilityInputFromRecord(displayRecord)
     return scaffoldEligibilityInput(selectedType)
-  }, [loadedRow, selectedType])
+  }, [displayRecord, selectedType])
 
   const eligibility = useMemo(
     () => evaluateMobilizePublishEligibility(eligibilityInput),
@@ -125,18 +185,21 @@ export default function EventRecordDeskContent({
   )
 
   const mobilizeContract = useMemo(() => {
-    if (!loadedRow) return null
+    if (!displayRecord) return null
     return {
-      extended: buildMobilizeEligibility(loadedRow),
-      summary: buildMobilizeStatusSummary(loadedRow),
-      meta: eventMobilizeMetaFromRecord(loadedRow),
-      publishPayload: buildMobilizePublishPayload(loadedRow),
+      extended: buildMobilizeEligibility(displayRecord),
+      summary: buildMobilizeStatusSummary(displayRecord),
+      meta: eventMobilizeMetaFromRecord(displayRecord),
+      publishPayload: buildMobilizePublishPayload(displayRecord),
     }
-  }, [loadedRow])
+  }, [displayRecord])
 
   const operationsGaps = useMemo(
-    () => (loadedRow ? collectOperationsGapsForEvent(loadedRow) : []),
-    [loadedRow],
+    () =>
+      displayRecord
+        ? collectOperationsGapsForEvent(displayRecord, { staffingAssignments })
+        : [],
+    [displayRecord, staffingAssignments],
   )
   const staffingOnlyGaps = useMemo(
     () => operationsGaps.filter((g) => g.category === 'staffing'),
@@ -165,83 +228,168 @@ export default function EventRecordDeskContent({
     )
   }
 
-  const rowBanner =
-    isUuid && !loadedRow ? (
-      <p className="event-record-desk__banner" role="status">
-        No row in the development fixture set for this id — overview uses the type selector only.
-        Supabase will supply the canonical record.
-      </p>
+  if (hasInvalidEventRecordDetailSectionSuffix(location.pathname, eventId)) {
+    return <Navigate to={campaignEventRecordPath(eventId)} replace />
+  }
+
+  const missingFixturePanel =
+    isUuid && eventLoading ? (
+      <div className="event-detail-not-found" role="status" aria-live="polite" id="event-detail-loading">
+        <p className="event-detail-not-found__body">Loading event from Supabase…</p>
+      </div>
+    ) : isUuid && eventFetchError ? (
+      <div className="event-detail-not-found" role="alert" id="event-detail-error">
+        <h2 className="event-detail-not-found__title">Could not load this event</h2>
+        <p className="event-detail-not-found__body">{eventFetchError.message}</p>
+        <Link to="/events" className="event-detail-not-found__link">
+          ← Back to Event Coordinator Desk
+        </Link>
+      </div>
+    ) : isUuid && !eventLoading && !loadedRow ? (
+      <div
+        className="event-detail-not-found"
+        role="alert"
+        aria-live="polite"
+        id="event-detail-not-found"
+      >
+        <h2 className="event-detail-not-found__title">No event in this campaign</h2>
+        <p className="event-detail-not-found__body">
+          This id is not in your campaign&apos;s events. Create an event from the coordinator desk or
+          neighborhood hub, or verify you are signed into the right workspace.
+        </p>
+        <Link to="/events" className="event-detail-not-found__link">
+          ← Back to Event Coordinator Desk
+        </Link>
+      </div>
     ) : null
 
-  const headerTitle = isNew ? 'New event (scaffold)' : loadedRow?.title ?? 'Event details'
+  const headerTitle = isNew
+    ? 'New event (scaffold)'
+    : eventLoading && isUuid
+      ? 'Loading…'
+      : displayRecord?.title ?? 'Event details'
   const typeLabel = typeDef?.label ?? null
+
+  const showOperationalBody = !isUuid || (!eventLoading && !!loadedRow && !eventFetchError)
 
   return (
     <div className="event-coordinator-desk" id="event-record-detail">
       <p className="event-detail-page__intro">
         Operational home for one event — sections use stable <code>id</code>s for Agent Jones and
-        admin tooling. <strong>Staged:</strong> edit/save, publish API, persisted tasks.
+        admin tooling. Section URLs (e.g. <code>/tasks</code>) deep-link for scheduling handoffs.
+        Workflow tasks and readiness persist to Supabase; Mobilize publish and some edits remain staged
+        where noted.
       </p>
-      {rowBanner}
+      {missingFixturePanel}
 
       <EventDetailHeaderCard
         eventId={eventId}
         isNew={isNew}
         isUuid={isUuid}
         title={headerTitle}
-        record={loadedRow}
+        record={displayRecord}
         typeLabel={typeLabel}
       />
 
-      <EventHealthFlags
-        eligibility={eligibility}
-        mobilizePublishReadyOverride={
-          mobilizeContract != null ? mobilizeContract.extended.isEligible : null
-        }
-        staffingGaps={operationsGaps.filter((g) =>
-          ['staffing', 'logistics', 'host'].includes(g.category),
-        )}
-        followGaps={followGaps}
-        stageStatus={loadedRow?.stage_status ?? null}
-      />
+      <EventDetailSectionNav eventId={eventId} />
 
-      <EventOverviewCard
-        record={loadedRow}
-        typeDef={typeDef}
-        loadedRow={loadedRow}
-        selectedType={selectedType}
-        onTypeChange={setPickedType}
-      />
+      {showOperationalBody ? (
+        <>
+          <EventHealthFlags
+            eligibility={eligibility}
+            mobilizePublishReadyOverride={
+              mobilizeContract != null ? mobilizeContract.extended.isEligible : null
+            }
+            staffingGaps={operationsGaps.filter((g) =>
+              ['staffing', 'logistics', 'host'].includes(g.category),
+            )}
+            followGaps={followGaps}
+            stageStatus={displayRecord?.stage_status ?? null}
+          />
 
-      <EventStageTrackerCard
-        record={loadedRow}
-        requiredStageSlugs={requiredStageSlugs}
-        typeDef={typeDef}
-        currentLifecycle={loadedRow?.stage_status ?? null}
-      />
+          <EventReadinessCommandCard record={displayRecord} effectiveType={effectiveType} />
 
-      <EventTaskChecklistCard
-        effectiveType={effectiveType}
-        tasksByStage={tasksByStage}
-        instances={taskInstances}
-      />
+          <EventRunOfShowCard />
 
-      <EventStaffingCard record={loadedRow} staffingOnlyGaps={staffingOnlyGaps} />
+          <EventTargetingAudienceCard record={displayRecord} effectiveType={effectiveType} />
 
-      <EventLogisticsCard record={loadedRow} logisticsAndHostGaps={logisticsAndHostGaps} />
+          <EventJonesIntelligenceCard
+            record={displayRecord}
+            effectiveType={effectiveType}
+            staffingAssignments={staffingAssignments}
+            dbCriticalTaskRatio={dbCriticalRatio}
+          />
 
-      <EventCalendarVisibilityCard record={loadedRow} eligibility={eligibility} />
+          <EventPublishPipelineCard record={displayRecord} />
 
-      <EventMobilizeCard
-        record={loadedRow}
-        typeDef={typeDef}
-        eligibility={eligibility}
-        mobilizeContract={mobilizeContract}
-      />
+          <EventOverviewCard
+            record={displayRecord}
+            typeDef={typeDef}
+            loadedRow={displayRecord}
+            selectedType={selectedType}
+            onTypeChange={setPickedType}
+          />
 
-      <EventOutcomesCard record={loadedRow} />
+          <EventStageTrackerCard
+            record={displayRecord}
+            requiredStageSlugs={requiredStageSlugs}
+            typeDef={typeDef}
+            currentLifecycle={displayRecord?.stage_status ?? null}
+          />
 
-      <EventFollowupCard record={loadedRow} followGaps={followGaps} />
+          <EventTaskChecklistCard
+            effectiveType={effectiveType}
+            tasksByStage={tasksByStage}
+            instances={taskInstances}
+            completedTemplateSlugs={completedTemplateSlugs}
+            onToggleTemplateComplete={(slug) => {
+              const done = completedTemplateSlugs.has(slug)
+              void toggleTemplateComplete(slug, !done)
+            }}
+            adhocTasks={adhocTasks}
+            onAddAdhocTask={(title) => {
+              const id =
+                typeof crypto !== 'undefined' && 'randomUUID' in crypto
+                  ? crypto.randomUUID()
+                  : `adhoc-${Date.now()}`
+              setAdhocTasks((prev) => [...prev, { id, title }])
+            }}
+            tasksLoading={tasksLoading}
+            tasksError={tasksError}
+          />
+
+          <EventStaffingCard
+            record={displayRecord}
+            effectiveType={effectiveType}
+            staffingAssignments={staffingAssignments}
+            staffingOnlyGaps={staffingOnlyGaps}
+          />
+
+          <EventLogisticsCard record={displayRecord} logisticsAndHostGaps={logisticsAndHostGaps} />
+
+          <EventCalendarVisibilityCard record={displayRecord} eligibility={eligibility} />
+
+          <EventMobilizeCard
+            record={displayRecord}
+            typeDef={typeDef}
+            eligibility={eligibility}
+            mobilizeContract={mobilizeContract}
+            onApplyRecordPatch={(patch) => {
+              if (!loadedRow) return
+              setRecordPatch((prev) => {
+                if (prev?.eventId !== loadedRow.event_id) {
+                  return { eventId: loadedRow.event_id, patch }
+                }
+                return { eventId: loadedRow.event_id, patch: { ...prev.patch, ...patch } }
+              })
+            }}
+          />
+
+          <EventOutcomesCard record={displayRecord} />
+
+          <EventFollowupCard record={displayRecord} followGaps={followGaps} />
+        </>
+      ) : null}
 
       <p className="event-coordinator-desk__foot">
         <Link to="/events">← Event Coordinator Desk</Link>

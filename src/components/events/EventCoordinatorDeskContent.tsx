@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useMobilizePromotionSummary } from '../../hooks/useEventSummaries'
 import type { CampaignProfile } from '../../hooks/useProfile'
-import { getCoordinatorEventQueueSource } from '../../lib/campaignCalendarQueueSource'
+import { useCampaignEventsContext } from '../../context/CampaignEventsContext'
+import { getDevStaffingAssignmentsForEvent } from '../../lib/campaignEventStaffingDevFixtures'
 import { collectOperationsGapsForDesk } from '../../lib/campaignEventCoordinatorOperations'
 import {
   CAMPAIGN_EVENT_NEW_RECORD_SLUG,
@@ -9,28 +11,36 @@ import {
   campaignEventRecordPath,
 } from '../../lib/campaignEventSystem'
 import { CAMPAIGN_EVENT_TYPE_MATRIX } from '../../lib/campaignEventTypeMatrix'
+import { mapProfileRoleToCalendarWidgetPersona } from '../../lib/eventSummaryEngine'
 import CampaignCalendarArchitecturePanel from './CampaignCalendarArchitecturePanel'
 import CampaignSegmentedCalendarPanel from './CampaignSegmentedCalendarPanel'
 import EventPermissionsMatrixPanel from './EventPermissionsMatrixPanel'
 import EventTypeMatrixSection from './EventTypeMatrixSection'
 import MobilizeIntegrationPanel from './MobilizeIntegrationPanel'
 import MobilizePromotionQueueSection from './MobilizePromotionQueueSection'
+import PostEventAttentionQueueSection from './PostEventAttentionQueueSection'
+import CalendarSnapshotCard from './widgets/CalendarSnapshotCard'
+import CandidateScheduleFocusCard from './widgets/CandidateScheduleFocusCard'
+import EventPressureSummaryCard from './widgets/EventPressureSummaryCard'
+import MobilizeQueueSummaryCard from './widgets/MobilizeQueueSummaryCard'
+import UpcomingCampaignStrip from './widgets/UpcomingCampaignStrip'
 
 export default function EventCoordinatorDeskContent({
   profile,
 }: {
   profile: CampaignProfile | null
 }) {
-  const location = useLocation()
-  const calendarView = location.pathname.endsWith('/calendar')
   const displayName =
     profile?.display_name?.trim() ||
     profile?.email?.split('@')[0]?.trim() ||
     'Coordinator'
 
-  const queueEvents = useMemo(() => getCoordinatorEventQueueSource(), [])
+  const { events: queueEvents } = useCampaignEventsContext()
   const coordinatorPressure = useMemo(
-    () => collectOperationsGapsForDesk(queueEvents),
+    () =>
+      collectOperationsGapsForDesk(queueEvents, (e) =>
+        getDevStaffingAssignmentsForEvent(e.event_id),
+      ),
     [queueEvents],
   )
   const staffingDeskGaps = useMemo(
@@ -46,12 +56,11 @@ export default function EventCoordinatorDeskContent({
     [coordinatorPressure],
   )
 
+  const calendarPersona = mapProfileRoleToCalendarWidgetPersona(profile?.primary_role)
+  const mobilizePromotion = useMobilizePromotionSummary(calendarPersona)
+
   return (
-    <div
-      className="event-coordinator-desk"
-      id="event-coordinator-desk"
-      data-calendar-view={calendarView ? 'true' : 'false'}
-    >
+    <div className="event-coordinator-desk" id="event-coordinator-desk">
       <header className="event-coordinator-desk__command" id="event-coordinator-command">
         <div className="event-coordinator-desk__command-top">
           <div>
@@ -69,70 +78,38 @@ export default function EventCoordinatorDeskContent({
           </div>
         </div>
         <div className="event-coordinator-desk__quick-actions" aria-label="Quick actions">
-          <button type="button" className="btn-touch" disabled title="Coming soon">
-            Create event
-          </button>
-          <button type="button" className="btn-touch" disabled title="Coming soon">
-            Review requests
-          </button>
-          <Link to="/events/calendar" className="btn-touch">
-            Open calendar view
+          <Link to="/events/county-ops" className="btn-touch">
+            County command center
+          </Link>
+          <Link to="/events/neighborhood" className="btn-touch">
+            Neighborhood activation
+          </Link>
+          <Link to="/events/analytics" className="btn-touch">
+            Event analytics
           </Link>
           <Link
             to={campaignEventRecordPath(CAMPAIGN_EVENT_NEW_RECORD_SLUG)}
             className="btn-touch"
           >
+            Create event
+          </Link>
+          <Link to="/events/review-requests" className="btn-touch">
+            Review requests
+          </Link>
+          <Link to="/events/calendar" className="btn-touch">
+            Open calendar view
+          </Link>
+          <Link
+            to={campaignEventRecordPath(CAMPAIGN_EVENT_NEW_RECORD_SLUG)}
+            className="btn-touch btn-touch--ghost"
+          >
             New event record
           </Link>
-          <button type="button" className="btn-touch" disabled title="Coming soon">
+          <Link to="/events/promotion" className="btn-touch">
             Publish to Mobilize
-          </button>
+          </Link>
         </div>
       </header>
-
-      {calendarView ? (
-        <section className="event-coordinator-desk__section event-coordinator-desk__section--flush">
-          <CampaignCalendarArchitecturePanel variant="full" />
-          <MobilizeIntegrationPanel variant="compact" />
-          <section
-            className="event-coordinator-desk__calendar-views"
-            aria-labelledby="cal-view-modes-heading"
-          >
-            <h2 id="cal-view-modes-heading" className="event-coordinator-desk__h2">
-              Calendar views (one engine)
-            </h2>
-            <p className="event-coordinator-desk__placeholder">
-              All modes read the same <code>CampaignCalendarEventRecord</code> rows; filters differ
-              by visibility, function, geo, owner, and role presets — no forked calendars.
-            </p>
-            <ul className="event-coordinator-desk__view-modes">
-              <li>
-                <strong>Month / week grid.</strong> Coordinator layout with segment toggles and
-                staffing/Mobilize overlays (roadmap).
-              </li>
-              <li>
-                <strong>Agenda list.</strong> Chronological list with chips for audience, function,
-                and county/precinct scope.
-              </li>
-              <li>
-                <strong>Upcoming strip.</strong> 3–7 items for dashboards and mobile; permission and
-                geo scoped.
-              </li>
-            </ul>
-          </section>
-          <section className="event-coordinator-desk__section event-coordinator-desk__section--flush">
-            <h2 className="event-coordinator-desk__h2">Segmented campaign calendar</h2>
-            <p className="event-coordinator-desk__placeholder">
-              One event source — visibility, inferred function/geo, lifecycle, and owner filters.
-              Development builds include sample rows; production stays empty until Supabase connects.
-            </p>
-            <CampaignSegmentedCalendarPanel />
-          </section>
-          <Link to="/events" className="event-coordinator-desk__back">
-            ← Back to event desk overview
-          </Link>
-        </section>
-      ) : null}
 
       <section className="event-coordinator-desk__section" aria-labelledby="ec-attn-heading">
         <h2 id="ec-attn-heading" className="event-coordinator-desk__h2">
@@ -142,33 +119,36 @@ export default function EventCoordinatorDeskContent({
           <li>Pending approvals</li>
           <li>Events missing venue or time</li>
           <li>Staffing gaps</li>
-          <li>Mobilize publish failures / unsynced events</li>
+          <li>
+            Mobilize: {mobilizePromotion.summary.attentionCount} need attention (persona-scoped pool)
+            — {mobilizePromotion.summary.syncErrorCount} sync_error,{' '}
+            {mobilizePromotion.summary.updateRequiredCount} update/drift
+          </li>
           <li>Post-event follow-up overdue</li>
         </ul>
-        <p className="event-coordinator-desk__placeholder">
-          No live aggregates yet — this list is the coordinator attention model. Counts and queues
-          will connect to Supabase when the events table ships.
+        <p className="event-coordinator-desk__placeholder" role="status">
+          Mobilize counts above use the same filtered pool as leadership widgets (persona rules).
+          Full desk queue (all fixtures) is summarized in{' '}
+          <a href="#mobilize-queue-summary-card">Mobilize promotion health</a> and{' '}
+          <a href="#mobilize-promotion-queue">Mobilize promotion queue</a>.
         </p>
       </section>
 
-      {!calendarView ? (
-        <section className="event-coordinator-desk__section" aria-labelledby="ec-pipeline-heading">
+      <section className="event-coordinator-desk__section" aria-labelledby="ec-pipeline-heading">
           <h2 id="ec-pipeline-heading" className="event-coordinator-desk__h2">
             Event pipeline summary
           </h2>
           <p className="event-coordinator-desk__placeholder" role="status">
-            No events loaded — pipeline buckets and drag-board columns will bind to the same status
-            values your campaign uses end-to-end.
+            Pipeline buckets and drag-board columns will bind to the same status values your campaign
+            uses end-to-end. Development fixtures populate the queue; production waits on Supabase.
           </p>
           <p className="event-coordinator-desk__meta">
             Coordinator statuses (reference):{' '}
             {CAMPAIGN_EVENT_PIPELINE_STATUSES.join(' · ')}
           </p>
         </section>
-      ) : null}
 
-      {!calendarView ? (
-        <section className="event-coordinator-desk__section" aria-labelledby="ec-workload-heading">
+      <section className="event-coordinator-desk__section" aria-labelledby="ec-workload-heading">
           <h2 id="ec-workload-heading" className="event-coordinator-desk__h2">
             Event type workload
           </h2>
@@ -191,10 +171,8 @@ export default function EventCoordinatorDeskContent({
             Full paths, tasks, and Mobilize hints: see the matrix section at the bottom of this desk.
           </p>
         </section>
-      ) : null}
 
-      {!calendarView ? (
-        <section className="event-coordinator-desk__section" aria-labelledby="ec-staffing-heading">
+      <section className="event-coordinator-desk__section" aria-labelledby="ec-staffing-heading">
           <h2 id="ec-staffing-heading" className="event-coordinator-desk__h2">
             Staffing &amp; logistics pressure
           </h2>
@@ -225,17 +203,16 @@ export default function EventCoordinatorDeskContent({
             </ul>
           )}
         </section>
-      ) : null}
 
-      {!calendarView ? (
-        <section className="event-coordinator-desk__section" aria-labelledby="ec-followup-heading">
+      <section className="event-coordinator-desk__section" aria-labelledby="ec-followup-heading">
           <h2 id="ec-followup-heading" className="event-coordinator-desk__h2">
             Follow-up &amp; attendance reconciliation
           </h2>
           <p className="event-coordinator-desk__placeholder" role="status">
             Post-event attendance, donor/supporter/volunteer follow-up, and debrief ownership use{' '}
-            <code>followup_state</code> plus end time on each row. Heuristics flag past events missing
-            follow-up.
+            <code>followup_state</code> plus end time on each row. The{' '}
+            <a href="#event-coordinator-postevent-queue">post-event queue</a> lists ended events still
+            short of <code>complete</code> (persona-scoped).
           </p>
           {followUpDeskGaps.length === 0 ? (
             <p className="event-coordinator-desk__meta">No follow-up gaps in the current source list.</p>
@@ -252,36 +229,46 @@ export default function EventCoordinatorDeskContent({
             </ul>
           )}
         </section>
-      ) : null}
 
-      {!calendarView ? <MobilizePromotionQueueSection events={queueEvents} /> : null}
+      <MobilizePromotionQueueSection events={queueEvents} />
 
-      <section className="event-coordinator-desk__section" aria-labelledby="ec-rail-heading">
-        <h2 id="ec-rail-heading" className="event-coordinator-desk__h2">
-          Upcoming event pressure (next 7 days)
+      <PostEventAttentionQueueSection persona={calendarPersona} />
+
+      <div className="ec-desk-widgets" id="event-desk-leadership-widgets">
+        <UpcomingCampaignStrip
+          persona={calendarPersona}
+          limit={7}
+          title="Upcoming (next 7)"
+          subtitle="Shared queue — open the full calendar for filters and month view."
+        />
+        <EventPressureSummaryCard persona={calendarPersona} />
+        <MobilizeQueueSummaryCard events={queueEvents} />
+        <CalendarSnapshotCard persona={calendarPersona} windowDays={14} />
+        <CandidateScheduleFocusCard persona={calendarPersona} />
+      </div>
+
+      <section className="event-coordinator-desk__section" aria-labelledby="ec-snap-heading">
+        <h2 id="ec-snap-heading" className="event-coordinator-desk__h2">
+          Calendar architecture reference
         </h2>
         <p className="event-coordinator-desk__placeholder">
-          Urgency segments and highlights for high-priority public and finance events will render
-          here.
+          Use <Link to="/events/calendar">Event calendar &amp; agenda</Link> for the full filtered
+          shell. This panel stays as a compact architecture reminder.
         </p>
+        <details className="event-coordinator-desk__details">
+          <summary>Campaign calendar architecture (single engine)</summary>
+          <CampaignCalendarArchitecturePanel variant="compact" />
+        </details>
       </section>
 
-      {!calendarView ? (
-        <section className="event-coordinator-desk__section" aria-labelledby="ec-snap-heading">
-          <h2 id="ec-snap-heading" className="event-coordinator-desk__h2">
-            Calendar snapshot
-          </h2>
-          <p className="event-coordinator-desk__placeholder">
-            Campaign-wide and county/region filters — use{' '}
-            <Link to="/events/calendar">calendar view</Link> for segmentation reference and roadmap
-            widgets.
-          </p>
-          <details className="event-coordinator-desk__details">
-            <summary>Campaign calendar architecture (single engine)</summary>
-            <CampaignCalendarArchitecturePanel variant="compact" />
-          </details>
-        </section>
-      ) : null}
+      <section className="event-coordinator-desk__section event-coordinator-desk__section--flush">
+        <h2 className="event-coordinator-desk__h2">Segmented calendar (demo)</h2>
+        <p className="event-coordinator-desk__placeholder">
+          Same engine as <Link to="/events/calendar">/events/calendar</Link> — segment toggles for
+          desk walkthroughs.
+        </p>
+        <CampaignSegmentedCalendarPanel />
+      </section>
 
       <section className="event-coordinator-desk__section" aria-labelledby="ec-core-heading">
         <h2 id="ec-core-heading" className="event-coordinator-desk__h2">
@@ -300,24 +287,14 @@ export default function EventCoordinatorDeskContent({
             See <a href="#mobilize-promotion-queue">Mobilize promotion queue</a> above. Posture and
             phases:{' '}
             <a href="#mobilize-plan-heading">Mobilize integration</a>
-            {calendarView ? (
-              <>
-                {' '}
-                (or open the <Link to="/events">overview</Link> for the full panel).
-              </>
-            ) : null}
             .
           </p>
         </details>
       </section>
 
-      {!calendarView ? (
-        <>
-          <EventPermissionsMatrixPanel variant="full" />
-          <EventTypeMatrixSection />
-          <MobilizeIntegrationPanel variant="full" />
-        </>
-      ) : null}
+      <EventPermissionsMatrixPanel variant="full" />
+      <EventTypeMatrixSection />
+      <MobilizeIntegrationPanel variant="full" />
 
       <p className="event-coordinator-desk__foot">
         <Link to="/coordinator">Supervised missions &amp; assignments</Link>

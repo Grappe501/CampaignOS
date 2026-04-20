@@ -33,6 +33,11 @@ export const MOBILIZE_PUBLISHABLE_EVENT_TYPE_KEYS: readonly CampaignEventTypeKey
   'house_party_intro_candidate',
   'campaign_rally',
   'county_party_meeting',
+  'volunteer_recruitment_event',
+  'early_vote_rally',
+  'canvass_launch_event',
+  'campus_youth_activation',
+  'surrogate_appearance_event',
 ]
 
 /** Matrix keys that are usually internal / private-first. */
@@ -40,6 +45,11 @@ export const MOBILIZE_TYPICALLY_PRIVATE_EVENT_TYPE_KEYS: readonly CampaignEventT
   'house_party_fundraising',
   'lunch_meeting',
   'coffee_meeting',
+  'community_listening_session',
+  'gotv_staging_event',
+  'faith_values_gathering',
+  'coalition_partner_event',
+  'digital_hybrid_event',
 ]
 
 /** Roadmap / additional types often publishable (not yet in type matrix rows). */
@@ -63,6 +73,7 @@ export const MOBILIZE_SYNC_FIELD_KEYS = [
   'mobilize_last_synced_at',
   'mobilize_last_error',
   'mobilize_public_url',
+  'mobilize_remote_modified_at',
   'mobilize_tags_synced',
   'mobilize_sync_hash',
   'mobilize_update_needed',
@@ -163,6 +174,16 @@ export function mobilizePublishableLabelForTypeKey(key: CampaignEventTypeKey): s
     coffee_meeting: 'Coffee meeting',
     county_party_meeting: 'County party meeting (when public recruitment is appropriate)',
     campaign_rally: 'Campaign rally',
+    volunteer_recruitment_event: 'Volunteer recruitment event',
+    community_listening_session: 'Community listening session',
+    early_vote_rally: 'Early vote rally / vote trip',
+    gotv_staging_event: 'GOTV staging event',
+    faith_values_gathering: 'Faith / values community gathering',
+    canvass_launch_event: 'Canvass launch event',
+    coalition_partner_event: 'Coalition partner event',
+    campus_youth_activation: 'Campus / youth activation',
+    digital_hybrid_event: 'Digital / hybrid event',
+    surrogate_appearance_event: 'Surrogate appearance event',
   }
   return labels[key]
 }

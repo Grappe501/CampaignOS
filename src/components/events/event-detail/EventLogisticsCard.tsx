@@ -12,6 +12,7 @@ export default function EventLogisticsCard({
 }: EventLogisticsCardProps) {
   return (
     <section
+      id="event-logistics"
       className="event-coordinator-desk__section event-detail-card"
       aria-labelledby="event-logistics-heading"
     >

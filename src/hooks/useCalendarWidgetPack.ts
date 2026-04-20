@@ -4,11 +4,12 @@ import {
   type CalendarWidgetPack,
   type CalendarWidgetPersona,
 } from '../lib/calendarWidgetData'
-import { getCoordinatorEventQueueSource } from '../lib/campaignCalendarQueueSource'
+import { useCampaignEventsContext } from '../context/CampaignEventsContext'
 
 export function useCalendarWidgetPack(
   persona: CalendarWidgetPersona,
 ): CalendarWidgetPack {
+  const { events } = useCampaignEventsContext()
   const [nowMs, setNowMs] = useState(() => Date.now())
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 60_000)
@@ -16,7 +17,6 @@ export function useCalendarWidgetPack(
   }, [])
 
   return useMemo(() => {
-    const events = getCoordinatorEventQueueSource()
     return buildCalendarWidgetPack(events, persona, nowMs)
-  }, [persona, nowMs])
+  }, [events, persona, nowMs])
 }

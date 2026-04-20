@@ -63,7 +63,7 @@ import CampaignKpisCard from '../components/dashboard/CampaignKpisCard'
 import LeadershipKpiScaffold from '../components/dashboard/LeadershipKpiScaffold'
 import InternDeskContent from '../components/intern/InternDeskContent'
 import VolunteerPathCardGrid from '../components/dashboard/VolunteerPathCardGrid'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCalendarWidgetPack } from '../hooks/useCalendarWidgetPack'
 import {
   mapProfileRoleToCalendarWidgetPersona,
@@ -457,6 +457,10 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             labelCollapsed="Volunteer guide"
             sectionGlyph="volunteer-global"
           >
+            <p className="subtitle" style={{ margin: '0 0 12px' }}>
+              <Link to="/volunteers/me">Volunteer command hub</Link> — claim open assignments, track
+              training, and keep your operational profile current.
+            </p>
             <VolunteerPathCardGrid
               headingId="volunteer-global-heading"
               heading="Volunteer playbook"

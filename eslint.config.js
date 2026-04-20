@@ -8,7 +8,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores(['dist']),
   {
-    files: ['netlify/functions/**/*.ts'],
+    files: ['netlify/**/*.ts'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 2020,
@@ -19,6 +19,7 @@ export default defineConfig([
     },
   },
   {
+    ignores: ['netlify/**'],
     files: ['**/*.{ts,tsx}'],
     extends: [
       js.configs.recommended,

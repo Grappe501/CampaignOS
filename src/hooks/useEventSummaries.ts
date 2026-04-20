@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CampaignCalendarEventRecord } from '../lib/campaignCalendarArchitecture'
-import { getCoordinatorEventQueueSource } from '../lib/campaignCalendarQueueSource'
+import { useCampaignEventsContext } from '../context/CampaignEventsContext'
+import { buildPostEventAttentionQueue } from '../lib/eventPostEventWorkflow'
 import type { CalendarWidgetPersona, EventSummaryFilter } from '../lib/eventSummaryEngine'
 import {
   buildCandidateEventSummary,
   buildEventCalendarSummary,
+  buildMobilizePromotionBullets,
   buildUpcomingCampaignItems,
   filterEvents,
   filterEventsForCalendarPersona,
@@ -24,7 +26,8 @@ function useEventSummaryNowMs(intervalMs = 60_000): number {
 }
 
 function useEventSummarySource(): readonly CampaignCalendarEventRecord[] {
-  return useMemo(() => getCoordinatorEventQueueSource(), [])
+  const { events } = useCampaignEventsContext()
+  return events
 }
 
 function useFilterKey(filter: EventSummaryFilter | undefined): string {
@@ -95,6 +98,22 @@ export function useMobilizeQueueSummary(
   return useMemo(() => summarizeMobilizeQueue(pool), [pool])
 }
 
+/** Mobilize queue counts plus coordinator-facing bullets (Pass 3). */
+export function useMobilizePromotionSummary(
+  persona: CalendarWidgetPersona,
+  filter?: EventSummaryFilter,
+): {
+  summary: ReturnType<typeof summarizeMobilizeQueue>
+  bullets: string[]
+} {
+  const filterKey = useFilterKey(filter)
+  const pool = usePressurePool(persona, filterKey)
+  return useMemo(() => {
+    const summary = summarizeMobilizeQueue(pool)
+    return { summary, bullets: buildMobilizePromotionBullets(summary) }
+  }, [pool])
+}
+
 /** 4 — Candidate desk schedule intelligence (persona should usually be `candidate`). */
 export function useCandidateEventSummary(
   persona: CalendarWidgetPersona,
@@ -115,6 +134,21 @@ export function usePostEventFollowupSummary(
   const filterKey = useFilterKey(filter)
   const pool = usePressurePool(persona, filterKey)
   return useMemo(() => summarizePostEventFollowup(pool, nowMs), [pool, nowMs])
+}
+
+/** Post-event reconciliation queue (ended events not in `complete` follow-up). */
+export function usePostEventAttentionQueue(
+  persona: CalendarWidgetPersona,
+  options?: { limit?: number; filter?: EventSummaryFilter },
+): ReturnType<typeof buildPostEventAttentionQueue> {
+  const nowMs = useEventSummaryNowMs()
+  const filterKey = useFilterKey(options?.filter)
+  const pool = usePressurePool(persona, filterKey)
+  const limit = options?.limit ?? 20
+  return useMemo(
+    () => buildPostEventAttentionQueue(pool, nowMs, limit),
+    [pool, nowMs, limit],
+  )
 }
 
 /** 6 — Calendar snapshot for 7 / 14 / 30-day windows (persona-scoped list). */

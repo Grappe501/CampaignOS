@@ -7,7 +7,7 @@ import {
   CALENDAR_LIFECYCLE_STATUSES,
   CALENDAR_VISIBILITY_SEGMENTS,
 } from '../../lib/campaignCalendarArchitecture'
-import { getDevCalendarFixtureEvents } from '../../lib/campaignCalendarDevFixtures'
+import { useCampaignEventsContext } from '../../context/CampaignEventsContext'
 import {
   applyCalendarSegmentFilters,
   daysInMonth,
@@ -46,7 +46,7 @@ function formatEventTime(iso: string): string {
 }
 
 export default function CampaignSegmentedCalendarPanel() {
-  const sourceEvents = useMemo(() => getDevCalendarFixtureEvents(), [])
+  const { events: sourceEvents } = useCampaignEventsContext()
   const [filters, setFilters] = useState<CampaignCalendarSegmentFilters>(EMPTY_FILTERS)
   const [viewMode, setViewMode] = useState<CampaignCalendarViewMode>('agenda')
   const [cursor, setCursor] = useState(() => ({ year: 2026, monthIndex: 3 }))

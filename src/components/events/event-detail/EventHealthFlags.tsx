@@ -85,6 +85,7 @@ export default function EventHealthFlags({
 
   return (
     <section
+      id="event-detail-health"
       className="event-detail-health"
       aria-label="Event health"
       role="region"

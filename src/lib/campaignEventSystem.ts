@@ -1,7 +1,8 @@
 /**
  * Event system — Pass 1 core model & routes (blueprints 05–06).
  *
- * Route family: `/events`, `/events/calendar`, `/events/:eventId` (see `App.tsx`).
+ * Route family: `/events`, `/events/calendar`, `/events/review-requests`, `/events/promotion`,
+ * `/events/:eventId`, `/events/:eventId/<section>` (see `App.tsx`).
  * Navigation: `AppHeader` surfaces Events when `canAccessEventCoordinatorDesk` is true
  * (`eventCoordinatorDeskAccess.ts`). Eligible roles use header IA; others may bookmark URLs.
  *
@@ -36,7 +37,83 @@ export type {
 /** Alias — same as calendar row; use one shape for DB + desks. */
 export type CampaignEventCoreRecord = CampaignCalendarEventRecord
 
-export const CAMPAIGN_EVENT_ROUTE_PATHS = ['/events', '/events/calendar'] as const
+export const CAMPAIGN_EVENT_ROUTE_PATHS = [
+  '/events',
+  '/events/county-ops',
+  '/events/neighborhood',
+  '/events/analytics',
+  '/events/calendar',
+  '/events/review-requests',
+  '/events/promotion',
+] as const
+
+/** Deep-link segments for `/events/:eventId/<section>` (must stay disjoint from management paths above). */
+export const EVENT_RECORD_DETAIL_SECTION_SLUGS = [
+  'command',
+  'health',
+  'overview',
+  'stages',
+  'tasks',
+  'staffing',
+  'logistics',
+  'calendar',
+  'mobilize',
+  'outcomes',
+  'followup',
+] as const
+
+export type EventRecordDetailSectionSlug = (typeof EVENT_RECORD_DETAIL_SECTION_SLUGS)[number]
+
+export const EVENT_RECORD_DETAIL_SECTION_DOM_IDS: Record<EventRecordDetailSectionSlug, string> = {
+  command: 'event-record-command',
+  health: 'event-detail-health',
+  overview: 'event-overview',
+  stages: 'event-stage-tracker',
+  tasks: 'event-task-checklist',
+  staffing: 'event-staffing',
+  logistics: 'event-logistics',
+  calendar: 'event-calendar-visibility',
+  mobilize: 'event-mobilize',
+  outcomes: 'event-outcomes',
+  followup: 'event-followup',
+}
+
+export function isEventRecordDetailSectionSlug(s: string): s is EventRecordDetailSectionSlug {
+  return (EVENT_RECORD_DETAIL_SECTION_SLUGS as readonly string[]).includes(s)
+}
+
+export function campaignEventRecordSectionPath(
+  eventId: string,
+  section: EventRecordDetailSectionSlug,
+): string {
+  const base = `/events/${encodeURIComponent(eventId)}`
+  if (section === 'overview') return base
+  return `${base}/${section}`
+}
+
+/**
+ * Returns the section slug when `pathname` is `/events/:eventId/<slug>` with a valid slug; otherwise null.
+ */
+export function parseEventRecordDetailSectionFromPathname(
+  pathname: string,
+  eventId: string,
+): EventRecordDetailSectionSlug | null {
+  const prefix = `/events/${eventId}/`
+  if (!pathname.startsWith(prefix)) return null
+  const seg = pathname.slice(prefix.length).split('/').filter(Boolean)[0]
+  if (!seg || !isEventRecordDetailSectionSlug(seg)) return null
+  return seg
+}
+
+/**
+ * True when URL has an extra path segment after the event id that is not a valid section (e.g. `/events/uuid/bad`).
+ */
+export function hasInvalidEventRecordDetailSectionSuffix(pathname: string, eventId: string): boolean {
+  const prefix = `/events/${eventId}/`
+  if (!pathname.startsWith(prefix)) return false
+  const seg = pathname.slice(prefix.length).split('/').filter(Boolean)[0]
+  return Boolean(seg && !isEventRecordDetailSectionSlug(seg))
+}
 
 /** Create-flow placeholder in URL until intake saves a row. */
 export const CAMPAIGN_EVENT_NEW_RECORD_SLUG = 'new'
@@ -119,6 +196,86 @@ export function toCampaignEventSummary(
 }
 
 export type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture'
+
+export type {
+  CampaignEvent,
+  DomainEventTaskTemplate,
+  EndorsementOrInfluencerItem,
+  EventChecklist,
+  EventGeoScope,
+  EventHostType,
+  EventIntelligencePacket,
+  EventMobilizeSyncStatus,
+  EventObjective,
+  EventOperationalStatus,
+  EventOutcomeMetrics,
+  EventReadinessModel,
+  EventTemplate,
+  EventWorkflowPhase,
+  IssueCaptureItem,
+} from './campaignEventDomain'
+export {
+  campaignEventFromRow,
+  EVENT_GEO_SCOPES,
+  EVENT_HOST_TYPES,
+  EVENT_OBJECTIVES,
+  EVENT_OPERATIONAL_STATUSES,
+  EVENT_WORKFLOW_PHASES,
+  parseEndorsementsJson,
+  parseIssuesCapturedJson,
+  parseRequiredRolesJson,
+} from './campaignEventDomain'
+
+export {
+  buildEventIntelligencePacket,
+  calculateEventReadiness,
+  createEventFromTemplate,
+  generateEventDefaultTasks,
+  summarizeEventGoals,
+} from './campaignEventDomainServices'
+export type { CreateEventFromTemplateInput, EventReadinessCalculationInput } from './campaignEventDomainServices'
+
+export { EVENT_TYPE_TEMPLATE_REGISTRY, getEventTypeTemplate, listEventTypeTemplateKeys } from './event-types.config'
+
+export {
+  completeEventTask,
+  createWorkflowForCalendarRecord,
+  createWorkflowForEvent,
+  getBlockingIssues,
+  getWorkflowProgress,
+  regenerateWorkflow,
+} from './eventWorkflowEngine'
+export type {
+  EventMilestone,
+  EventWorkflowRun,
+  EventWorkflowTask,
+  TaskDependency,
+  WorkflowTaskState,
+} from './eventWorkflowEngine'
+
+export {
+  buildCountyOperationsRows,
+  filterCountyRows,
+} from './eventOperationsSelectors'
+export type { CountyOperationsEventRow } from './eventOperationsSelectors'
+
+export {
+  buildEventAnalyticsSnapshot,
+  deriveCoverageGaps,
+  staffingCoverageRatio,
+} from './eventAnalyticsSelectors'
+
+export {
+  buildEventIntelligencePacketFromCalendarRow,
+  buildPostEventDebrief,
+  buildPreEventBrief,
+} from './eventIntelligenceJones'
+
+export {
+  createExternalEventPayload,
+  mapMobilizeToExternalPublishState,
+  validateExternalPublishingReadiness,
+} from './eventExternalPublishing'
 
 export {
   EVENT_APPROVAL_ROLE_SLUGS,

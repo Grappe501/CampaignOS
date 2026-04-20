@@ -145,7 +145,18 @@ export function buildAgentJonesNavigationHints(input: {
     })
   }
   if (hints.length < 3 && p.startsWith('/events')) {
-    const onRecord = /^\/events\/[^/]+$/.test(p) && p !== '/events/calendar'
+    const reserved = new Set([
+      'calendar',
+      'review-requests',
+      'promotion',
+    ])
+    const segments = p.split('/').filter(Boolean)
+    const second = segments[1]
+    const onRecord =
+      segments[0] === 'events' &&
+      second != null &&
+      !reserved.has(second) &&
+      p !== '/events/calendar'
     push({
       kind: 'scroll',
       label: onRecord ? 'Event record' : 'Event desk overview',

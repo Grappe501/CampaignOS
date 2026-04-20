@@ -96,6 +96,9 @@ export type CampaignCalendarEventRecord = {
   timezone: string
   venue_name: string | null
   address_or_virtual: string | null
+  /** When present (Supabase row), used for Mobilize in-person postal_code gate. */
+  postal_code?: string | null
+  virtual_url?: string | null
   owner_user_id: string | null
   owner_role: string | null
   host_user_ids: string[]
@@ -116,6 +119,8 @@ export type CampaignCalendarEventRecord = {
   mobilize_update_needed: boolean | null
   /** Profile id that last successfully published (server-held; null until wired). */
   mobilize_published_by_user_id?: string | null
+  /** ISO timestamp from Mobilize `modified_date` after last successful refresh_remote (Pass 3); optional until refreshed. */
+  mobilize_remote_modified_at?: string | null
   /** Public promotion copy — separate from internal title/notes (blueprint 12). */
   public_title?: string | null
   public_description?: string | null
@@ -131,6 +136,10 @@ export type CampaignCalendarEventRecord = {
   notes: string | null
   created_at: string
   updated_at: string
+  /** Present when loaded from `campaign_events` operational domain. */
+  campaign_id?: string
+  operational_status?: string | null
+  readiness_score?: number | null
 }
 
 export type CalendarViewPresetId =

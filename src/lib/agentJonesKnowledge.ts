@@ -3,6 +3,7 @@ import {
   getCampaignCtas,
   getCampaignIssuePillars,
   getCampaignKnowledgeSnippets,
+  getCampaignKnowledgeSnippetsForMessage,
   getCampaignSlogan,
 } from './campaignKnowledge'
 import { getOnboardingBriefForAgent } from './onboardingCampaignModel'
@@ -49,5 +50,18 @@ export async function getRelevantCampaignContext(input: {
   if (onboardingBrief) out.onboardingBrief = onboardingBrief
 
   return out
+}
+
+/** Per-question KB snippets for Agent Jones (matches user wording against `campaign_knowledge_chunks`). */
+export async function getRelevantCampaignKnowledgeForQuestion(input: {
+  campaignSlug: string
+  userMessage: string
+}): Promise<{ text: string; tags: string[] }[]> {
+  const snippets = await getCampaignKnowledgeSnippetsForMessage({
+    campaignSlug: input.campaignSlug,
+    userMessage: input.userMessage,
+    limit: 6,
+  })
+  return snippets.map((s) => ({ text: s.text, tags: s.tags }))
 }
 

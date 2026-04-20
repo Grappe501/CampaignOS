@@ -473,6 +473,8 @@ type AgentJonesSafeContextV2 = {
     shortBio?: string
     issuePillars?: { title: string; summary: string }[]
     ctas?: { label: string; url: string }[]
+    /** Client-matched rows from campaign knowledge base for this question. */
+    retrievedKnowledge?: { text: string; tags?: string[] }[]
     onboardingBrief?: AgentJonesOnboardingBrief
   }
   operational: {
@@ -540,6 +542,7 @@ type AgentJonesSafeContextLegacy = {
     shortBio?: string
     issuePillars?: { title: string; summary: string }[]
     ctas?: { label: string; url: string }[]
+    retrievedKnowledge?: { text: string; tags?: string[] }[]
     onboardingBrief?: AgentJonesOnboardingBrief
     contact?: { addressLabel?: string; addressUrl?: string }
     social?: { platform: string; label: string; url: string }[]
@@ -605,11 +608,18 @@ const SCROLL_IDS = new Set([
   'admin-tasks',
   'admin-config',
   'event-coordinator-desk',
+  'event-coordinator-postevent-queue',
+  'event-calendar-page',
+  'event-calendar-command',
+  'event-calendar-filters',
   'event-record-detail',
+  'event-record-command',
+  'event-detail-health',
   'event-overview',
   'event-stage-tracker',
   'event-task-checklist',
   'event-staffing',
+  'event-logistics',
   'event-calendar-visibility',
   'event-mobilize',
   'event-outcomes',
@@ -625,6 +635,8 @@ const NAV_PATHS = new Set([
   '/admin',
   '/events',
   '/events/calendar',
+  '/events/review-requests',
+  '/events/promotion',
 ])
 
 const SURFACES = new Set<AgentJonesSurfaceSafe>([
@@ -891,6 +903,27 @@ function validateCampaign(
 
   const onboardingBrief = validateOnboardingBrief(raw.onboardingBrief)
   if (onboardingBrief) out.onboardingBrief = onboardingBrief
+
+  const rkRaw = raw.retrievedKnowledge
+  if (Array.isArray(rkRaw)) {
+    const retrievedKnowledge: { text: string; tags?: string[] }[] = []
+    for (const item of rkRaw.slice(0, 8)) {
+      if (!isRecord(item)) continue
+      const text = validateSummaryLine(item.text, 520)
+      if (!text) continue
+      const tagsRaw = item.tags
+      const tags: string[] = []
+      if (Array.isArray(tagsRaw)) {
+        for (const tg of tagsRaw.slice(0, 8)) {
+          if (typeof tg !== 'string') continue
+          const t = validateSummaryLine(tg, 40)
+          if (t) tags.push(t.toLowerCase().replace(/\s+/g, '_'))
+        }
+      }
+      retrievedKnowledge.push(tags.length ? { text, tags } : { text })
+    }
+    if (retrievedKnowledge.length) out.retrievedKnowledge = retrievedKnowledge
+  }
 
   return Object.keys(out).length ? out : undefined
 }
@@ -2871,6 +2904,9 @@ function legacyToV2(raw: AgentJonesSafeContextLegacy): AgentJonesSafeContextV2 {
             ...(raw.campaign.shortBio ? { shortBio: raw.campaign.shortBio } : {}),
             ...(raw.campaign.issuePillars ? { issuePillars: raw.campaign.issuePillars } : {}),
             ...(raw.campaign.ctas ? { ctas: raw.campaign.ctas } : {}),
+            ...(raw.campaign.retrievedKnowledge?.length
+              ? { retrievedKnowledge: raw.campaign.retrievedKnowledge }
+              : {}),
             ...(raw.campaign.onboardingBrief
               ? { onboardingBrief: raw.campaign.onboardingBrief }
               : {}),
@@ -2942,6 +2978,9 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
               ...(campaign.shortBio ? { shortBio: campaign.shortBio } : {}),
               ...(campaign.issuePillars ? { issuePillars: campaign.issuePillars } : {}),
               ...(campaign.ctas ? { ctas: campaign.ctas } : {}),
+              ...(campaign.retrievedKnowledge?.length
+                ? { retrievedKnowledge: campaign.retrievedKnowledge }
+                : {}),
               ...(campaign.onboardingBrief
                 ? { onboardingBrief: campaign.onboardingBrief }
                 : {}),
@@ -3005,6 +3044,7 @@ Rules:
 - Progress is exactly one of: unmatched, matched_no_branch, exception_pending, matched_ready (dashboardContext.operational.progressSlice).
 - voterLoading means roster/voter linkage is still loading — be cautious/verification-first.
 - Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs) — ground wording and next-steps in it, but do not invent policy details.
+- If dashboardContext.campaign.retrievedKnowledge exists, it is a **small set of excerpt chunks** from the campaign knowledge base chosen for this user message (keyword match on chunk text). Prefer these excerpts when answering factual or policy questions; if they conflict with other campaign fields, prefer retrievedKnowledge for specifics. If the list is empty or off-topic, say so honestly — do not pretend you ran a live search.
 - If dashboardContext.campaign.onboardingBrief exists, it is the structured Volunteer Welcome Kit + Organization Outline (culture, lane options, first actions, messaging, escalation). Use it for how we work, lane fit, first tasks, and when to escalate — still do not invent policy beyond what is written there.
 - Stay practical, supportive, and brief (mobile screens). No legal/medical advice. Do not ask for passwords, SSNs, or full document uploads.
 - Never reveal sensitive voter history. You may reference precinct/county/district if present.

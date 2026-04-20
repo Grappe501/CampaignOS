@@ -111,6 +111,19 @@ export function buildMobilizeEligibility(
     )
   }
 
+  const addrVirt = (row.address_or_virtual ?? '').trim()
+  const virtUrl = (row.virtual_url ?? '').trim()
+  const virtualOnly = virtUrl.length > 0 && addrVirt.length === 0
+  if (isEligible && !virtualOnly) {
+    const pc = (row.postal_code ?? '').trim()
+    if (!pc) {
+      isEligible = false
+      blockingReasons.push(
+        'Mobilize requires postal_code on the location object for in-person events — set postal_code (or use virtual_url only for virtual events).',
+      )
+    }
+  }
+
   return {
     isEligible,
     reasonsEligible,

@@ -28,10 +28,10 @@ export default function CampaignEventRecordPage({ onDevSessionClear }: CampaignE
   return (
     <>
       <AppHeader onSignOut={handleSignOut} />
-      <main className="app-shell event-coordinator-desk-shell">
+      <main className="app-shell event-coordinator-desk-shell event-detail-page-shell">
         {loading && !profile ? (
           <div className="loading-screen" role="status" aria-live="polite">
-            Loading…
+            Loading profile and desk access…
           </div>
         ) : (
           <EventRecordDeskContent profile={profile} />

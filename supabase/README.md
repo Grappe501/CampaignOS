@@ -8,6 +8,7 @@ Supabase applies every file in `migrations/` in **lexicographic (filename) order
 
 - **`20260429170000_adaptive_daily_activation.sql`** alters `daily_task_templates` / `daily_tasks` and functions that use **`user_scores`**. It must run **after** `20260429160000_daily_activation_engine.sql`. (An older copy used timestamp `20260420120000` and failed on fresh DBs because those tables did not exist yet.)
 - **Same second:** `20260420140000_intern_layer_system.sql` runs before `20260420140000_onboarding_branch_exception.sql` (alphabetical order).
+- **`volunteer_task_assignments`:** The coordinator task system creates it in **`20260429120000_volunteer_coordinator_task_system.sql`**, which runs **after** `20260420140000_intern_layer_system.sql` by filename order. The intern migration references that table; if a fresh `db push` fails partway, apply the coordinator migration (or run **`20260430210000_ensure_volunteer_task_assignments.sql`**) once **`public.volunteer_tasks`** exists.
 
 **Hosted project:** Supabase Dashboard → SQL Editor (paste each file), or CLI:
 

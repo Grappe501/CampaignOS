@@ -24,11 +24,18 @@ export const AGENT_JONES_SCROLL_TARGET_IDS = [
   'admin-tasks',
   'admin-config',
   'event-coordinator-desk',
+  'event-coordinator-postevent-queue',
+  'event-calendar-page',
+  'event-calendar-command',
+  'event-calendar-filters',
   'event-record-detail',
+  'event-record-command',
+  'event-detail-health',
   'event-overview',
   'event-stage-tracker',
   'event-task-checklist',
   'event-staffing',
+  'event-logistics',
   'event-calendar-visibility',
   'event-mobilize',
   'event-outcomes',
@@ -45,6 +52,8 @@ export const AGENT_JONES_NAVIGATE_PATHS = [
   '/admin',
   '/events',
   '/events/calendar',
+  '/events/review-requests',
+  '/events/promotion',
 ] as const
 
 export type AgentJonesNavigatePath = (typeof AGENT_JONES_NAVIGATE_PATHS)[number]

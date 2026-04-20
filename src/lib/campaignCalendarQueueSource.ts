@@ -1,11 +1,10 @@
 /**
- * Single import for coordinator queue UIs (pass 3).
- * Today: dev fixtures only. Next: swap to Supabase hook without changing consumers.
+ * @deprecated Prefer `CampaignEventsProvider` + `useCampaignEventsContext()` / `useCampaignEvents()`.
+ * Returns an empty list — live data is loaded via Supabase hooks.
  */
 
 import type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture'
-import { getDevCalendarFixtureEvents } from './campaignCalendarDevFixtures'
 
 export function getCoordinatorEventQueueSource(): CampaignCalendarEventRecord[] {
-  return getDevCalendarFixtureEvents()
+  return []
 }

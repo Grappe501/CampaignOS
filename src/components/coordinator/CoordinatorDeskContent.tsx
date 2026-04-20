@@ -117,6 +117,10 @@ export default function CoordinatorDeskContent({
             {' — '}campaign events intake, approvals, calendar, and staffing (operational shell).
           </p>
         ) : null}
+        <p className="subtitle coordinator-desk-crosslink" style={{ margin: '6px 0 0' }}>
+          <Link to="/volunteers/command">Volunteer command center</Link>
+          {' — '}roster, assignments, shifts, and reliability (Supabase-backed).
+        </p>
       </header>
 
       <div className="coordinator-calendar-widgets">
