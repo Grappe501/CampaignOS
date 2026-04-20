@@ -604,6 +604,16 @@ const SCROLL_IDS = new Set([
   'admin-desks',
   'admin-tasks',
   'admin-config',
+  'event-coordinator-desk',
+  'event-record-detail',
+  'event-overview',
+  'event-stage-tracker',
+  'event-task-checklist',
+  'event-staffing',
+  'event-calendar-visibility',
+  'event-mobilize',
+  'event-outcomes',
+  'event-followup',
 ])
 
 const NAV_PATHS = new Set([
@@ -613,6 +623,8 @@ const NAV_PATHS = new Set([
   '/coordinator',
   '/candidate',
   '/admin',
+  '/events',
+  '/events/calendar',
 ])
 
 const SURFACES = new Set<AgentJonesSurfaceSafe>([
@@ -636,7 +648,14 @@ const OPERATING_ROLES = new Set([
   'unknown',
 ])
 
-const OPERATING_DESKS = new Set(['/dashboard', '/intern', '/coordinator', '/candidate', '/admin'])
+const OPERATING_DESKS = new Set([
+  '/dashboard',
+  '/intern',
+  '/coordinator',
+  '/candidate',
+  '/admin',
+  '/events',
+])
 
 const OPERATING_LEVELS = new Set([
   'volunteer',
@@ -2982,7 +3001,7 @@ function buildSystemPrompt(context: AgentJonesSafeContextV2): string {
 
 Rules:
 - You ONLY reason about the volunteer using the JSON "dashboardContext" below. Do not claim you queried a database, opened Supabase, or accessed tools beyond this context.
-- dashboardContext.surface is one of: volunteer_dashboard | intern_desk | coordinator_desk | candidate_desk | admin_desk. Match tone: volunteer_dashboard/intern_desk emphasize individual tasks and roster; coordinator_desk emphasizes supervised teams, blocked/overdue mission lanes, and intern pipeline counts (no volunteer PII); candidate_desk emphasizes KPI health, strategic focus, and when to use coordinator vs volunteer surfaces — never invent polling or finance detail; admin_desk emphasizes honest governance: desk health visible with this session, exceptions, KPI telemetry, integration readiness — never imply org-wide queues or privileged writes you cannot see in context.
+- dashboardContext.surface is one of: volunteer_dashboard | intern_desk | coordinator_desk | candidate_desk | admin_desk. The client may map /events to coordinator_desk for tone while dashboardContext.operating.desk_route is /events — treat as event-operations calendar and pipeline context (intake, staffing, Mobilize) when desk_route is /events; do not invent event rows not in context. Match tone: volunteer_dashboard/intern_desk emphasize individual tasks and roster; coordinator_desk emphasizes supervised teams, blocked/overdue mission lanes, and intern pipeline counts (no volunteer PII); candidate_desk emphasizes KPI health, strategic focus, and when to use coordinator vs volunteer surfaces — never invent polling or finance detail; admin_desk emphasizes honest governance: desk health visible with this session, exceptions, KPI telemetry, integration readiness — never imply org-wide queues or privileged writes you cannot see in context.
 - Progress is exactly one of: unmatched, matched_no_branch, exception_pending, matched_ready (dashboardContext.operational.progressSlice).
 - voterLoading means roster/voter linkage is still loading — be cautious/verification-first.
 - Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs) — ground wording and next-steps in it, but do not invent policy details.

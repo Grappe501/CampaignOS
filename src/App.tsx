@@ -20,6 +20,8 @@ import CoordinatorDesk from './pages/CoordinatorDesk'
 import Login from './pages/Login'
 import Power5Desk from './pages/Power5Desk'
 import AdminDesk from './pages/AdminDesk'
+import EventCoordinatorDesk from './pages/EventCoordinatorDesk'
+import CampaignEventRecordPage from './pages/CampaignEventRecordPage'
 import RoleHomeRedirect from './components/RoleHomeRedirect'
 import GlobalFloatingAgentJones from './components/GlobalFloatingAgentJones'
 
@@ -155,6 +157,54 @@ export default function App() {
           element={
             session ? (
               <AdminDesk
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/calendar"
+          element={
+            session ? (
+              <EventCoordinatorDesk
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/:eventId"
+          element={
+            session ? (
+              <CampaignEventRecordPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events"
+          element={
+            session ? (
+              <EventCoordinatorDesk
                 onDevSessionClear={
                   isDevAuthBypassEnabled()
                     ? () => setSession(null)

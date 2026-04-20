@@ -5,9 +5,15 @@ import { useCampaignKpis } from '../../hooks/useCampaignKpis'
 import { useCoordinatorDesk } from '../../hooks/useCoordinatorDesk'
 import type { CampaignProfile } from '../../hooks/useProfile'
 import { normalizeKey } from '../../lib/dashboardState'
+import { canAccessEventCoordinatorDesk } from '../../lib/eventCoordinatorDeskAccess'
 import { countJsonArray, shortProfileId } from '../../lib/coordinatorDeskData'
 import CoordinatorOperationsBoard from './CoordinatorOperationsBoard'
 import CoordinatorMissionDispatch from './CoordinatorMissionDispatch'
+import { useCalendarWidgetPack } from '../../hooks/useCalendarWidgetPack'
+import { mapProfileRoleToCalendarWidgetPersona } from '../../lib/calendarWidgetData'
+import UpcomingCampaignStrip from '../calendar-widgets/UpcomingCampaignStrip'
+import CalendarSnapshotCard from '../calendar-widgets/CalendarSnapshotCard'
+import EventPressureSummaryCard from '../calendar-widgets/EventPressureSummaryCard'
 
 export default function CoordinatorDeskContent({
   profile,
@@ -29,6 +35,8 @@ export default function CoordinatorDeskContent({
 
   const desk = useCoordinatorDesk(homeTeam)
   const kpis = useCampaignKpis(profileId, primaryRole)
+  const calendarPersona = mapProfileRoleToCalendarWidgetPersona(primaryRole)
+  const calendarPack = useCalendarWidgetPack(calendarPersona)
   const io = desk.internParsed
   const b = desk.assignmentBuckets
   const emerging = countJsonArray(desk.activation?.emerging_leaders)
@@ -103,7 +111,29 @@ export default function CoordinatorDeskContent({
           Exceptions, mission lanes, intern pipeline signals, and dispatch — scoped by supervisor
           membership and team RPCs (RLS + SECURITY DEFINER). No service-role shortcuts.
         </p>
+        {canAccessEventCoordinatorDesk(primaryRole) ? (
+          <p className="subtitle coordinator-desk-crosslink" style={{ margin: '10px 0 0' }}>
+            <Link to="/events">Event coordinator desk</Link>
+            {' — '}campaign events intake, approvals, calendar, and staffing (operational shell).
+          </p>
+        ) : null}
       </header>
+
+      <div className="coordinator-calendar-widgets">
+        <div className="card stack-section">
+          <UpcomingCampaignStrip
+            items={calendarPack.strip}
+            heading="Field calendar — next up"
+          />
+        </div>
+        <div className="admin-calendar-widget-grid admin-calendar-widget-grid--pair">
+          <EventPressureSummaryCard
+            pressure={calendarPack.pressure}
+            title="Execution pressure (events)"
+          />
+          <CalendarSnapshotCard days={calendarPack.snapshotDays} />
+        </div>
+      </div>
 
       <section
         className="coordinator-ops-overview card stack-section"

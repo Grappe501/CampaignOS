@@ -24,6 +24,12 @@ import {
   sortMissionsByProgress,
 } from '../../lib/candidateLeadershipInsights'
 import { isCampaignLeadershipRole } from '../../lib/kpiEngine'
+import { useCalendarWidgetPack } from '../../hooks/useCalendarWidgetPack'
+import { mapProfileRoleToCalendarWidgetPersona } from '../../lib/calendarWidgetData'
+import UpcomingCampaignStrip from '../calendar-widgets/UpcomingCampaignStrip'
+import CandidateScheduleFocusCard from '../calendar-widgets/CandidateScheduleFocusCard'
+import CalendarSnapshotCard from '../calendar-widgets/CalendarSnapshotCard'
+import EventPressureSummaryCard from '../calendar-widgets/EventPressureSummaryCard'
 import CandidateElectionStrategicCard from './CandidateElectionStrategicCard'
 
 function formatKpiUnit(unit: string, n: number): string {
@@ -47,6 +53,8 @@ export default function CandidateDeskContent({
   const primaryRole =
     profile?.primary_role != null ? String(profile.primary_role) : null
   const kpisHook = useCampaignKpis(profileId, primaryRole)
+  const calendarPersona = mapProfileRoleToCalendarWidgetPersona(primaryRole)
+  const calendarPack = useCalendarWidgetPack(calendarPersona)
   const [nowMs, setNowMs] = useState(() => Date.now())
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 60_000)
@@ -164,6 +172,23 @@ export default function CandidateDeskContent({
           a volunteer task board. Numbers are read-only here except where HQ target tools apply.
         </p>
       </header>
+
+      <div className="candidate-calendar-widgets">
+        <div className="card stack-section">
+          <UpcomingCampaignStrip
+            items={calendarPack.strip}
+            heading="Your upcoming campaign moments"
+          />
+        </div>
+        <div className="admin-calendar-widget-grid admin-calendar-widget-grid--pair">
+          <CandidateScheduleFocusCard items={calendarPack.candidateFocus} />
+          <CalendarSnapshotCard days={calendarPack.snapshotDays} />
+        </div>
+        <EventPressureSummaryCard
+          pressure={calendarPack.pressure}
+          title="Event operations pressure (read-only)"
+        />
+      </div>
 
       <section
         id="candidate-health-snapshot"

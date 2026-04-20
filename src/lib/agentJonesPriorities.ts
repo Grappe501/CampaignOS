@@ -55,6 +55,8 @@ function buildReadinessSummary(
         return 'Leadership: KPI snapshot for this session is aligned — use weakest lanes to choose where principals spend time.'
       case '/coordinator':
         return 'Coordinator: supervised board and intern aggregates are in view — keep blocked/overdue honest before new asks.'
+      case '/events':
+        return 'Event desk: pipeline and calendar views are loading — keep staffing and publish truth visible before expanding asks.'
       case '/intern':
         return 'Intern: queue signals are visible — keep first-contact windows human and escalate after three honest tries.'
       default:
@@ -69,6 +71,8 @@ function buildReadinessSummary(
       return `Leadership — ${gap} Ground narrative in the KPI cards you can see here.`
     case '/coordinator':
       return `Coordinator — ${gap} Clear supervised lanes before optional volunteer nudges.`
+    case '/events':
+      return `Event desk — ${gap} Sequence intake, approvals, and staffing before Mobilize pushes.`
     case '/intern':
       return `Intern desk — ${gap} Prioritize overdue first contacts with a short human touch.`
     default:
@@ -92,6 +96,7 @@ function inferRecommendedMode(input: {
 }): AgentJonesOperatingMode {
   if (input.desk === '/admin') return 'leadership'
   if (input.desk === '/candidate') return 'leadership'
+  if (input.desk === '/events') return 'calendar'
   if (input.desk === '/coordinator' || input.hasCoordinatorPressure) return 'ops'
   if (input.desk === '/intern') return 'task'
   if (input.normalizedRole === 'intern') return 'task'
@@ -264,6 +269,11 @@ export function buildAgentJonesOperatingContext(input: {
   if (desk === '/admin') {
     next_steps.push('Review admin governance: exceptions and desk health (scroll: admin-exceptions, admin-desks).')
   }
+  if (desk === '/events') {
+    next_steps.push(
+      'Event desk: when live, triage intake and staffing gaps first — use coordinator mission board for assignment pressure (scroll: coordinator-mission-ops).',
+    )
+  }
   if (snap && snap.active_kpi_count > 0) {
     next_steps.push('Scan the campaign health snapshot and weakest KPI before messaging the field.')
   }
@@ -421,6 +431,11 @@ export function buildAgentJonesOperatingContext(input: {
     if (desk === '/coordinator' && hasCoordScope) {
       nextStepsLeadership.push(
         'Look first on-page: supervised mission ops and intern aggregates (coordinator-mission-ops).',
+      )
+    }
+    if (desk === '/events') {
+      nextStepsLeadership.push(
+        'Look first on-page: event coordinator command header and needs-attention queue (event-coordinator-desk).',
       )
     }
   }

@@ -122,6 +122,7 @@ export function agentJonesSurfaceFromPathname(pathname: string): AgentJonesSurfa
   const p = (pathname.split('?')[0] ?? '/').trim() || '/'
   if (p.startsWith('/admin')) return 'admin_desk'
   if (p.startsWith('/intern')) return 'intern_desk'
+  if (p.startsWith('/events')) return 'coordinator_desk'
   if (p.startsWith('/coordinator')) return 'coordinator_desk'
   if (p.startsWith('/candidate')) return 'candidate_desk'
   return 'volunteer_dashboard'

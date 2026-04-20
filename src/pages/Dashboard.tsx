@@ -64,6 +64,16 @@ import LeadershipKpiScaffold from '../components/dashboard/LeadershipKpiScaffold
 import InternDeskContent from '../components/intern/InternDeskContent'
 import VolunteerPathCardGrid from '../components/dashboard/VolunteerPathCardGrid'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useCalendarWidgetPack } from '../hooks/useCalendarWidgetPack'
+import {
+  mapProfileRoleToCalendarWidgetPersona,
+  shouldShowCalendarWidgetsOnVolunteerDashboard,
+} from '../lib/calendarWidgetData'
+import UpcomingCampaignStrip from '../components/calendar-widgets/UpcomingCampaignStrip'
+import EventPressureSummaryCard from '../components/calendar-widgets/EventPressureSummaryCard'
+import CalendarSnapshotCard from '../components/calendar-widgets/CalendarSnapshotCard'
+import MobilizeQueueCard from '../components/calendar-widgets/MobilizeQueueCard'
+import CountyEventRailCard from '../components/calendar-widgets/CountyEventRailCard'
 
 const VOTER_WORKSPACE_EXPANDED_KEY = 'campaignos-voter-workspace-expanded'
 
@@ -119,6 +129,11 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     profileId,
     profile?.primary_role != null ? String(profile.primary_role) : null,
   )
+  const calendarPersona = mapProfileRoleToCalendarWidgetPersona(
+    profile?.primary_role != null ? String(profile.primary_role) : null,
+  )
+  const calendarPack = useCalendarWidgetPack(calendarPersona)
+  const showDashboardCalendar = shouldShowCalendarWidgetsOnVolunteerDashboard(calendarPersona)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -401,6 +416,31 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               onOpenOfficial={setContactOfficial}
             />
           </DashboardPanelFrame>
+
+          {showDashboardCalendar ? (
+            <DashboardPanelFrame
+              scrollId="dash-calendar-widgets"
+              storageKey="dash-calendar-widgets"
+              labelCollapsed="Campaign calendar"
+              sectionGlyph="dash-calendar-widgets"
+              defaultExpanded
+            >
+              <UpcomingCampaignStrip items={calendarPack.strip} />
+              {calendarPersona === 'campaign_manager' ? (
+                <div className="dash-calendar-widget-grid">
+                  <EventPressureSummaryCard pressure={calendarPack.pressure} />
+                  <CountyEventRailCard rows={calendarPack.countyRail} />
+                  <CalendarSnapshotCard days={calendarPack.snapshotDays} />
+                  <MobilizeQueueCard mobilize={calendarPack.mobilize} />
+                </div>
+              ) : (
+                <CalendarSnapshotCard
+                  days={calendarPack.snapshotDays}
+                  title="Approved opportunities (next week)"
+                />
+              )}
+            </DashboardPanelFrame>
+          ) : null}
 
           <DashboardPanelFrame
             scrollId="next-step-card"

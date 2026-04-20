@@ -23,6 +23,16 @@ export const AGENT_JONES_SCROLL_TARGET_IDS = [
   'admin-desks',
   'admin-tasks',
   'admin-config',
+  'event-coordinator-desk',
+  'event-record-detail',
+  'event-overview',
+  'event-stage-tracker',
+  'event-task-checklist',
+  'event-staffing',
+  'event-calendar-visibility',
+  'event-mobilize',
+  'event-outcomes',
+  'event-followup',
 ] as const
 
 /** Paths the model may suggest via navigate actions (client + Netlify must stay aligned). */
@@ -33,6 +43,8 @@ export const AGENT_JONES_NAVIGATE_PATHS = [
   '/coordinator',
   '/candidate',
   '/admin',
+  '/events',
+  '/events/calendar',
 ] as const
 
 export type AgentJonesNavigatePath = (typeof AGENT_JONES_NAVIGATE_PATHS)[number]

@@ -17,6 +17,7 @@ export type AgentJonesDeskRoute =
   | '/coordinator'
   | '/candidate'
   | '/admin'
+  | '/events'
 
 export type AgentJonesLeadershipLevel =
   | 'volunteer'
@@ -61,6 +62,7 @@ export function deskRouteFromPathname(pathname: string): AgentJonesDeskRoute {
   const p = pathname.split('?')[0] ?? '/'
   if (p.startsWith('/admin')) return '/admin'
   if (p.startsWith('/intern')) return '/intern'
+  if (p.startsWith('/events')) return '/events'
   if (p.startsWith('/coordinator')) return '/coordinator'
   if (p.startsWith('/candidate')) return '/candidate'
   return '/dashboard'

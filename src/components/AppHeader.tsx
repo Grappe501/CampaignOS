@@ -10,6 +10,7 @@ import {
   shouldOmitTeamDeskNavLink,
 } from '../lib/roleHomeRouting'
 import { canAccessAdminDesk } from '../lib/adminDeskAccess'
+import { canAccessEventCoordinatorDesk } from '../lib/eventCoordinatorDeskAccess'
 
 const DRAWER_ID = 'campaignos-nav-drawer'
 const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
@@ -43,6 +44,7 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
   const isCandidateDesk = location.pathname.startsWith('/candidate')
   const isCoordinatorDesk = location.pathname.startsWith('/coordinator')
   const isAdminDesk = location.pathname.startsWith('/admin')
+  const isEventsDesk = location.pathname.startsWith('/events')
 
   const useLegacyWorkspaceNav = Boolean(onSignOut && profileLoading)
   const primaryPath = useLegacyWorkspaceNav
@@ -66,6 +68,11 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
     !useLegacyWorkspaceNav &&
     canAccessAdminDesk(profile?.primary_role) &&
     roleBucket !== 'admin'
+
+  const showEventsDeskNav =
+    Boolean(onSignOut) &&
+    !useLegacyWorkspaceNav &&
+    canAccessEventCoordinatorDesk(profile?.primary_role)
 
   return (
     <header className="app-topbar">
@@ -139,6 +146,11 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
             >
               {primaryLabel}
             </Link>
+            {showEventsDeskNav ? (
+              <Link to="/events" aria-current={isEventsDesk ? 'page' : undefined}>
+                Events
+              </Link>
+            ) : null}
             {showCommandCenterNav ? (
               <Link to="/admin" aria-current={isAdminDesk ? 'page' : undefined}>
                 Command center
@@ -254,6 +266,16 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                 >
                   {primaryLabel}
                 </Link>
+                {showEventsDeskNav ? (
+                  <Link
+                    to="/events"
+                    className="drawer-nav-link"
+                    aria-current={isEventsDesk ? 'page' : undefined}
+                    onClick={closeDrawer}
+                  >
+                    Events
+                  </Link>
+                ) : null}
                 {showCommandCenterNav ? (
                   <Link
                     to="/admin"

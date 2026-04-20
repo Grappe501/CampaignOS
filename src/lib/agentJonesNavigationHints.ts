@@ -32,6 +32,7 @@ const SCROLL_LABELS: Record<string, string> = {
   'voter-workspace': 'Voter workspace',
   'workspace-cards': 'Workspace cards',
   'dash-profile-photo': 'Profile photo',
+  'event-coordinator-desk': 'Event desk',
 }
 
 function scrollLabel(id: string): string {
@@ -141,6 +142,16 @@ export function buildAgentJonesNavigationHints(input: {
       route: null,
       target_id: 'candidate-health-snapshot',
       reason: 'Leadership desk',
+    })
+  }
+  if (hints.length < 3 && p.startsWith('/events')) {
+    const onRecord = /^\/events\/[^/]+$/.test(p) && p !== '/events/calendar'
+    push({
+      kind: 'scroll',
+      label: onRecord ? 'Event record' : 'Event desk overview',
+      route: null,
+      target_id: onRecord ? 'event-record-detail' : 'event-coordinator-desk',
+      reason: onRecord ? 'Scaffold and type tasks' : 'Event coordinator command',
     })
   }
 

@@ -25,6 +25,13 @@ import AdminExceptionsIntervention from './AdminExceptionsIntervention'
 import AdminAuditSystemPanel from './AdminAuditSystemPanel'
 import AdminConfigurationIntegrations from './AdminConfigurationIntegrations'
 import { useAdminAuthSnapshot } from '../../hooks/useAdminAuthSnapshot'
+import { useCalendarWidgetPack } from '../../hooks/useCalendarWidgetPack'
+import { mapProfileRoleToCalendarWidgetPersona } from '../../lib/calendarWidgetData'
+import UpcomingCampaignStrip from '../calendar-widgets/UpcomingCampaignStrip'
+import EventPressureSummaryCard from '../calendar-widgets/EventPressureSummaryCard'
+import CalendarSnapshotCard from '../calendar-widgets/CalendarSnapshotCard'
+import MobilizeQueueCard from '../calendar-widgets/MobilizeQueueCard'
+import PostEventFollowupCard from '../calendar-widgets/PostEventFollowupCard'
 
 function useNowMs(intervalMs = 1000): number {
   const [now, setNow] = useState(() => Date.now())
@@ -84,6 +91,8 @@ export default function AdminDeskContent({
   const internDesk = useInternLayer(pid, role)
   const coordDesk = useCoordinatorDesk(profile?.power5_home_team_id)
   const authSnap = useAdminAuthSnapshot()
+  const calendarPersona = mapProfileRoleToCalendarWidgetPersona(role)
+  const calendarPack = useCalendarWidgetPack(calendarPersona)
 
   const voterMatched =
     Boolean(voterMatch.matched) ||
@@ -159,6 +168,14 @@ export default function AdminDeskContent({
         note: 'Supervisor missions',
         state: coordState,
         pulse: coordPulse,
+      },
+      {
+        id: 'events',
+        name: 'Event coordinator',
+        path: '/events',
+        note: 'Campaign events shell',
+        state: 'operational',
+        pulse: 'Intake, pipeline, calendar, Mobilize — data hooks upcoming.',
       },
       {
         id: 'candidate',
@@ -351,6 +368,10 @@ export default function AdminDeskContent({
         </p>
       </header>
 
+      <div className="admin-desk-calendar-strip card stack-section" aria-label="Upcoming campaign events">
+        <UpcomingCampaignStrip items={calendarPack.strip} />
+      </div>
+
       <AdminSection id="admin-alerts" title="Attention">
         <div className="admin-desk-alert-list">
           {alerts.map((a) => (
@@ -445,6 +466,10 @@ export default function AdminDeskContent({
             </p>
           </div>
         </div>
+        <div className="admin-calendar-widget-grid admin-calendar-widget-grid--pair">
+          <EventPressureSummaryCard pressure={calendarPack.pressure} />
+          <CalendarSnapshotCard days={calendarPack.snapshotDays} />
+        </div>
       </AdminSection>
 
       <AdminSection id="admin-desks" title="Desk health rollup">
@@ -483,6 +508,10 @@ export default function AdminDeskContent({
       </AdminSection>
 
       <AdminSection id="admin-events" title="Event &amp; calendar governance">
+        <div className="admin-calendar-widget-grid admin-calendar-widget-grid--pair">
+          <MobilizeQueueCard mobilize={calendarPack.mobilize} />
+          <PostEventFollowupCard followup={calendarPack.followup} />
+        </div>
         <AdminEventGovernance electionMilestoneLabel={countdownLabel} />
       </AdminSection>
 
