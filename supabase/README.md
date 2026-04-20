@@ -2,16 +2,12 @@
 
 ## Migration order
 
-Apply SQL in `migrations/` sorted by filename (timestamp prefix):
+Supabase applies every file in `migrations/` in **lexicographic (filename) order**. Do not cherry-pick a subset unless you know the dependency chain.
 
-1. `20260418100000_core_campaign_profiles_and_raw_vr.sql` — `campaign_profiles`, `raw_vr` shell, RLS, auth trigger  
-2. `20260419120000_voter_match_layer.sql` — voter RPCs + `voter_match_links`  
-3. `20260420140000_onboarding_branch_exception.sql` — onboarding / exception columns  
-4. `20260420180000_workspace_tasks_training.sql` — workspace task/training catalog + per-profile progress + seed + trigger  
-5. `20260421140000_fix_signup_triggers_and_profile_pk.sql` — fix sign-up: profile `id = user_id`, trigger owners, INSERT grants  
-6. `20260421150000_ensure_profile_rpc_drop_auth_trigger.sql` — **recommended:** drop `auth.users` profile trigger; add `ensure_campaign_profile()` RPC (client creates row after session exists)  
-7. `20260424100000_onboarding_welcome_kit_tables.sql` — onboarding modules, lanes, talk tracks, values (Welcome Kit + org outline model)  
-8. `20260424100001_onboarding_welcome_kit_seed.sql` — seed for `chris-jones-for-congress`; replace copy when source docs land in `content/onboarding-source/`  
+**Gotchas:**
+
+- **`20260429170000_adaptive_daily_activation.sql`** alters `daily_task_templates` / `daily_tasks` and functions that use **`user_scores`**. It must run **after** `20260429160000_daily_activation_engine.sql`. (An older copy used timestamp `20260420120000` and failed on fresh DBs because those tables did not exist yet.)
+- **Same second:** `20260420140000_intern_layer_system.sql` runs before `20260420140000_onboarding_branch_exception.sql` (alphabetical order).
 
 **Hosted project:** Supabase Dashboard → SQL Editor (paste each file), or CLI:
 

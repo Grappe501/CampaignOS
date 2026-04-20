@@ -17,6 +17,8 @@ const optionalClient = [
 ]
 
 const optionalServer = [
+  /** Whisper / transcription model override for `agent-jones-transcribe` (default whisper-1) */
+  'OPENAI_TRANSCRIPTION_MODEL',
   'OPENAI_API_KEY',
   'GOOGLE_CIVIC_API_KEY',
   'GOOGLE_API_KEY',

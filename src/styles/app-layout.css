@@ -64,15 +64,180 @@
   top: 0;
   z-index: 40;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 0;
+  min-height: unset;
+  padding: 0;
+  background: var(--brand-bar);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(236, 239, 249, 0.18);
+}
+
+.app-topbar-main {
+  display: flex;
   align-items: center;
   flex-wrap: nowrap;
   gap: 8px;
   min-height: 52px;
   padding: 8px clamp(12px, 3vw, 20px);
-  padding-top: max(8px, env(safe-area-inset-top));
-  background: var(--brand-bar);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(236, 239, 249, 0.18);
+  min-width: 0;
+}
+
+/* Election countdown (shared header, live tick isolated in child component) */
+.election-countdown-bar {
+  flex-shrink: 0;
+  padding: 6px clamp(12px, 3vw, 20px);
+  padding-top: max(6px, env(safe-area-inset-top));
+  border-bottom: 1px solid rgba(236, 239, 249, 0.12);
+  background: rgba(1, 3, 35, 0.35);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+.election-countdown-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px 14px;
+  max-width: min(1126px, 100%);
+  margin: 0 auto;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .election-countdown-inner {
+    justify-content: center;
+    flex-wrap: nowrap;
+    text-align: left;
+  }
+}
+
+.election-countdown-heading {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(247, 240, 228, 0.88);
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .election-countdown-heading {
+    width: auto;
+  }
+}
+
+.election-countdown-meta {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(236, 239, 249, 0.78);
+  width: 100%;
+  line-height: 1.35;
+}
+
+@media (min-width: 768px) {
+  .election-countdown-meta {
+    width: auto;
+  }
+}
+
+.election-countdown-meta__sep {
+  margin: 0 0.35rem;
+  opacity: 0.65;
+}
+
+.election-countdown-time-wrapper {
+  margin: 0;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .election-countdown-time-wrapper {
+    width: auto;
+    margin-inline-start: auto;
+  }
+}
+
+.election-countdown-time {
+  display: block;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: clamp(0.85rem, 2.8vw, 1rem);
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.election-countdown-time--compact {
+  display: block;
+}
+
+.election-countdown-time--full {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .election-countdown-time--compact {
+    display: none;
+  }
+
+  .election-countdown-time--full {
+    display: block;
+  }
+}
+
+.election-countdown-bar--default {
+  border-bottom-color: rgba(237, 163, 86, 0.15);
+}
+
+.election-countdown-bar--d90 {
+  border-bottom-color: rgba(237, 163, 86, 0.35);
+  box-shadow: inset 0 -1px 0 rgba(237, 163, 86, 0.25);
+}
+
+.election-countdown-bar--d30 {
+  border-bottom-color: rgba(237, 163, 86, 0.55);
+  box-shadow: inset 0 -2px 0 rgba(237, 163, 86, 0.35);
+}
+
+.election-countdown-bar--d7 {
+  border-bottom-color: rgba(237, 163, 86, 0.75);
+  box-shadow:
+    inset 0 -2px 0 rgba(237, 163, 86, 0.45),
+    0 0 20px rgba(237, 163, 86, 0.08);
+}
+
+.election-countdown-bar--h72 {
+  border-bottom-color: rgba(237, 163, 86, 0.95);
+  box-shadow:
+    inset 0 -3px 0 rgba(237, 163, 86, 0.55),
+    0 0 24px rgba(237, 163, 86, 0.12);
+}
+
+.election-countdown-bar--h72 .election-countdown-time {
+  color: #fff8f0;
+  text-shadow: 0 0 12px rgba(237, 163, 86, 0.35);
+}
+
+.election-countdown-bar--closed {
+  border-bottom-color: rgba(144, 238, 144, 0.35);
+  background: rgba(1, 3, 35, 0.28);
+}
+
+.election-countdown-bar--closed .election-countdown-time {
+  font-size: clamp(0.78rem, 2.4vw, 0.92rem);
+  font-weight: 700;
+  color: rgba(200, 245, 200, 0.95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .election-countdown-bar {
+    transition: none;
+  }
 }
 
 /* Campaign site links (match chrisjonesforcongress.com header) */
@@ -973,6 +1138,25 @@
   line-height: 1.45;
 }
 
+.agent-jones-voice-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border, #ccc) 75%, transparent);
+}
+
+.agent-jones-voice-btn {
+  align-self: flex-start;
+  font-weight: 700;
+}
+
+.agent-jones-voice-hint {
+  opacity: 0.92;
+  max-width: 36rem;
+}
+
 .agent-jones-response-placeholder {
   margin: 0;
   font-style: italic;
@@ -1444,9 +1628,57 @@
 }
 
 .dash-brand-mark--header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px 12px;
+  width: 100%;
+}
+
+@media (max-width: 380px) {
+  .dash-brand-mark--header {
+    gap: 8px 6px;
+  }
+}
+
+.dash-profile-avatar-col--lead {
+  justify-self: start;
+}
+
+.dash-identity-center-cluster {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+  padding-inline: 4px;
+}
+
+.dash-candidate-headshot-col--trail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-self: end;
+  flex-shrink: 0;
+}
+
+.dash-volunteer-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(43, 57, 132, 0.14);
+  color: var(--cj-primary);
+  font-weight: 800;
+  font-size: clamp(0.78rem, 3vw, 0.95rem);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  user-select: none;
 }
 
 /* Circle clip on wrapper so translate/scale can optically center the face (object-position alone is not enough for tall portraits). */
@@ -1484,6 +1716,10 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+}
+
+.dash-volunteer-headshot-ring {
+  border-color: rgba(43, 57, 132, 0.4);
 }
 
 .profile-photo-upload {
@@ -2386,6 +2622,673 @@
 
 .agent-jones-insight-text {
   color: var(--cj-ink);
+}
+
+/* --- Intern desk (team desk) --- */
+.intern-desk-embed {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.intern-desk-header {
+  margin-bottom: 12px;
+}
+
+.intern-desk-eyebrow {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: var(--cj-primary, #2b3984);
+}
+
+.intern-desk-title {
+  margin: 6px 0 8px;
+  font-size: clamp(1.15rem, 2.2vw + 0.5rem, 1.35rem);
+  line-height: 1.25;
+}
+
+.intern-desk-intro {
+  margin: 0;
+  max-width: 40rem;
+  line-height: 1.45;
+}
+
+.intern-desk-attention {
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(43, 57, 132, 0.18);
+  background: rgba(43, 57, 132, 0.05);
+}
+
+.intern-desk-attention--urgent {
+  border-color: rgba(180, 83, 9, 0.45);
+  background: rgba(254, 243, 199, 0.35);
+}
+
+.intern-desk-attention--block {
+  border-color: rgba(185, 28, 28, 0.4);
+  background: rgba(254, 226, 226, 0.35);
+}
+
+.intern-desk-attention--loading {
+  opacity: 0.95;
+}
+
+.intern-desk-attention-lead {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.45;
+  color: var(--text-h, #1a1a1a);
+}
+
+.intern-desk-attention-actions {
+  padding-left: 1.1rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.intern-desk-attention-actions li {
+  margin-bottom: 4px;
+}
+
+.intern-desk-route-hint {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(43, 57, 132, 0.07);
+  border: 1px dashed rgba(43, 57, 132, 0.28);
+}
+
+.intern-desk-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.intern-desk-section {
+  margin: 0;
+}
+
+.intern-desk-section-head {
+  margin-bottom: 12px;
+}
+
+.intern-desk-section-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-h, #1a1a1a);
+}
+
+.intern-desk-section-lede {
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
+.intern-desk-muted-loading {
+  margin: 0;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.intern-empty-state {
+  padding: 8px 0 4px;
+}
+
+.intern-pipeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.intern-pipeline-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(43, 57, 132, 0.15);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.intern-pipeline-list__item--due {
+  border-color: rgba(180, 83, 9, 0.5);
+  box-shadow: 0 0 0 1px rgba(180, 83, 9, 0.12);
+}
+
+.intern-pipeline-list__item--active {
+  border-color: rgba(43, 57, 132, 0.45);
+  background: rgba(43, 57, 132, 0.04);
+}
+
+.intern-pipeline-body {
+  min-width: 0;
+}
+
+.intern-pipeline-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.intern-pipeline-volunteer {
+  font-size: 1rem;
+}
+
+.intern-status-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.intern-status-pill--pending {
+  background: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+}
+
+.intern-status-pill--contacted {
+  background: rgba(22, 163, 74, 0.15);
+  color: #15803d;
+}
+
+.intern-pipeline-meta {
+  display: grid;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.intern-pipeline-meta dt {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-muted, #555);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.intern-pipeline-meta dd {
+  margin: 2px 0 0;
+}
+
+.intern-pipeline-meta-abs {
+  opacity: 0.85;
+  font-size: 0.82rem;
+}
+
+.intern-pipeline-escalation dd {
+  color: #9a3412;
+  font-weight: 600;
+}
+
+.intern-pipeline-list__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.intern-pipeline-action--risk {
+  border-color: rgba(185, 28, 28, 0.35);
+}
+
+.intern-log-attempt {
+  padding-top: 12px;
+  border-top: 1px solid rgba(43, 57, 132, 0.12);
+}
+
+.intern-log-attempt-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 8px;
+}
+
+.intern-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.intern-field--block {
+  min-width: 100%;
+}
+
+.intern-field-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted, #555);
+}
+
+.intern-log-attempt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.intern-task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.intern-task-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(43, 57, 132, 0.12);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+@media (min-width: 640px) {
+  .intern-task-list__item {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+.intern-task-main {
+  min-width: 0;
+}
+
+.intern-task-title {
+  display: block;
+  font-size: 0.98rem;
+}
+
+.intern-task-meta {
+  display: block;
+  margin-top: 4px;
+}
+
+.intern-task-list__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* --- Volunteer coordinator desk --- */
+.coordinator-desk-shell {
+  padding: 16px 16px 56px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.coordinator-desk {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.coordinator-desk-header {
+  margin-bottom: 4px;
+}
+
+.coordinator-desk-eyebrow {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: var(--cj-primary, #2b3984);
+}
+
+.coordinator-desk-title {
+  margin: 6px 0 8px;
+  font-size: clamp(1.2rem, 2.4vw + 0.5rem, 1.45rem);
+}
+
+.coordinator-desk-intro {
+  margin: 0;
+  max-width: 44rem;
+  line-height: 1.45;
+}
+
+.coordinator-section-title {
+  margin: 0 0 8px;
+  font-size: 1.08rem;
+  font-weight: 800;
+}
+
+.coordinator-section-lede {
+  margin: 0 0 8px;
+  max-width: 44rem;
+  line-height: 1.45;
+}
+
+.coordinator-card code {
+  font-size: 0.85em;
+}
+
+.coordinator-attention--warn {
+  border-color: rgba(180, 83, 9, 0.4);
+  background: rgba(254, 243, 199, 0.25);
+}
+
+.coordinator-attention-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.45;
+}
+
+.coordinator-attention-list li {
+  margin-bottom: 6px;
+}
+
+.coordinator-playbook {
+  padding-left: 1.2rem;
+  line-height: 1.45;
+}
+
+.coordinator-dl {
+  display: grid;
+  gap: 10px 16px;
+  margin: 12px 0 0;
+  font-size: 0.92rem;
+}
+
+.coordinator-dl dt {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted, #555);
+}
+
+.coordinator-dl dd {
+  margin: 2px 0 0;
+}
+
+.coordinator-mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.88rem;
+}
+
+.coordinator-signal-list {
+  margin: 8px 0 0;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+}
+
+.coordinator-empty {
+  padding: 4px 0;
+}
+
+.coordinator-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.coordinator-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.coordinator-table th,
+.coordinator-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(43, 57, 132, 0.12);
+  vertical-align: top;
+}
+
+.coordinator-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #555);
+  background: rgba(43, 57, 132, 0.05);
+}
+
+.coordinator-cell-title {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.coordinator-cell-meta {
+  margin-top: 4px;
+  font-size: 0.82rem;
+}
+
+.coordinator-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.coordinator-pill--open {
+  background: rgba(59, 130, 246, 0.15);
+  color: #1d4ed8;
+}
+
+.coordinator-pill--blocked {
+  background: rgba(185, 28, 28, 0.12);
+  color: #b91c1c;
+}
+
+.coordinator-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.coordinator-desk-footer {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(43, 57, 132, 0.15);
+}
+
+/* --- Candidate (leadership) desk --- */
+.candidate-desk-shell {
+  padding: 16px 16px 56px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.candidate-desk {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.candidate-desk-header {
+  margin-bottom: 4px;
+}
+
+.candidate-desk-eyebrow {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: var(--cj-primary, #2b3984);
+}
+
+.candidate-desk-title {
+  margin: 6px 0 8px;
+  font-size: clamp(1.2rem, 2.4vw + 0.5rem, 1.5rem);
+  line-height: 1.2;
+}
+
+.candidate-desk-intro {
+  margin: 0;
+  max-width: 44rem;
+  line-height: 1.45;
+}
+
+.candidate-section-title {
+  margin: 0 0 8px;
+  font-size: 1.08rem;
+  font-weight: 800;
+}
+
+.candidate-section-lede {
+  margin: 0 0 8px;
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
+.candidate-dl {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+}
+
+.candidate-dl dt {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted, #555);
+}
+
+.candidate-dl dd {
+  margin: 2px 0 0;
+}
+
+.candidate-strategic-card {
+  border: 1px solid rgba(43, 57, 132, 0.18);
+}
+
+.candidate-strategic-card--d7,
+.candidate-strategic-card--h72 {
+  border-color: rgba(180, 83, 9, 0.35);
+  background: rgba(254, 243, 199, 0.2);
+}
+
+.candidate-strategic-card--closed {
+  opacity: 0.95;
+}
+
+.candidate-countdown-block {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(43, 57, 132, 0.06);
+}
+
+.candidate-countdown-time-row {
+  margin: 0;
+}
+
+.candidate-countdown-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: clamp(1.1rem, 2vw + 0.6rem, 1.45rem);
+}
+
+.candidate-countdown-time--compact {
+  display: none;
+}
+
+.candidate-phase-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.45;
+}
+
+.candidate-phase-list li {
+  margin-bottom: 6px;
+}
+
+.candidate-ops-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@media (min-width: 640px) {
+  .candidate-ops-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
+.candidate-ops-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(43, 57, 132, 0.2);
+  background: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.candidate-ops-tile:hover {
+  border-color: rgba(43, 57, 132, 0.45);
+  background: rgba(43, 57, 132, 0.04);
+}
+
+.candidate-ops-tile-label {
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.candidate-ops-tile-hint {
+  font-size: 0.88rem;
+  opacity: 0.92;
+  line-height: 1.35;
+}
+
+.candidate-focus-card {
+  border: 1px solid rgba(43, 57, 132, 0.18);
+}
+
+.candidate-focus-card--open {
+  background: rgba(43, 57, 132, 0.03);
+}
+
+.candidate-focus-list {
+  margin: 8px 0 0;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.candidate-focus-list li {
+  margin-bottom: 8px;
+}
+
+.candidate-note-card,
+.candidate-compliance-card {
+  border-style: dashed;
+}
+
+@media (max-width: 520px) {
+  .candidate-countdown-time--full {
+    display: none;
+  }
+  .candidate-countdown-time--compact {
+    display: inline;
+  }
 }
 
 /* --- Footer compliance --- */

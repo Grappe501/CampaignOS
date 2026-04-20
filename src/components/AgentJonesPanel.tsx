@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from '../lib/dashboardState'
 import {
@@ -34,6 +34,7 @@ import { supabase } from '../lib/supabaseClient'
 import type { MomentumAction } from '../lib/onboardingEngine'
 import { isDevAuthBypassEnabled } from '../lib/devAuth'
 import { applyDevOnboardingMomentumAction } from '../lib/devOnboardingMomentum'
+import { useAgentJonesVoiceRecorder } from '../hooks/useAgentJonesVoiceRecorder'
 
 function auditPatch(meta?: { lastPrompt?: string }) {
   return {
@@ -176,6 +177,77 @@ export default function AgentJonesPanel({
   const [aiError, setAiError] = useState<string | null>(persisted.aiError ?? null)
   const [contextV2, setContextV2] = useState<AgentJonesContextV2 | null>(null)
 
+  const voice = useAgentJonesVoiceRecorder()
+
+  const runRecommendedActions = useCallback(
+    (actions: AgentJonesResponse['recommendedActions']) => {
+      for (const a of actions ?? []) {
+        if (a.type === 'scroll' && a.targetId) {
+          scrollToDashboardId(a.targetId)
+        }
+        if (a.type === 'navigate' && a.targetId) {
+          window.location.assign(a.targetId)
+        }
+      }
+    },
+    [],
+  )
+
+  const submitCustomUserMessage = useCallback(
+    async (rawMessage: string) => {
+      const userMessage = rawMessage.trim().slice(0, 600)
+      if (!userMessage) return
+
+      setActivePromptId('voice-message')
+      setAiError(null)
+      setAiLoading(true)
+      setReply(null)
+
+      try {
+        const built = contextV2
+        if (!built) {
+          throw new AgentJonesApiError('Agent Jones context not ready', 0, null)
+        }
+        const next = await callAgentJones({
+          context: built,
+          userMessage,
+        })
+        setReply(next)
+        runRecommendedActions(next.recommendedActions)
+      } catch (err) {
+        setReply(
+          buildAgentJonesFallbackV2({
+            slice: progressSlice,
+            profile,
+            voterLoading,
+            volunteerMission: volunteerMission ?? null,
+            dailyActivation: dailyActivation ?? null,
+            internLayer: internLayer ?? null,
+            campaignGoals: campaignGoals ?? null,
+          }),
+        )
+        const msg =
+          err instanceof AgentJonesApiError
+            ? err.message
+            : 'Agent Jones request failed'
+        setAiError(msg)
+      } finally {
+        setAiLoading(false)
+      }
+    },
+    [
+      contextV2,
+      progressSlice,
+      profile,
+      voterLoading,
+      volunteerMission,
+      dailyActivation,
+      internLayer,
+      campaignGoals,
+      runRecommendedActions,
+    ],
+  )
+
   useEffect(() => {
     if (!persistSession) return
     saveAgentJonesPersisted({
@@ -279,17 +351,6 @@ export default function AgentJonesPanel({
     setAiLoading(true)
     setReply(null)
 
-    const runActions = (actions: AgentJonesResponse['recommendedActions']) => {
-      for (const a of actions ?? []) {
-        if (a.type === 'scroll' && a.targetId) {
-          scrollToDashboardId(a.targetId)
-        }
-        if (a.type === 'navigate' && a.targetId) {
-          window.location.assign(a.targetId)
-        }
-      }
-    }
-
     try {
       const built = contextV2
       if (!built) {
@@ -300,7 +361,7 @@ export default function AgentJonesPanel({
         userMessage,
       })
       setReply(next)
-      runActions(next.recommendedActions)
+      runRecommendedActions(next.recommendedActions)
     } catch (err) {
       if (!isFollowUp && prompt.response) {
         setReply({
@@ -365,6 +426,66 @@ export default function AgentJonesPanel({
         disabled={aiLoading}
         onSelect={handleSelect}
       />
+
+      <div className="agent-jones-voice-row">
+        <button
+          type="button"
+          className="btn-touch agent-jones-voice-btn"
+          disabled={
+            !voice.isSupported ||
+            aiLoading ||
+            voice.phase === 'transcribing' ||
+            !contextV2
+          }
+          aria-label="Hold to speak. Release to send to Agent Jones."
+          onPointerDown={(e) => {
+            if (
+              !voice.isSupported ||
+              aiLoading ||
+              voice.phase === 'transcribing' ||
+              !contextV2
+            ) {
+              return
+            }
+            e.currentTarget.setPointerCapture(e.pointerId)
+            void voice.startRecording()
+          }}
+          onPointerUp={(e) => {
+            try {
+              e.currentTarget.releasePointerCapture(e.pointerId)
+            } catch {
+              /* ignore */
+            }
+            void (async () => {
+              const text = await voice.stopRecordingAndTranscribe()
+              if (text) await submitCustomUserMessage(text)
+            })()
+          }}
+          onPointerCancel={(e) => {
+            try {
+              e.currentTarget.releasePointerCapture(e.pointerId)
+            } catch {
+              /* ignore */
+            }
+            voice.cancelRecording()
+          }}
+        >
+          {voice.phase === 'recording'
+            ? 'Listening…'
+            : voice.phase === 'transcribing'
+              ? 'Transcribing…'
+              : 'Hold to speak'}
+        </button>
+        <p className="subtitle agent-jones-voice-hint" style={{ margin: 0 }}>
+          OpenAI transcription via Netlify — Agent Jones only. Max 600 characters
+          sent to the assistant.
+        </p>
+        {voice.lastError ? (
+          <p className="subtitle agent-jones-error-line" style={{ margin: 0 }}>
+            {voice.lastError}
+          </p>
+        ) : null}
+      </div>
 
       <div
         className="agent-jones-response"

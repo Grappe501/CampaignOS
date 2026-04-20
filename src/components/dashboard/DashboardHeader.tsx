@@ -119,8 +119,14 @@ export default function DashboardHeader({
     ? String(profile.profile_photo_url).trim()
     : ''
   const hasCustomPhoto = Boolean(profilePhoto)
-  const avatarSrc =
-    profilePhoto || CHRIS_JONES_FOR_CONGRESS_PUBLIC.assets.candidateHeadshotUrl
+  const volunteerInitial = showName
+    ? fullName
+        .split(/\s+/)
+        .map((w) => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : ''
   const profileId =
     profile?.id != null && profile.id !== '' ? String(profile.id) : undefined
 
@@ -131,21 +137,26 @@ export default function DashboardHeader({
     >
       <div className="dash-identity-banner">
         <div className="dash-brand-mark dash-brand-mark--header">
-          <div className="dash-profile-avatar-col">
-            <span className="dash-candidate-headshot-ring dash-candidate-headshot-ring--tight">
-              <img
-                src={avatarSrc}
-                alt=""
-                className={
-                  hasCustomPhoto
-                    ? 'dash-candidate-headshot-img dash-candidate-headshot-img--volunteer'
-                    : 'dash-candidate-headshot-img'
-                }
-                width={48}
-                height={48}
-                loading="lazy"
-                decoding="async"
-              />
+          <div className="dash-profile-avatar-col dash-profile-avatar-col--lead">
+            <span className="dash-candidate-headshot-ring dash-candidate-headshot-ring--tight dash-volunteer-headshot-ring">
+              {hasCustomPhoto ? (
+                <img
+                  src={profilePhoto}
+                  alt=""
+                  className="dash-candidate-headshot-img dash-candidate-headshot-img--volunteer"
+                  width={48}
+                  height={48}
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span
+                  className="dash-volunteer-avatar-placeholder"
+                  aria-hidden={Boolean(volunteerInitial)}
+                >
+                  {volunteerInitial || '·'}
+                </span>
+              )}
             </span>
             <ProfilePhotoUpload
               profileId={profileId}
@@ -153,20 +164,33 @@ export default function DashboardHeader({
               onDone={() => onProfileRefresh?.()}
             />
           </div>
-          <img
-            src={CHRIS_JONES_FOR_CONGRESS_PUBLIC.assets.logoPrimaryUrl}
-            alt=""
-            className="dash-campaign-logo dash-campaign-logo--tight"
-            width={200}
-            height={40}
-            loading="eager"
-            decoding="async"
-          />
-          <div className="dash-identity-heading-cluster">
+          <div className="dash-identity-center-cluster">
+            <img
+              src={CHRIS_JONES_FOR_CONGRESS_PUBLIC.assets.logoPrimaryUrl}
+              alt=""
+              className="dash-campaign-logo dash-campaign-logo--tight"
+              width={200}
+              height={40}
+              loading="eager"
+              decoding="async"
+            />
             <p className="dash-dashboard-kicker">Campaign Dashboard</p>
             <p className="dash-tagline-tight">
               Chris Jones for Congress · {CHRIS_JONES_FOR_CONGRESS_PUBLIC.slogan}
             </p>
+          </div>
+          <div className="dash-candidate-headshot-col dash-candidate-headshot-col--trail">
+            <span className="dash-candidate-headshot-ring dash-candidate-headshot-ring--tight">
+              <img
+                src={CHRIS_JONES_FOR_CONGRESS_PUBLIC.assets.candidateHeadshotUrl}
+                alt="Chris Jones"
+                className="dash-candidate-headshot-img"
+                width={48}
+                height={48}
+                loading="lazy"
+                decoding="async"
+              />
+            </span>
           </div>
         </div>
       </div>

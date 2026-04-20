@@ -13,11 +13,16 @@ export default function CampaignKpisCard({
   contributions,
   loading,
   error,
+  heading = 'Campaign goals',
+  intro = 'Your tasks add measurable progress toward what we are building together.',
 }: {
   kpis: CampaignKpiRow[]
   contributions: KpiUserContribution[]
   loading: boolean
   error: string | null
+  /** Optional override (e.g. coordinator / leadership surfaces). */
+  heading?: string
+  intro?: string
 }) {
   const top = kpis.slice(0, 5)
   const contribBySlug = new Map(contributions.map((c) => [c.kpi_slug, c.contributed]))
@@ -28,10 +33,10 @@ export default function CampaignKpisCard({
       aria-labelledby="campaign-kpis-title"
     >
       <h2 id="campaign-kpis-title" className="page-title">
-        Campaign goals
+        {heading}
       </h2>
       <p className="subtitle" style={{ marginTop: 4 }}>
-        Your tasks add measurable progress toward what we are building together.
+        {intro}
       </p>
       {error ? (
         <p className="subtitle" role="alert">

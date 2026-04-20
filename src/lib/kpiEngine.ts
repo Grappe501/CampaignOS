@@ -29,10 +29,15 @@ export type KpiUserContribution = {
   contributed: number
 }
 
-/** Leadership: coordinator, staff, admin, or volunteer supervisor. */
+/** Leadership: principal, HQ, or field leadership (missions + target tools where RLS allows). */
 export function isCampaignLeadershipRole(role: string | null | undefined): boolean {
   const r = String(role ?? '').trim().toLowerCase()
-  return r === 'coordinator' || r === 'staff' || r === 'admin'
+  return (
+    r === 'candidate' ||
+    r === 'coordinator' ||
+    r === 'staff' ||
+    r === 'admin'
+  )
 }
 
 export async function fetchActiveKpis(limit = 12): Promise<CampaignKpiRow[]> {

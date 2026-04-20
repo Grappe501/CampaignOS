@@ -102,8 +102,13 @@ Your dashboard already has **precinct, county, and districts** from the voter fi
 ### `OPENAI_API_KEY`
 
 - **What it is:** Access to OpenAI (or compatible) chat/completions used in **Netlify Functions**.
-- **Use here:** Agent Jones and other server-side assistants.
+- **Use here:** Agent Jones (`agent-jones`) and **Agent Jones voice** (`agent-jones-transcribe` → Audio Transcriptions API). Same key for both.
 - **Notes:** Keep off the client; rotate if leaked.
+
+### `OPENAI_TRANSCRIPTION_MODEL` (optional)
+
+- **What it is:** Model id for `/.netlify/functions/agent-jones-transcribe` (default **`whisper-1`**).
+- **Use here:** Only if your OpenAI project uses a different transcription model name.
 
 ### `SENDGRID_API_KEY`
 

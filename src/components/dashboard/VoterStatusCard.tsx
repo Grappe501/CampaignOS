@@ -9,29 +9,82 @@ function humanException(st: string) {
   return 'None'
 }
 
+function formatMatchStatus(raw: string | null | undefined): string {
+  if (raw == null || String(raw).trim() === '') return '—'
+  const k = String(raw).trim().toLowerCase().replace(/-/g, '_')
+  switch (k) {
+    case 'self_claimed':
+      return 'Self-confirmed match'
+    case 'system_matched':
+      return 'System matched'
+    case 'verified':
+      return 'Verified'
+    case 'exception_approved':
+      return 'Exception approved'
+    case 'exception_pending':
+      return 'Exception pending'
+    case 'exception_denied':
+      return 'Exception denied'
+    case 'unmatched':
+      return 'Not linked'
+    default:
+      return String(raw).replace(/_/g, ' ')
+  }
+}
+
+/** True when roster linkage exists — profile row and RPC can briefly disagree. */
+function isRosterLinked(
+  voterMatched: boolean,
+  linkedVoterId: string,
+  matchStatus: string | null | undefined,
+): boolean {
+  if (voterMatched || Boolean(linkedVoterId)) return true
+  const ms = matchStatus?.trim().toLowerCase() ?? ''
+  return (
+    ms !== '' &&
+    ms !== 'unmatched' &&
+    ms !== 'exception_denied'
+  )
+}
+
 export default function VoterStatusCard({
   profile,
   voterMatched,
+  matchStatus,
 }: {
   profile: CampaignProfile | null
   voterMatched: boolean
+  /** From `get_matched_voter_display_for_profile` when available (authoritative vs stale profile.voter_status). */
+  matchStatus?: string | null
 }) {
   const raw = profile?.voter_status
-  const label =
-    raw != null && String(raw).trim() !== '' ? String(raw) : '—'
+  const legacyLabel =
+    raw != null && String(raw).trim() !== '' ? String(raw).trim() : ''
   const ex = normalizeKey(profile?.exception_request_status) || 'none'
   const vid = profile?.linked_voter_id
     ? String(profile.linked_voter_id).trim()
     : ''
 
+  const linked = isRosterLinked(voterMatched, vid, matchStatus)
+  const legacyLower = legacyLabel.toLowerCase()
+
+  const profileNote = (() => {
+    if (linked) {
+      if (matchStatus) return formatMatchStatus(matchStatus)
+      if (legacyLabel && legacyLower !== 'unmatched') return legacyLabel
+      return 'Linked to voter file'
+    }
+    return legacyLabel || '—'
+  })()
+
   return (
     <StatusCard
       title="Voter status"
       compact
-      className={voterMatched ? 'voter-status-card--matched' : undefined}
+      className={linked ? 'voter-status-card--matched' : undefined}
     >
       <p className="voter-status-strip">
-        <strong>{voterMatched ? 'Verified' : 'Not verified'}</strong>
+        <strong>{linked ? 'Verified' : 'Not verified'}</strong>
         {vid ? (
           <>
             <span className="voter-status-sep">·</span>
@@ -42,8 +95,8 @@ export default function VoterStatusCard({
         <span>Exception: {humanException(ex)}</span>
       </p>
       <dl className="summary-grid voter-status-dl">
-        <dt>Profile note</dt>
-        <dd>{label}</dd>
+        <dt>Match status</dt>
+        <dd>{profileNote}</dd>
       </dl>
     </StatusCard>
   )

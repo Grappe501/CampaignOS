@@ -35,6 +35,10 @@ import {
   progressionGateMessage,
   REGISTERED_ARKANSAS_VOTER_BRANCH,
 } from '../lib/dashboardState'
+import {
+  getBranchSpecialtyCards,
+  VOLUNTEER_GLOBAL_CARDS,
+} from '../lib/volunteerDashboardCards'
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
 import FloatingAgentJones from '../components/FloatingAgentJones'
@@ -62,7 +66,9 @@ import TaskListCard from '../components/tasks/TaskListCard'
 import DailyMissionCard from '../components/daily/DailyMissionCard'
 import CampaignKpisCard from '../components/dashboard/CampaignKpisCard'
 import LeadershipKpiScaffold from '../components/dashboard/LeadershipKpiScaffold'
-import { Link } from 'react-router-dom'
+import InternDeskContent from '../components/intern/InternDeskContent'
+import VolunteerPathCardGrid from '../components/dashboard/VolunteerPathCardGrid'
+import { useLocation } from 'react-router-dom'
 
 const VOTER_WORKSPACE_EXPANDED_KEY = 'campaignos-voter-workspace-expanded'
 
@@ -142,6 +148,19 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
       leadership_task_title: volunteerTasks.nextBest?.title ?? null,
     }
   }, [internDesk.isIntern, internDesk.agentInternContext, volunteerTasks.nextBest?.title])
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.pathname !== '/intern') return
+    if (!internDesk.isIntern) return
+    const id = window.setTimeout(() => {
+      document.getElementById('intern-desk')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }, 400)
+    return () => window.clearTimeout(id)
+  }, [location.pathname, internDesk.isIntern])
   const [accountEmail, setAccountEmail] = useState<string | null>(() =>
     isDevAuthBypassEnabled() ? devBypassDisplayEmail() : null,
   )
@@ -186,6 +205,10 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     )
   const voterMatched = voterLinked
   const branchSet = Boolean(normalizeKey(profile?.onboarding_branch))
+  const branchSpecialtyCards = useMemo(
+    () => getBranchSpecialtyCards(profile?.onboarding_branch),
+    [profile?.onboarding_branch],
+  )
 
   useEffect(() => {
     if (isDevAuthBypassEnabled() || !profileId || !voterMatched || branchSet) return
@@ -297,7 +320,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
   if (loading) {
     return (
       <>
-        <AppHeader onSignOut={handleSignOut} showInternDesk={internDesk.isIntern} />
+        <AppHeader onSignOut={handleSignOut} />
         <main className="app-shell">
           <div className="loading-screen" role="status" aria-live="polite">
             Loading…
@@ -310,7 +333,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
 
   return (
     <>
-      <AppHeader onSignOut={handleSignOut} showInternDesk={internDesk.isIntern} />
+      <AppHeader onSignOut={handleSignOut} />
       <main
         className={`app-shell dashboard-workspace${hdWorkspace ? ' dashboard-workspace--hd' : ''}`}
       >
@@ -348,24 +371,48 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             <NextStepCard step={nextStep} />
           </DashboardPanelFrame>
 
+          <DashboardPanelFrame
+            scrollId="volunteer-global"
+            storageKey="dash-volunteer-global"
+            labelCollapsed="All volunteers"
+            sectionGlyph="volunteer-global"
+          >
+            <VolunteerPathCardGrid
+              headingId="volunteer-global-heading"
+              heading="For every volunteer"
+              intro="Scaffold — replace card copy in volunteerDashboardCards.ts."
+              cards={VOLUNTEER_GLOBAL_CARDS}
+            />
+          </DashboardPanelFrame>
+
           {internDesk.isIntern ? (
             <DashboardPanelFrame
               scrollId="intern-desk"
               storageKey="dash-intern-desk"
-              labelCollapsed="Intern desk"
-              sectionGlyph="workspace-cards"
+              labelCollapsed="Team desk"
+              sectionGlyph="intern-desk"
             >
-              <section className="stack-section">
-                <p className="subtitle" style={{ margin: 0, fontWeight: 700 }}>
-                  Intern desk
-                </p>
-                <p className="subtitle" style={{ margin: '8px 0 0' }}>
-                  <Link to="/intern">Open intern workspace</Link>
-                  {internDesk.overdueCount > 0
-                    ? ` · ${internDesk.overdueCount} overdue first contact`
-                    : ''}
-                </p>
-              </section>
+              <InternDeskContent
+                showDirectRouteHint={location.pathname === '/intern'}
+                intern={{
+                  pipelines: internDesk.pipelines,
+                  loading: internDesk.loading,
+                  error: internDesk.error,
+                  refetch: internDesk.refetch,
+                  overdueCount: internDesk.overdueCount,
+                  nowMs: internDesk.nowMs,
+                }}
+                tasks={{
+                  active: volunteerTasks.active,
+                  loading: volunteerTasks.loading,
+                  error: volunteerTasks.error,
+                  claim: volunteerTasks.claim,
+                  complete: volunteerTasks.complete,
+                  decline: volunteerTasks.decline,
+                  refetch: volunteerTasks.refetch,
+                }}
+                onProfileRefetch={() => void refetch()}
+              />
             </DashboardPanelFrame>
           ) : null}
 
@@ -470,7 +517,11 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               labelCollapsed="Voter status"
               sectionGlyph="voter-status-card"
             >
-              <VoterStatusCard profile={profile} voterMatched={voterMatched} />
+              <VoterStatusCard
+                profile={profile}
+                voterMatched={voterMatched}
+                matchStatus={voterMatch.matched?.match_status ?? null}
+              />
             </DashboardPanelFrame>
             <DashboardPanelFrame
               scrollId="workspace-summary"
@@ -526,6 +577,22 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               </StatusCard>
             </DashboardPanelFrame>
           </div>
+
+          {branchSet && branchSpecialtyCards.length > 0 ? (
+            <DashboardPanelFrame
+              scrollId="branch-specialty"
+              storageKey="dash-branch-specialty"
+              labelCollapsed="Your path"
+              sectionGlyph="branch-specialty"
+            >
+              <VolunteerPathCardGrid
+                headingId="branch-specialty-heading"
+                heading="For your volunteer path"
+                intro="Scaffold — branch rows in volunteerDashboardCards.ts."
+                cards={branchSpecialtyCards}
+              />
+            </DashboardPanelFrame>
+          ) : null}
 
           {voterMatch.matched ? (
             <DashboardPanelFrame

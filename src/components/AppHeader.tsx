@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
+import ElectionCountdownBar from './ElectionCountdownBar'
 
 const DRAWER_ID = 'campaignos-nav-drawer'
 const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
@@ -8,11 +9,12 @@ const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
 type AppHeaderProps = {
   /** When set, shows nav + sign out (dashboard shell). */
   onSignOut?: () => void | Promise<void>
-  /** Show link to intern desk (middle operational tier). */
+  /** When false, hides the team desk link (`/intern`). Defaults to on for any signed-in workspace shell. */
   showInternDesk?: boolean
 }
 
 export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps) {
+  const showTeamDeskLink = showInternDesk ?? Boolean(onSignOut)
   const location = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -32,8 +34,10 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
 
   return (
     <header className="app-topbar">
+      <ElectionCountdownBar />
+      <div className="app-topbar-main">
       <Link to="/" className="app-brand">
-        <span className="app-brand-lockup" aria-label="CampaignOS">
+        <span className="app-brand-lockup" aria-label="CAMPAIGN-OS">
           <img
             className="app-brand-logo"
             src={brand.assets.logoPrimaryUrl}
@@ -43,7 +47,7 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
             loading="eager"
             decoding="async"
           />
-          <span className="app-brand-text">CampaignOS</span>
+          <span className="app-brand-text">CAMPAIGN-OS</span>
         </span>
       </Link>
 
@@ -91,9 +95,9 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
             >
               Dashboard
             </Link>
-            {showInternDesk ? (
+            {showTeamDeskLink ? (
               <Link to="/intern" aria-current={isInternDesk ? 'page' : undefined}>
-                Intern desk
+                Team desk
               </Link>
             ) : null}
           </nav>
@@ -184,14 +188,14 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                 >
                   Dashboard
                 </Link>
-                {showInternDesk ? (
+                {showTeamDeskLink ? (
                   <Link
                     to="/intern"
                     className="drawer-nav-link"
                     aria-current={isInternDesk ? 'page' : undefined}
                     onClick={closeDrawer}
                   >
-                    Intern desk
+                    Team desk
                   </Link>
                 ) : null}
                 <button
@@ -209,6 +213,7 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
           </nav>
         </>
       ) : null}
+      </div>
     </header>
   )
 }

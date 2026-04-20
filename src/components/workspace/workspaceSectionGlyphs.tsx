@@ -157,6 +157,8 @@ const GLYPH_RENDERERS: Record<
 > = {
   'dash-identity-title': (p) => IconTop(p),
   'next-step-card': (p) => IconNextStep(p),
+  'volunteer-global': (p) => IconSnapshot(p),
+  'branch-specialty': (p) => IconBranch(p),
   'onboarding-activation': (p) => IconSpark(p),
   'onboarding-branch': (p) => IconBranch(p),
   'voter-status-card': (p) => IconBallot(p),
@@ -167,6 +169,7 @@ const GLYPH_RENDERERS: Record<
   'voter-workspace': (p) => IconVoterSearch(p),
   'exception-request': (p) => IconDoc(p),
   'mission-tasks': (p) => IconNextStep(p),
+  'intern-desk': (p) => IconTasks(p),
   'daily-activation': (p) => IconSpark(p),
   'workspace-cards': (p) => IconTasks(p),
 }

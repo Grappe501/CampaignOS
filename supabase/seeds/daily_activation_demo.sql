@@ -1,4 +1,4 @@
--- Adaptive engine (20260420120000_adaptive_daily_activation.sql): lane scores and
+-- Adaptive engine (20260429170000_adaptive_daily_activation.sql): lane scores and
 -- supervisor_activation_insights(team_id) power the assignment mix — no extra seed required.
 --
 -- Optional QA: opt a volunteer into social platforms so communications templates

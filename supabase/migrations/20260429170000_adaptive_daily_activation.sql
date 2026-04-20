@@ -1,5 +1,6 @@
 -- Adaptive Daily Activation: lane metrics, behavior signals, lane scores, weighted templates,
 -- multi-task missions (same lane allowed), deterministic weighted assignment. Communications always included.
+-- MUST run after 20260429160000_daily_activation_engine.sql (creates daily_* tables + user_scores).
 
 -- ---------------------------------------------------------------------------
 -- Template weighting & progression

@@ -15,6 +15,8 @@ import {
 } from './lib/devAuth'
 import Dashboard from './pages/Dashboard'
 import InternDesk from './pages/InternDesk'
+import CandidateDesk from './pages/CandidateDesk'
+import CoordinatorDesk from './pages/CoordinatorDesk'
 import Login from './pages/Login'
 
 export default function App() {
@@ -85,6 +87,38 @@ export default function App() {
           element={
             session ? (
               <InternDesk
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/candidate"
+          element={
+            session ? (
+              <CandidateDesk
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/coordinator"
+          element={
+            session ? (
+              <CoordinatorDesk
                 onDevSessionClear={
                   isDevAuthBypassEnabled()
                     ? () => setSession(null)
