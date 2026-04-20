@@ -358,9 +358,62 @@
   font-size: 1.1rem;
 }
 
-.agent-jones-card .agent-input {
-  min-height: 120px;
-  resize: vertical;
+.agent-jones-prompt-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (min-width: 600px) {
+  .agent-jones-prompt-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.agent-jones-prompt {
+  width: 100%;
+  min-height: 48px;
+  text-align: left;
+  justify-content: flex-start;
+  line-height: 1.35;
+  white-space: normal;
+  height: auto;
+  padding-block: 12px;
+}
+
+@media (min-width: 480px) {
+  .agent-jones-prompt {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.agent-jones-prompt-active {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.agent-jones-response {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--social-bg);
+  min-height: 96px;
+}
+
+.agent-jones-response-text {
+  margin: 0;
+  color: var(--text-h);
+  font-size: clamp(0.95rem, 0.35vw + 0.9rem, 1.05rem);
+  line-height: 1.45;
+}
+
+.agent-jones-response-placeholder {
+  margin: 0;
+  font-style: italic;
 }
 
 .page-title {

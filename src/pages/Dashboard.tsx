@@ -12,6 +12,7 @@ import {
   getNextStep,
   getTrainingCardModel,
   hasProgressIdentity,
+  needsOnboardingPath,
   normalizeKey,
   progressionGateMessage,
 } from '../lib/dashboardState'
@@ -239,7 +240,19 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           </section>
 
           <div id="agent-jones" className="agent-jones-anchor">
-            <AgentJones />
+            <AgentJones
+              key={`${progressSlice}-${voterMatch.matchedLoading}-${normalizeKey(
+                profile?.onboarding_branch,
+              )}-${normalizeKey(profile?.exception_request_status)}-${
+                progressSlice === 'matched_ready' &&
+                needsOnboardingPath(profile)
+                  ? 'orient'
+                  : 'x'
+              }`}
+              progressSlice={progressSlice}
+              profile={profile}
+              voterLoading={voterMatch.matchedLoading}
+            />
           </div>
         </DashboardGrid>
       </main>
