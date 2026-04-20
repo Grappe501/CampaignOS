@@ -1,25 +1,91 @@
+#!/usr/bin/env node
 /**
- * Interactive bootstrap for `.env` (local only; never commit).
- * Does not echo saved secrets; only length / "set" status after write.
+ * CampaignOS — interactive `.env` setup (never commit `.env`).
+ * Rerun-safe: shows what's set, defaults to keeping values, masks secrets in the terminal.
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import readline from 'node:readline/promises'
+import readline from 'node:readline'
 import { stdin as input, stdout as output } from 'node:process'
 
 const root = path.resolve(import.meta.dirname, '..')
 const envPath = path.join(root, '.env')
 
-/** @type {{ key: string, clientSafe: boolean }[]} */
-const KEYS = [
-  { key: 'VITE_SUPABASE_URL', clientSafe: true },
-  { key: 'VITE_SUPABASE_ANON_KEY', clientSafe: true },
-  { key: 'OPENAI_API_KEY', clientSafe: false },
-  { key: 'SENDGRID_API_KEY', clientSafe: false },
-  { key: 'TWILIO_ACCOUNT_SID', clientSafe: false },
-  { key: 'TWILIO_AUTH_TOKEN', clientSafe: false },
-  { key: 'TWILIO_PHONE_NUMBER', clientSafe: false },
+/** @type {{ key: string, label: string, required: boolean, secret: boolean, help: string }[]} */
+const fields = [
+  {
+    key: 'VITE_SUPABASE_URL',
+    label: 'Supabase Project URL',
+    required: true,
+    secret: false,
+    help: 'Supabase → Project Settings → API → Project URL',
+  },
+  {
+    key: 'VITE_SUPABASE_ANON_KEY',
+    label: 'Supabase anon/public key',
+    required: true,
+    secret: true,
+    help: 'Supabase → Project Settings → API → anon public key',
+  },
+  {
+    key: 'OPENAI_API_KEY',
+    label: 'OpenAI API key',
+    required: false,
+    secret: true,
+    help: 'OpenAI Platform → API keys (server-only; never VITE_)',
+  },
+  {
+    key: 'SENDGRID_API_KEY',
+    label: 'SendGrid API key',
+    required: false,
+    secret: true,
+    help: 'SendGrid → Settings → API Keys',
+  },
+  {
+    key: 'TWILIO_ACCOUNT_SID',
+    label: 'Twilio Account SID',
+    required: false,
+    secret: false,
+    help: 'Twilio Console → Account Info',
+  },
+  {
+    key: 'TWILIO_AUTH_TOKEN',
+    label: 'Twilio Auth Token',
+    required: false,
+    secret: true,
+    help: 'Twilio Console → Account Info',
+  },
+  {
+    key: 'TWILIO_PHONE_NUMBER',
+    label: 'Twilio phone number',
+    required: false,
+    secret: false,
+    help: 'Twilio Console → purchased number (e.g. +15555555555)',
+  },
+  {
+    key: 'GITHUB_PAT',
+    label: 'GitHub PAT',
+    required: false,
+    secret: true,
+    help: 'GitHub → Settings → Developer settings → Personal access tokens',
+  },
+  {
+    key: 'NETLIFY_AUTH_TOKEN',
+    label: 'Netlify auth token',
+    required: false,
+    secret: true,
+    help: 'Netlify → User settings → Applications → Personal access tokens',
+  },
+  {
+    key: 'NETLIFY_SITE_ID',
+    label: 'Netlify Site ID / Project ID',
+    required: false,
+    secret: false,
+    help: 'Netlify → Site → Project configuration → General → Project information',
+  },
 ]
+
+const FIELD_KEYS = new Set(fields.map((f) => f.key))
 
 const PLACEHOLDER_HINTS = [
   'your_url',
@@ -31,114 +97,172 @@ const PLACEHOLDER_HINTS = [
 ]
 
 function isPlaceholder(value, key) {
-  const v = value.trim().toLowerCase()
+  const v = String(value).trim().toLowerCase()
   if (!v) return true
   if (PLACEHOLDER_HINTS.some((p) => v.includes(p))) return true
   if (key === 'VITE_SUPABASE_URL' && !v.startsWith('http')) return true
   return false
 }
 
-function parseEnvFile(content) {
+function mask(value) {
+  if (!value) return '(empty)'
+  if (value.length <= 6) return '*'.repeat(value.length)
+  return `${value.slice(0, 3)}***${value.slice(-3)}`
+}
+
+/** Never print full secrets; shorten long non-secret values for display only. */
+function displayValue(value, field) {
+  if (!value || !String(value).trim()) return '(empty)'
+  if (field.secret) return mask(String(value))
+  const s = String(value)
+  if (s.length > 28) return `${s.slice(0, 12)}…${s.slice(-8)}`
+  return s
+}
+
+function parseEnvFile(text) {
   /** @type {Map<string, string>} */
   const map = new Map()
-  for (const line of content.split('\n')) {
+  for (const line of text.split(/\r?\n/)) {
     const t = line.trim()
     if (!t || t.startsWith('#')) continue
-    const eq = t.indexOf('=')
-    if (eq === -1) continue
-    const k = t.slice(0, eq).trim()
-    let val = t.slice(eq + 1).trim()
+    const idx = line.indexOf('=')
+    if (idx === -1) continue
+    const key = line.slice(0, idx).trim()
+    let val = line.slice(idx + 1).trim()
     if (
       (val.startsWith('"') && val.endsWith('"')) ||
       (val.startsWith("'") && val.endsWith("'"))
     ) {
       val = val.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"')
     }
-    map.set(k, val)
+    map.set(key, val)
   }
   return map
 }
 
 function escapeEnvValue(val) {
-  if (val === '') return ''
-  if (/[\r\n"#\s]/.test(val)) {
-    return `"${val.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+  if (val === '' || val == null) return ''
+  const s = String(val)
+  if (/[\r\n"#=\s]/.test(s)) {
+    return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
   }
-  return val
+  return s
 }
 
 function formatEnv(map) {
   const lines = [
-    '# Generated by scripts/setup-env.mjs — do not commit.',
-    '# Client (VITE_* is exposed to the browser; use public anon key + RLS).',
+    '# CampaignOS — generated by scripts/setup-env.mjs (do not commit)',
     '',
   ]
-  for (const { key, clientSafe } of KEYS) {
-    if (!clientSafe && lines[lines.length - 1] !== '') {
-      lines.push('', '# Server-only (never prefix with VITE_; not for client code).', '')
-    }
-    const v = map.get(key) ?? ''
-    lines.push(`${key}=${escapeEnvValue(v)}`)
+  for (const f of fields) {
+    lines.push(`# ${f.label}`, `${f.key}=${escapeEnvValue(map.get(f.key) ?? '')}`, '')
   }
-  lines.push('')
+  for (const [k, v] of map) {
+    if (!FIELD_KEYS.has(k)) {
+      lines.push(`${k}=${escapeEnvValue(v)}`)
+    }
+  }
+  if ([...map.keys()].some((k) => !FIELD_KEYS.has(k))) lines.push('')
   return lines.join('\n')
 }
 
-function describeSet(key, value) {
-  if (!value.trim()) return `${key}: (empty)`
-  return `${key}: set (${value.length} characters)`
+const rl = readline.createInterface({ input, output })
+
+function ask(question) {
+  return new Promise((resolve) => {
+    rl.question(question, resolve)
+  })
 }
 
 async function main() {
-  const rl = readline.createInterface({ input, output })
+  /** @type {Map<string, string>} */
+  const existing = fs.existsSync(envPath)
+    ? parseEnvFile(fs.readFileSync(envPath, 'utf8'))
+    : new Map()
 
-  let existing = new Map()
-  if (fs.existsSync(envPath)) {
-    existing = parseEnvFile(fs.readFileSync(envPath, 'utf8'))
-    output.write(`\nFound existing ${path.basename(envPath)}.\n`)
-  } else {
-    output.write(`\nCreating ${path.basename(envPath)}.\n`)
-  }
+  output.write(`\nCampaignOS environment setup\n`)
+  output.write(`File: ${envPath}\n`)
+  output.write(
+    `Existing values are kept by default. You will only replace a key if you answer "n" to keep, or if it is not set yet.\n`,
+  )
 
-  const next = new Map(existing)
+  for (const field of fields) {
+    const raw = existing.get(field.key) ?? ''
+    const hasConcrete = !isPlaceholder(raw, field.key)
 
-  try {
-    for (const { key, clientSafe } of KEYS) {
-      const current = next.get(key) ?? ''
-      const hasConcrete =
-        current.length > 0 && !isPlaceholder(current, key)
+    output.write(`\n${'─'.repeat(56)}\n`)
+    output.write(`${field.label}\n`)
+    output.write(`Key: ${field.key}\n`)
+    output.write(`Where to find it: ${field.help}\n`)
+    output.write(
+      `Status: ${hasConcrete ? `already set (${displayValue(raw, field)})` : 'not set'}\n`,
+    )
 
-      if (hasConcrete) {
-        const ans = (
-          await rl.question(
-            `${key} already has a value. Overwrite? [y/N]: `,
-          )
-        ).trim()
-        if (ans.toLowerCase() !== 'y' && ans.toLowerCase() !== 'yes') {
-          output.write(`  Keeping existing ${key} (${current.length} chars).\n`)
+    if (hasConcrete) {
+      const keepAns = await ask('Keep existing value? [Y/n]: ')
+      const wantReplace = /^n(o)?$/i.test(String(keepAns).trim())
+      if (!wantReplace) {
+        output.write('  → kept as-is.\n')
+        continue
+      }
+      output.write('  → replacing. Enter a new value below.\n')
+    }
+
+    if (field.required) {
+      let trimmed = ''
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const line = await ask(
+          hasConcrete
+            ? `New ${field.key} (required, cannot be empty): `
+            : `Enter ${field.key} (required): `,
+        )
+        trimmed = String(line).trim()
+        if (!trimmed) {
+          output.write('  Value required — paste your Supabase value.\n')
           continue
         }
+        if (isPlaceholder(trimmed, field.key)) {
+          output.write('  Still looks like a placeholder — try again.\n')
+          continue
+        }
+        break
       }
-
-      const tag = clientSafe ? 'client-safe' : 'server-only (never VITE_)'
-      output.write(`\n${key} [${tag}] — paste value (input may be visible in terminal).\n`)
-      const entered = (await rl.question('> ')).trim()
-      next.set(key, entered)
+      if (!trimmed || isPlaceholder(trimmed, field.key)) {
+        output.write(`\nAbort: ${field.key} is still invalid.\n`)
+        rl.close()
+        process.exit(1)
+      }
+      existing.set(field.key, trimmed)
+      continue
     }
-  } finally {
-    rl.close()
+
+    const optionalPrompt = hasConcrete
+      ? `New ${field.key} (optional — Enter to clear): `
+      : `Enter ${field.key} (optional — Enter to skip): `
+    const line = await ask(optionalPrompt)
+    const trimmed = String(line).trim()
+    existing.set(field.key, trimmed)
   }
 
-  fs.writeFileSync(envPath, formatEnv(next), 'utf8')
-  output.write(`\nWrote ${envPath}\n`)
-  output.write('Summary (not full secrets):\n')
-  for (const { key } of KEYS) {
-    output.write(`  ${describeSet(key, next.get(key) ?? '')}\n`)
+  fs.writeFileSync(envPath, formatEnv(existing), 'utf8')
+
+  output.write(`\nSaved ${envPath}\n\nSummary (never full secrets):\n`)
+  for (const field of fields) {
+    const value = existing.get(field.key) ?? ''
+    const shown = field.secret ? mask(value) : displayValue(value, field)
+    output.write(`- ${field.key}: ${shown}\n`)
   }
-  output.write('\nDone.\n')
+  output.write(`\nNext: npm run check:env  then  npm run dev\n`)
+
+  rl.close()
 }
 
 main().catch((err) => {
   console.error(err)
+  try {
+    rl.close()
+  } catch {
+    /* ignore */
+  }
   process.exit(1)
 })

@@ -12,10 +12,11 @@ dist
 dist-ssr
 *.local
 
-# Local environment and secrets (never commit real values)
+# Local environment (never commit real values)
 .env
 .env.local
 .env.*.local
+# Other dotenv variants (keep .env.example tracked below)
 .env.*
 !.env.example
 
@@ -28,6 +29,10 @@ secrets.env
 credentials.json
 *.pem
 .netlify-env-import.tmp
+
+# Avoid committing token dumps / exports
+*pat*.txt
+*-tokens.txt
 
 # Editor directories and files
 .vscode/*

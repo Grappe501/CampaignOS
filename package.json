@@ -6,11 +6,11 @@
   "scripts": {
     "setup:env": "node scripts/setup-env.mjs",
     "check:env": "node scripts/check-env.mjs",
-    "netlify:env:push": "node scripts/netlify-env-push.mjs",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
+    "preview": "vite preview",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "netlify:env:push": "node scripts/netlify-env-push.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",
