@@ -710,8 +710,29 @@ const DESK_SUMMARY_DESKS = new Set([
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Content-Type': 'application/json',
+}
+
+/** Turn OpenAI error JSON into a short operator-safe string (no full raw dump). */
+function summarizeOpenAIHttpError(raw: string): string {
+  const slice = raw.slice(0, 1600)
+  try {
+    const j = JSON.parse(slice) as {
+      error?: { message?: string; code?: string; type?: string }
+    }
+    const msg = j?.error?.message
+    if (typeof msg === 'string' && msg.trim()) {
+      const code =
+        typeof j.error?.code === 'string' && j.error.code
+          ? ` [${j.error.code}]`
+          : ''
+      return `${msg.trim()}${code}`.slice(0, 500)
+    }
+  } catch {
+    /* non-JSON body */
+  }
+  return slice.trim().slice(0, 400)
 }
 
 function json(statusCode: number, body: unknown): NetlifyResponse {
@@ -3231,13 +3252,31 @@ export default async function handler(
     return { statusCode: 204, headers: corsHeaders, body: '' }
   }
 
+  /** Lightweight health check — no OpenAI call; use to verify deploy + env. */
+  if (event.httpMethod === 'GET') {
+    const configured = Boolean(process.env.OPENAI_API_KEY?.trim())
+    return json(200, {
+      ok: true,
+      service: 'agent-jones',
+      openaiConfigured: configured,
+      defaultModel: process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini',
+      hint: configured
+        ? null
+        : 'Set OPENAI_API_KEY in Netlify (or .env for netlify dev), then redeploy.',
+    })
+  }
+
   if (event.httpMethod !== 'POST') {
     return json(405, { error: 'Method not allowed' })
   }
 
   const key = process.env.OPENAI_API_KEY
   if (!key?.trim()) {
-    return json(503, { error: 'OPENAI_API_KEY is not configured' })
+    return json(503, {
+      error: 'OPENAI_API_KEY is not configured',
+      detail:
+        'Add OPENAI_API_KEY in Netlify → Site configuration → Environment variables (Production + Preview as needed), then trigger a new deploy. For local dev, add it to .env and run netlify dev.',
+    })
   }
 
   let parsed: RequestBody
@@ -3292,7 +3331,8 @@ export default async function handler(
   if (!openaiRes.ok) {
     return json(502, {
       error: 'OpenAI request failed',
-      detail: raw.slice(0, 500),
+      detail: summarizeOpenAIHttpError(raw),
+      httpStatus: openaiRes.status,
     })
   }
 

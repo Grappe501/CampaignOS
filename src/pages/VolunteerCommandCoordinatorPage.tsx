@@ -1,6 +1,8 @@
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
 import VolunteerCommandNav from '../components/volunteer-command/VolunteerCommandNav'
+import CoordinatorMarketplacePanel from '../components/volunteer-command/CoordinatorMarketplacePanel'
+import CoordinatorRecommendationInsightsPanel from '../components/volunteer-command/CoordinatorRecommendationInsightsPanel'
 import { useProfile } from '../hooks/useProfile'
 import { useVolunteerCommandCoordinator } from '../hooks/useVolunteerCommandCoordinator'
 import { supabase } from '../lib/supabaseClient'
@@ -214,6 +216,10 @@ export default function VolunteerCommandCoordinatorPage({ onDevSessionClear }: P
                 </ul>
               )}
             </section>
+
+            <CoordinatorMarketplacePanel />
+
+            <CoordinatorRecommendationInsightsPanel volunteers={desk.volunteers} />
 
             <section className="event-coordinator-desk__section" aria-labelledby="vc-rec">
               <h2 id="vc-rec" className="event-coordinator-desk__h2">

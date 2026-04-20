@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 const LINKS = [
   { to: '/volunteers/me', label: 'My volunteer hub' },
+  { to: '/volunteers/opportunities', label: 'Marketplace' },
   { to: '/volunteers/team-lead', label: 'Team lead' },
   { to: '/volunteers/command', label: 'Coordinator' },
 ] as const

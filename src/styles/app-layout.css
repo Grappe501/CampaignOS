@@ -9711,3 +9711,157 @@ a.power5-secondary-btn {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* Volunteer opportunity marketplace */
+.volunteer-marketplace-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .volunteer-marketplace-filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+}
+
+.volunteer-marketplace-filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 200px;
+}
+
+.volunteer-marketplace-filters__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cj-muted, #64748b);
+}
+
+.volunteer-marketplace-filters__input {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  font-size: 1rem;
+}
+
+.volunteer-marketplace-filters__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.volunteer-marketplace__card-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 700px) {
+  .volunteer-marketplace__card-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.volunteer-marketplace-card {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.volunteer-marketplace-card__title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.volunteer-marketplace-card__meta,
+.volunteer-marketplace-card__when,
+.volunteer-marketplace-card__where {
+  margin: 0 0 6px;
+  font-size: 0.86rem;
+  color: #475569;
+}
+
+.volunteer-marketplace-card__why {
+  margin: 0 0 10px;
+  font-size: 0.84rem;
+  color: #0f172a;
+}
+
+.volunteer-marketplace-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.volunteer-marketplace-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .volunteer-marketplace-detail {
+    align-items: center;
+  }
+}
+
+.volunteer-marketplace-detail__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.volunteer-marketplace-detail__panel {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: 85vh;
+  overflow: auto;
+  padding: 20px;
+  border-radius: 16px 16px 0 0;
+  background: #fff;
+  box-shadow: 0 -8px 40px rgba(15, 23, 42, 0.2);
+}
+
+@media (min-width: 640px) {
+  .volunteer-marketplace-detail__panel {
+    border-radius: 16px;
+  }
+}
+
+.volunteer-marketplace-detail__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.volunteer-marketplace-detail__title {
+  margin: 0 32px 8px 0;
+  font-size: 1.2rem;
+}
+
+.volunteer-marketplace-detail__meta {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.volunteer-marketplace-detail__body {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}

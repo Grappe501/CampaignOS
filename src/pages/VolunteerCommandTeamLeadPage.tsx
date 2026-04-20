@@ -1,6 +1,8 @@
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
+import { Link } from 'react-router-dom'
 import VolunteerCommandNav from '../components/volunteer-command/VolunteerCommandNav'
+import TeamLeadRecommendationQueue from '../components/volunteer-command/TeamLeadRecommendationQueue'
 import { useProfile } from '../hooks/useProfile'
 import { useVolunteerTeamLead } from '../hooks/useVolunteerTeamLead'
 import { supabase } from '../lib/supabaseClient'
@@ -38,6 +40,9 @@ export default function VolunteerCommandTeamLeadPage({ onDevSessionClear }: Prop
                 <code>volunteer_supervisor_teams</code>.
               </p>
               <VolunteerCommandNav />
+              <p className="event-coordinator-desk__meta">
+                <Link to="/volunteers/opportunities">Opportunity marketplace →</Link>
+              </p>
             </header>
 
             {desk.error ? (
@@ -51,6 +56,8 @@ export default function VolunteerCommandTeamLeadPage({ onDevSessionClear }: Prop
                 Loading…
               </p>
             ) : null}
+
+            <TeamLeadRecommendationQueue myVolunteers={desk.myVolunteers} />
 
             <section className="event-coordinator-desk__section">
               <h2 className="event-coordinator-desk__h2">My volunteers</h2>

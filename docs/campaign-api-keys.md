@@ -104,6 +104,9 @@ Your dashboard already has **precinct, county, and districts** from the voter fi
 - **What it is:** Access to OpenAI (or compatible) chat/completions used in **Netlify Functions**.
 - **Use here:** Agent Jones (`agent-jones`) and **Agent Jones voice** (`agent-jones-transcribe` → Audio Transcriptions API). Same key for both.
 - **Notes:** Keep off the client; rotate if leaked.
+- **Deploy:** Set in Netlify → Site configuration → Environment variables for **Production** (and **Deploy Previews** if you test previews there). Redeploy after changing secrets.
+- **Local:** Add to `.env` (not committed) and run `netlify dev`; point the Vite app at functions with `VITE_NETLIFY_FUNCTIONS_ORIGIN=http://localhost:8888`.
+- **Troubleshooting:** `GET /.netlify/functions/agent-jones` returns JSON `{ openaiConfigured, defaultModel }` without calling OpenAI — use this to confirm the deploy sees the key. HTTP **503** from POST usually means the key is missing in that environment. HTTP **502** usually means OpenAI rejected the request (invalid/expired key, billing/quota, or model not allowed for the project); see `detail` in the JSON error body.
 
 ### `OPENAI_TRANSCRIPTION_MODEL` (optional)
 

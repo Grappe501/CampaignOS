@@ -20,6 +20,11 @@ import type {
   VolunteerSkill,
   VolunteerTrainingRecord,
 } from './volunteerCommandDomain'
+import {
+  parseVolunteerOpportunityPreferenceProfile,
+  toPreferenceProfileJson,
+  type VolunteerOpportunityPreferenceProfile,
+} from './volunteerRecommendationSchemas'
 
 function mapVolunteer(row: Record<string, unknown>): VolunteerProfile {
   return {
@@ -60,6 +65,7 @@ function mapVolunteer(row: Record<string, unknown>): VolunteerProfile {
     onboardingStartedAt: row.onboarding_started_at != null ? String(row.onboarding_started_at) : null,
     onboardingCompletedAt:
       row.onboarding_completed_at != null ? String(row.onboarding_completed_at) : null,
+    recommendationPreferences: parseVolunteerOpportunityPreferenceProfile(row.recommendation_preferences),
   }
 }
 
@@ -412,6 +418,22 @@ export async function upsertVolunteerForProfile(input: {
 
   if (error) return { volunteer: null, error: new Error(error.message) }
   return { volunteer: mapVolunteer(data as Record<string, unknown>), error: null }
+}
+
+export async function updateVolunteerRecommendationPreferences(
+  volunteerId: string,
+  prefs: VolunteerOpportunityPreferenceProfile,
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase
+    .from('volunteers')
+    .update({
+      recommendation_preferences: toPreferenceProfileJson(prefs),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', volunteerId)
+
+  if (error) return { error: new Error(error.message) }
+  return { error: null }
 }
 
 export async function updateVolunteerStatus(

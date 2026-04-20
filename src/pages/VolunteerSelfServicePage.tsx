@@ -1,9 +1,16 @@
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
+import { Link } from 'react-router-dom'
 import VolunteerCommandNav from '../components/volunteer-command/VolunteerCommandNav'
 import { useProfile } from '../hooks/useProfile'
 import { useVolunteerSelfService } from '../hooks/useVolunteerSelfService'
+import { useVolunteerRecommendations } from '../hooks/useVolunteerRecommendations'
+import { useVolunteerEngagementSummary } from '../hooks/useVolunteerEngagementSummary'
 import { supabase } from '../lib/supabaseClient'
+import { updateVolunteerRecommendationPreferences } from '../lib/volunteerCommandApi'
+import { parseVolunteerOpportunityPreferenceProfile } from '../lib/volunteerRecommendationSchemas'
+import VolunteerRecommendedOpportunitiesPanel from '../components/volunteer-command/VolunteerRecommendedOpportunitiesPanel'
+import VolunteerEngagementSummaryCard from '../components/volunteer-command/VolunteerEngagementSummaryCard'
 
 type Props = { onDevSessionClear?: () => void }
 
@@ -11,6 +18,11 @@ export default function VolunteerSelfServicePage({ onDevSessionClear }: Props) {
   const { profile, loading } = useProfile()
   const profileId = profile?.id != null && profile.id !== '' ? String(profile.id) : undefined
   const self = useVolunteerSelfService(profileId)
+  const rec = useVolunteerRecommendations(self.volunteer, false)
+  const engagement = useVolunteerEngagementSummary(self.volunteer?.id)
+
+  const prefs =
+    self.volunteer?.recommendationPreferences ?? parseVolunteerOpportunityPreferenceProfile(null)
 
   const handleSignOut = () => {
     if (onDevSessionClear) {
@@ -38,6 +50,9 @@ export default function VolunteerSelfServicePage({ onDevSessionClear }: Props) {
                 profile once to unlock assignments.
               </p>
               <VolunteerCommandNav />
+              <p className="event-coordinator-desk__meta">
+                <Link to="/volunteers/opportunities">Browse the opportunity marketplace →</Link>
+              </p>
               <div className="event-coordinator-desk__quick-actions">
                 <button
                   type="button"
@@ -61,6 +76,65 @@ export default function VolunteerSelfServicePage({ onDevSessionClear }: Props) {
                 Loading…
               </p>
             ) : null}
+
+            <section className="event-coordinator-desk__section" aria-labelledby="vss-prefs">
+              <h2 id="vss-prefs" className="event-coordinator-desk__h2">
+                Marketplace preferences
+              </h2>
+              {!self.volunteer ? (
+                <p className="event-coordinator-desk__placeholder">Create your volunteer profile to set preferences.</p>
+              ) : (
+                <div className="volunteer-marketplace-filters">
+                  <label className="volunteer-marketplace-filters__check">
+                    <input
+                      type="checkbox"
+                      checked={prefs.recommendationOptIn}
+                      onChange={(e) => {
+                        const next = { ...prefs, recommendationOptIn: e.target.checked }
+                        void updateVolunteerRecommendationPreferences(self.volunteer!.id, next).then(() =>
+                          self.refetch(),
+                        )
+                      }}
+                    />{' '}
+                    Personalized recommendations
+                  </label>
+                  <label className="volunteer-marketplace-filters__check">
+                    <input
+                      type="checkbox"
+                      checked={prefs.engagementTrackingOptIn}
+                      onChange={(e) => {
+                        const next = { ...prefs, engagementTrackingOptIn: e.target.checked }
+                        void updateVolunteerRecommendationPreferences(self.volunteer!.id, next).then(() =>
+                          self.refetch(),
+                        )
+                      }}
+                    />{' '}
+                    Allow engagement insights (views, saves, claims) to improve suggestions
+                  </label>
+                </div>
+              )}
+            </section>
+
+            <section className="event-coordinator-desk__section" aria-labelledby="vss-eng">
+              <h2 id="vss-eng" className="event-coordinator-desk__h2">
+                Engagement snapshot
+              </h2>
+              <VolunteerEngagementSummaryCard summary={engagement.summary} loading={engagement.loading} />
+            </section>
+
+            <section className="event-coordinator-desk__section" aria-labelledby="vss-rec">
+              <h2 id="vss-rec" className="event-coordinator-desk__h2">
+                Recommended opportunities
+              </h2>
+              <VolunteerRecommendedOpportunitiesPanel
+                loading={rec.loading}
+                error={rec.error}
+                results={rec.results}
+                usedAi={rec.usedAi}
+                fallbackReason={rec.fallbackReason}
+                onRefresh={() => void rec.refetch({ forceRefresh: true })}
+              />
+            </section>
 
             <section className="event-coordinator-desk__section">
               <h2 className="event-coordinator-desk__h2">My volunteer record</h2>

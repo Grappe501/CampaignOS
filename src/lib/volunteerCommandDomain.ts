@@ -2,6 +2,8 @@
  * Volunteer Command System — shared domain types (maps to Supabase tables).
  */
 
+import type { VolunteerOpportunityPreferenceProfile } from './volunteerRecommendationSchemas'
+
 export type VolunteerOnboardingStatus =
   | 'new'
   | 'contacted'
@@ -74,6 +76,8 @@ export type VolunteerProfile = {
   /** Joined for UI */
   skills?: VolunteerSkill[]
   interests?: VolunteerInterest[]
+  /** Step 2.6 — marketplace / recommendation preferences (JSON on volunteers.recommendation_preferences). */
+  recommendationPreferences?: VolunteerOpportunityPreferenceProfile
 }
 
 export type OnboardingChecklistItemStatus = 'pending' | 'in_progress' | 'completed' | 'skipped'

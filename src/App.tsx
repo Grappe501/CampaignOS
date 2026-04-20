@@ -35,6 +35,7 @@ import { CampaignEventsProvider } from './context/CampaignEventsContext'
 import VolunteerCommandCoordinatorPage from './pages/VolunteerCommandCoordinatorPage'
 import VolunteerCommandTeamLeadPage from './pages/VolunteerCommandTeamLeadPage'
 import VolunteerSelfServicePage from './pages/VolunteerSelfServicePage'
+import OpportunityMarketplacePage from './pages/OpportunityMarketplacePage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(() =>
@@ -377,6 +378,22 @@ export default function App() {
           element={
             session ? (
               <VolunteerSelfServicePage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/volunteers/opportunities"
+          element={
+            session ? (
+              <OpportunityMarketplacePage
                 onDevSessionClear={
                   isDevAuthBypassEnabled()
                     ? () => setSession(null)

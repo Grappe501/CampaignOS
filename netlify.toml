@@ -13,3 +13,7 @@
 # Add handlers under netlify/functions/ when ready; keys stay off the client.
 [functions]
   directory = "netlify/functions"
+
+# Agent Jones calls OpenAI; default function timeout is 10s. On Pro+, uncomment to reduce timeouts:
+# [functions."agent-jones"]
+#   timeout = 26

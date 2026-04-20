@@ -47,6 +47,7 @@ import {
 import {
   AgentJonesApiError,
   callAgentJones,
+  getAgentJonesSetupHint,
   type AgentJonesResponse,
 } from '../lib/api/agentJones'
 import type { MatchedVoterDisplayRow } from '../lib/voterMatch'
@@ -664,6 +665,7 @@ export default function AgentJonesPanel({
   )
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(persisted.aiError ?? null)
+  const [aiSetupHint, setAiSetupHint] = useState<string | null>(null)
   const [contextV2, setContextV2] = useState<AgentJonesContextV2 | null>(null)
   const [draftInput, setDraftInput] = useState(persisted.draftInput ?? '')
   const [transcript, setTranscript] = useState<AgentJonesTranscriptEntry[]>(
@@ -684,6 +686,7 @@ export default function AgentJonesPanel({
     setActivePromptId(null)
     setReply(null)
     setAiError(null)
+    setAiSetupHint(null)
     setDraftInput('')
     setTranscript([])
     setCoachingMeta({ epoch: null, phrases: [] })
@@ -762,6 +765,7 @@ export default function AgentJonesPanel({
       setTranscript((t) => [...t, userEntry])
       setActivePromptId('typed-message')
       setAiError(null)
+      setAiSetupHint(null)
       setAiLoading(true)
       setReply(null)
 
@@ -830,11 +834,13 @@ export default function AgentJonesPanel({
               : {}),
           },
         ])
-        const msg =
-          err instanceof AgentJonesApiError
-            ? err.message
-            : 'Agent Jones request failed'
-        setAiError(msg)
+        if (err instanceof AgentJonesApiError) {
+          setAiError(err.message)
+          setAiSetupHint(getAgentJonesSetupHint(err.status))
+        } else {
+          setAiError('Agent Jones request failed')
+          setAiSetupHint(null)
+        }
       } finally {
         setAiLoading(false)
       }
@@ -984,6 +990,7 @@ export default function AgentJonesPanel({
 
     setActivePromptId(prompt.id)
     setAiError(null)
+    setAiSetupHint(null)
     if (prompt.scrollToId) {
       scrollToDashboardId(prompt.scrollToId)
     }
@@ -1092,11 +1099,13 @@ export default function AgentJonesPanel({
           },
         ])
       }
-      const msg =
-        err instanceof AgentJonesApiError
-          ? err.message
-          : 'Agent Jones request failed'
-      setAiError(msg)
+      if (err instanceof AgentJonesApiError) {
+        setAiError(err.message)
+        setAiSetupHint(getAgentJonesSetupHint(err.status))
+      } else {
+        setAiError('Agent Jones request failed')
+        setAiSetupHint(null)
+      }
     } finally {
       setAiLoading(false)
     }
@@ -1436,9 +1445,16 @@ export default function AgentJonesPanel({
           {questionBlock}
           {recommendedActionsBlock}
           {aiError ? (
-            <p className="subtitle agent-jones-error-line" role="alert">
-              {aiError} — showing roster-safe fallback when available.
-            </p>
+            <>
+              <p className="subtitle agent-jones-error-line" role="alert">
+                {aiError} — showing roster-safe fallback when available.
+              </p>
+              {aiSetupHint ? (
+                <p className="subtitle agent-jones-setup-hint" role="note">
+                  {aiSetupHint}
+                </p>
+              ) : null}
+            </>
           ) : null}
 
           <details className="agent-jones-deeper">
@@ -1467,9 +1483,16 @@ export default function AgentJonesPanel({
       {recommendedActionsBlock}
 
       {aiError ? (
-        <p className="subtitle agent-jones-error-line" role="alert">
-          {aiError} — showing roster-safe fallback when available.
-        </p>
+        <>
+          <p className="subtitle agent-jones-error-line" role="alert">
+            {aiError} — showing roster-safe fallback when available.
+          </p>
+          {aiSetupHint ? (
+            <p className="subtitle agent-jones-setup-hint" role="note">
+              {aiSetupHint}
+            </p>
+          ) : null}
+        </>
       ) : null}
     </section>
   )

@@ -40,6 +40,40 @@ export type AgentJonesResponse = {
 export type AgentJonesErrorBody = {
   error: string
   detail?: string
+  /** Present when OpenAI returned a non-2xx HTTP status (server forwards for debugging). */
+  httpStatus?: number
+}
+
+/** User-visible message for failed HTTP responses from the agent-jones function. */
+export function formatAgentJonesFailureMessage(
+  status: number,
+  body: AgentJonesErrorBody | null,
+): string {
+  if (!body?.error) return `Agent Jones request failed (${status})`
+  if (status === 503) {
+    const extra = body.detail ? ` ${body.detail}` : ''
+    return `${body.error}.${extra}`.trim()
+  }
+  if (status === 502) {
+    const d = typeof body.detail === 'string' ? body.detail.trim() : ''
+    if (d) {
+      return `${body.error}: ${d.slice(0, 450)}`
+    }
+    return `${body.error}. Check OpenAI API key, billing/quota, and that OPENAI_MODEL is available to your org.`
+  }
+  const d = typeof body.detail === 'string' ? body.detail.trim() : ''
+  return d ? `${body.error} — ${d.slice(0, 320)}` : body.error
+}
+
+/** Extra setup line for operators when the model API is down or unconfigured. */
+export function getAgentJonesSetupHint(status: number): string | null {
+  if (status === 503) {
+    return 'After setting OPENAI_API_KEY on Netlify, redeploy. Local: .env + netlify dev, and VITE_NETLIFY_FUNCTIONS_ORIGIN=http://localhost:8888'
+  }
+  if (status === 502) {
+    return 'Verify the key at platform.openai.com, ensure billing is active, and try the default model (gpt-4o-mini) if your org limits models.'
+  }
+  return null
 }
 
 export class AgentJonesApiError extends Error {
@@ -199,7 +233,7 @@ export async function callAgentJones(
         ? (data as AgentJonesErrorBody)
         : null
     throw new AgentJonesApiError(
-      err?.error ?? `Agent Jones request failed (${res.status})`,
+      formatAgentJonesFailureMessage(res.status, err),
       res.status,
       err,
     )
