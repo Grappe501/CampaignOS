@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useDevMockDashboard } from './useDevMockDashboard'
+import {
+  getDevMockMatchedVoter,
+  isDevAuthBypassEnabled,
+} from '../lib/devAuth'
 import {
   type MatchedVoterDisplayRow,
   type VoterCandidateRow,
@@ -9,6 +14,7 @@ import {
 } from '../lib/voterMatch'
 
 export function useVoterMatch(campaignProfileId: string | undefined) {
+  const { mockState } = useDevMockDashboard()
   const [matched, setMatched] = useState<MatchedVoterDisplayRow | null>(null)
   const [matchedLoading, setMatchedLoading] = useState(true)
   const [candidates, setCandidates] = useState<VoterCandidateRow[]>([])
@@ -19,6 +25,12 @@ export function useVoterMatch(campaignProfileId: string | undefined) {
   const [usedCountyRefinement, setUsedCountyRefinement] = useState(false)
 
   const loadMatched = useCallback(async () => {
+    if (isDevAuthBypassEnabled()) {
+      setMatched(getDevMockMatchedVoter(mockState))
+      setMatchedLoading(false)
+      return
+    }
+
     if (!campaignProfileId) {
       setMatched(null)
       setMatchedLoading(false)
@@ -37,7 +49,7 @@ export function useVoterMatch(campaignProfileId: string | undefined) {
     } finally {
       setMatchedLoading(false)
     }
-  }, [campaignProfileId])
+  }, [campaignProfileId, mockState])
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -53,6 +65,12 @@ export function useVoterMatch(campaignProfileId: string | undefined) {
       dateOfBirth: string
       county?: string | null
     }) => {
+      if (isDevAuthBypassEnabled()) {
+        setCandidates([])
+        setError('Voter search is disabled while dev auth bypass is on.')
+        return []
+      }
+
       setSearching(true)
       setError(null)
       setCandidates([])
@@ -91,6 +109,11 @@ export function useVoterMatch(campaignProfileId: string | undefined) {
     }) => {
       if (!campaignProfileId) {
         setError('No campaign profile.')
+        return
+      }
+
+      if (isDevAuthBypassEnabled()) {
+        setError('Confirm match is disabled while dev auth bypass is on.')
         return
       }
 

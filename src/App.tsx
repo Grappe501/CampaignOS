@@ -7,15 +7,25 @@ import {
   Routes,
 } from 'react-router-dom'
 import { supabase } from './lib/supabaseClient'
+import { DevMockDashboardProvider } from './context/DevMockDashboardProvider'
+import DevModeBanner from './components/DevModeBanner'
+import {
+  createDevBypassSession,
+  isDevAuthBypassEnabled,
+} from './lib/devAuth'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 
 export default function App() {
-  const [session, setSession] = useState<Session | null | undefined>(
-    undefined,
+  const [session, setSession] = useState<Session | null | undefined>(() =>
+    isDevAuthBypassEnabled() ? createDevBypassSession() : undefined,
   )
 
   useEffect(() => {
+    if (isDevAuthBypassEnabled()) {
+      return
+    }
+
     void supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
     })
@@ -43,7 +53,9 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <DevMockDashboardProvider>
       <div className="app-viewport">
+        {isDevAuthBypassEnabled() ? <DevModeBanner /> : null}
       <Routes>
         <Route
           path="/login"
@@ -55,7 +67,13 @@ export default function App() {
           path="/dashboard"
           element={
             session ? (
-              <Dashboard />
+              <Dashboard
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -70,6 +88,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </div>
+      </DevMockDashboardProvider>
     </BrowserRouter>
   )
 }

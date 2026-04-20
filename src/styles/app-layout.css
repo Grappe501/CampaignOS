@@ -458,3 +458,82 @@
 .agent-jones-anchor {
   scroll-margin-top: 72px;
 }
+
+.onboarding-branch-card {
+  scroll-margin-top: 72px;
+}
+
+.branch-fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.branch-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.branch-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  cursor: pointer;
+  min-height: 52px;
+  box-sizing: border-box;
+}
+
+.branch-option input {
+  margin-top: 4px;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.branch-option--selected {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.branch-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.branch-option-label {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 1rem;
+}
+
+.branch-option-hint {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.exception-textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.exception-note-preview {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+  color: var(--text-h);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
