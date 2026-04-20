@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 
 const DRAWER_ID = 'campaignos-nav-drawer'
+const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
 
 type AppHeaderProps = {
   /** When set, shows nav + sign out (dashboard shell). */
@@ -32,7 +33,7 @@ export default function AppHeader({ onSignOut }: AppHeaderProps) {
         <span className="app-brand-lockup" aria-label="CampaignOS">
           <img
             className="app-brand-logo"
-            src={CHRIS_JONES_FOR_CONGRESS_PUBLIC.assets.logoPrimaryUrl}
+            src={brand.assets.logoPrimaryUrl}
             alt=""
             width={120}
             height={28}
@@ -43,9 +44,44 @@ export default function AppHeader({ onSignOut }: AppHeaderProps) {
         </span>
       </Link>
 
+      <nav className="campaign-top-nav" aria-label="Chris Jones for Congress">
+        {brand.siteChrome.headerNav.map((item) => (
+          <a
+            key={`${item.label}-${item.href}`}
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="campaign-top-nav-link"
+          >
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      <div className="campaign-header-ctas">
+        {brand.siteChrome.headerCtas.map((item) => {
+          const isDonate = /donate/i.test(item.label)
+          return (
+            <a
+              key={`${item.label}-${item.href}`}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={
+                isDonate
+                  ? 'campaign-header-cta campaign-header-cta--donate'
+                  : 'campaign-header-cta campaign-header-cta--volunteer'
+              }
+            >
+              {item.label}
+            </a>
+          )
+        })}
+      </div>
+
       {onSignOut ? (
         <div className="topbar-end">
-          <nav className="desktop-nav" aria-label="Main">
+          <nav className="desktop-nav" aria-label="Workspace">
             <Link
               to="/dashboard"
               aria-current={isDashboard ? 'page' : undefined}
@@ -72,9 +108,21 @@ export default function AppHeader({ onSignOut }: AppHeaderProps) {
             Sign out
           </button>
         </div>
-      ) : null}
+      ) : (
+        <div className="topbar-end topbar-end--login">
+          <button
+            type="button"
+            className="app-menu-btn"
+            aria-expanded={drawerOpen}
+            aria-controls={DRAWER_ID}
+            onClick={() => setDrawerOpen((o) => !o)}
+          >
+            Menu
+          </button>
+        </div>
+      )}
 
-      {drawerOpen && onSignOut ? (
+      {drawerOpen ? (
         <>
           <button
             type="button"
@@ -85,28 +133,61 @@ export default function AppHeader({ onSignOut }: AppHeaderProps) {
           <nav
             id={DRAWER_ID}
             className="drawer-panel"
-            aria-label="Mobile navigation"
+            aria-label="Navigation"
           >
             <h2 className="drawer-panel-title">Menu</h2>
-            <Link
-              to="/dashboard"
-              className="drawer-nav-link"
-              aria-current={isDashboard ? 'page' : undefined}
-              onClick={closeDrawer}
-            >
-              Dashboard
-            </Link>
-            <button
-              type="button"
-              className="btn-touch btn-primary"
-              style={{ marginTop: 'auto' }}
-              onClick={() => {
-                closeDrawer()
-                void onSignOut()
-              }}
-            >
-              Sign out
-            </button>
+            <p className="drawer-section-label">Campaign website</p>
+            {brand.siteChrome.headerNav.map((item) => (
+              <a
+                key={`drawer-${item.label}-${item.href}`}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="drawer-nav-link"
+                onClick={closeDrawer}
+              >
+                {item.label}
+              </a>
+            ))}
+            {brand.siteChrome.headerCtas.map((item) => (
+              <a
+                key={`drawer-cta-${item.label}-${item.href}`}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={
+                  /donate/i.test(item.label)
+                    ? 'drawer-nav-link drawer-nav-link--donate'
+                    : 'drawer-nav-link drawer-nav-link--volunteer'
+                }
+                onClick={closeDrawer}
+              >
+                {item.label}
+              </a>
+            ))}
+            {onSignOut ? (
+              <>
+                <p className="drawer-section-label">Workspace</p>
+                <Link
+                  to="/dashboard"
+                  className="drawer-nav-link"
+                  aria-current={isDashboard ? 'page' : undefined}
+                  onClick={closeDrawer}
+                >
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  className="btn-touch btn-primary drawer-signout"
+                  onClick={() => {
+                    closeDrawer()
+                    void onSignOut()
+                  }}
+                >
+                  Sign out
+                </button>
+              </>
+            ) : null}
           </nav>
         </>
       ) : null}

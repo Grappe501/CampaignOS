@@ -12,12 +12,29 @@ export type CampaignCta = {
   kind: 'primary' | 'secondary' | 'form' | 'donate' | 'volunteer' | 'learn_more'
 }
 
+/** Public campaign site navigation (mirrors chrisjonesforcongress.com header/footer). */
+export type CampaignSiteNavLink = {
+  label: string
+  href: string
+}
+
+export type CampaignSiteChrome = {
+  /** Primary bar: campaign pages (external). */
+  headerNav: CampaignSiteNavLink[]
+  /** Prominent actions in the header (Donate, Volunteer). */
+  headerCtas: CampaignSiteNavLink[]
+  /** Footer link row (Home, Meet Chris, Store, etc.). */
+  footerNav: CampaignSiteNavLink[]
+}
+
 export type CampaignPublicKnowledge = {
   campaignSlug: string
   campaignName: string
   slogan: string
   heroLines: string[]
   navigationLabels: string[]
+  /** Header + footer structure aligned with the public site. */
+  siteChrome: CampaignSiteChrome
   shortBio: string
   issuePillars: { key: string; title: string; summary: string }[]
   ctas: CampaignCta[]
@@ -50,6 +67,26 @@ export const CHRIS_JONES_FOR_CONGRESS_PUBLIC: CampaignPublicKnowledge = {
     'Our campaign is about expanding opportunity, strengthening our communities, and proving that when Arkansans come together, we can fly.',
   ],
   navigationLabels: ['Home', 'Meet Chris', 'Store'],
+  siteChrome: {
+    headerNav: [
+      { label: 'Home', href: 'https://chrisjonesforcongress.com/' },
+      { label: 'Meet Chris', href: 'https://chrisjonesforcongress.com/about/' },
+      { label: 'Store', href: 'https://chrisjonesforcongress.com/' },
+      { label: 'Contact', href: 'https://chrisjonesforcongress.com/contact-us/' },
+    ],
+    headerCtas: [
+      { label: 'Volunteer', href: 'https://chrisjonesforcongress.com/volunteer/' },
+      { label: 'Donate', href: 'https://chrisjonesforcongress.com/donate/' },
+    ],
+    footerNav: [
+      { label: 'Home', href: 'https://chrisjonesforcongress.com/' },
+      { label: 'Meet Chris', href: 'https://chrisjonesforcongress.com/about/' },
+      { label: 'Store', href: 'https://chrisjonesforcongress.com/' },
+      { label: 'Volunteer', href: 'https://chrisjonesforcongress.com/volunteer/' },
+      { label: 'Donate', href: 'https://chrisjonesforcongress.com/donate/' },
+      { label: 'Contact', href: 'https://chrisjonesforcongress.com/contact-us/' },
+    ],
+  },
   shortBio:
     'Chris Jones grew up in Pine Bluff as the son of a minister, grounded in service and community. His path led to science, but his work has stayed focused on Arkansas — building bridges across differences and fighting for stronger schools, good-paying jobs, and accessible healthcare.',
   issuePillars: [

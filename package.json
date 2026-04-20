@@ -1,13 +1,14 @@
 {
   "name": "campaignos",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "setup:env": "node scripts/setup-env.mjs",
     "check:env": "node scripts/check-env.mjs",
     "bootstrap": "npm install && npm run check:env",
     "verify": "npm run lint && npm run build",
+    "audit:build": "node scripts/audit-build.mjs",
     "db:list": "node scripts/list-migrations.mjs",
     "launch": "node scripts/launch.mjs",
     "dev": "vite",

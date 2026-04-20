@@ -7,6 +7,8 @@ import type { AuthError } from '@supabase/supabase-js'
 import { ensureCampaignProfile } from '../lib/ensureCampaignProfile'
 import { supabase } from '../lib/supabaseClient'
 import AppHeader from '../components/AppHeader'
+import AppFooter from '../components/AppFooter'
+import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 
 function isRateLimitError(error: AuthError): boolean {
   if (error.status === 429) return true
@@ -171,11 +173,19 @@ export default function Login() {
         ? '#b91c1c'
         : 'var(--text-h)'
 
+  const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
+
   return (
     <>
       <AppHeader />
-      <main className="app-shell">
-        <h1 className="page-title">Login</h1>
+      <main className="app-shell login-page">
+        <header className="login-hero">
+          <p className="login-hero-eyebrow">{brand.campaignName}</p>
+          <h1 className="login-hero-title">Campaign workspace</h1>
+          <p className="login-hero-slogan">{brand.slogan}</p>
+        </header>
+
+        <h2 className="login-section-heading">Account access</h2>
         <p className="subtitle" style={{ marginBottom: 16 }}>
           Use your email and password below. Choose <strong>Sign in</strong> if
           you already have an account, or <strong>Create account</strong> if you
@@ -272,6 +282,7 @@ export default function Login() {
           </p>
         ) : null}
       </main>
+      <AppFooter />
     </>
   )
 }

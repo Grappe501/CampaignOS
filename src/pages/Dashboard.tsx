@@ -19,6 +19,7 @@ import {
   progressionGateMessage,
 } from '../lib/dashboardState'
 import AppHeader from '../components/AppHeader'
+import AppFooter from '../components/AppFooter'
 import AgentJones from '../components/AgentJones'
 import VoterMatchForm from '../components/VoterMatchForm'
 import VoterWidget from '../components/VoterWidget'
@@ -123,11 +124,12 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     return (
       <>
         <AppHeader onSignOut={handleSignOut} />
-        <div className="app-shell">
+        <main className="app-shell">
           <div className="loading-screen" role="status" aria-live="polite">
             Loading…
           </div>
-        </div>
+        </main>
+        <AppFooter />
       </>
     )
   }
@@ -278,6 +280,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           </div>
         </DashboardGrid>
       </main>
+      <AppFooter />
     </>
   )
 }
