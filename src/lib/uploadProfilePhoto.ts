@@ -2,6 +2,26 @@ import { supabase } from './supabaseClient'
 
 export const PROFILE_PHOTOS_BUCKET = 'profile-photos'
 
+/** User-facing copy when Supabase Storage returns opaque errors. */
+export function humanizeProfilePhotoStorageError(raw: string): string {
+  const m = raw.trim().toLowerCase()
+  if (m.includes('bucket not found')) {
+    return 'Photo storage is not enabled on this Supabase project yet. A campaign admin should create the public “profile-photos” bucket and policies (see migration 20260425140000_profile_photo_storage.sql), then try again.'
+  }
+  if (
+    m.includes('jwt') ||
+    m.includes('not authorized') ||
+    m.includes('permission denied') ||
+    m.includes('row-level security')
+  ) {
+    return 'Your session cannot upload right now. Sign out and sign back in, then try again.'
+  }
+  if (m.includes('payload too large') || m.includes('413')) {
+    return 'File is too large for storage. Use an image under 3 MB.'
+  }
+  return raw
+}
+
 const MAX_BYTES = 3 * 1024 * 1024
 const ALLOWED = new Set([
   'image/jpeg',

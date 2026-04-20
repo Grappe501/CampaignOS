@@ -35,7 +35,7 @@ export default function AgentJonesFloatingPanel({
               Agent Jones
             </span>
             <span className="floating-agent-jones-panel-tagline">
-              Campaign assistant · workspace-grounded
+              Campaign operating assistant · workspace-grounded
             </span>
           </div>
         </div>

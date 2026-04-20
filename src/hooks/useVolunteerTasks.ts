@@ -42,6 +42,31 @@ export type VolunteerEngagementRow = {
 
 const ACTIVE = ['assigned', 'in_progress', 'blocked'] as const
 
+function dueStatsFromActive(active: VolunteerTaskRow[]): {
+  next_assignment_due_at: string | null
+  assignments_due_within_7d_count: number
+} {
+  const now = Date.now()
+  const weekMs = 7 * 24 * 60 * 60 * 1000
+  let count = 0
+  const scored: { row: VolunteerTaskRow; ms: number }[] = []
+  for (const t of active) {
+    if (!t.due_at || !String(t.due_at).trim()) continue
+    const ms = new Date(t.due_at).getTime()
+    if (!Number.isFinite(ms)) continue
+    if (ms <= now + weekMs) count++
+    scored.push({ row: t, ms })
+  }
+  scored.sort((a, b) => a.ms - b.ms)
+  const first = scored[0]?.row ?? null
+  return {
+    next_assignment_due_at: first?.due_at
+      ? String(first.due_at).trim().slice(0, 40)
+      : null,
+    assignments_due_within_7d_count: count,
+  }
+}
+
 function normalizeChecklist(raw: unknown): Record<string, boolean> {
   if (!raw || typeof raw !== 'object') return {}
   const out: Record<string, boolean> = {}
@@ -231,6 +256,7 @@ export function useVolunteerTasks(campaignProfileId: string | undefined) {
 
   const nextBest = active[0] ?? null
   const stalled = active.filter((t) => t.status === 'blocked')
+  const dueStats = dueStatsFromActive(active)
 
   const agentMissionContext: AgentJonesVolunteerMissionContext = {
     active_summaries: active.slice(0, 3).map((t) => ({
@@ -246,6 +272,8 @@ export function useVolunteerTasks(campaignProfileId: string | undefined) {
       completed_at: x.completed_at,
     })),
     stalled_titles: stalled.map((t) => t.title),
+    next_assignment_due_at: dueStats.next_assignment_due_at,
+    assignments_due_within_7d_count: dueStats.assignments_due_within_7d_count,
     points: engagement?.points_total,
     streaks:
       engagement != null

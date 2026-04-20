@@ -184,6 +184,13 @@ function buildCoordinatorDeskGuidance(
       'Use mission operations for supervised assignments and the intern summary for pipeline risk.',
     prompts: [
       {
+        id: 'coord-triage-lanes',
+        label: 'Triage blocked vs overdue lanes',
+        response:
+          'Start with overdue (time risk), then blocked (dependency risk) — optional work waits until those rows move or are reassigned.',
+        scrollToId: 'coordinator-mission-ops',
+      },
+      {
         id: 'coord-mission-board',
         label: 'Open mission operations',
         response:
@@ -582,6 +589,13 @@ function computeStandardGuidanceBundle(
             'Scrolling you to the training, tasks & team section.',
           scrollToId: 'workspace-cards',
         },
+        {
+          id: 'rd-orient-photo',
+          label: 'Add my profile photo',
+          response:
+            'Tap the small camera button under your initials (round icon, no label). JPEG, PNG, WebP, or GIF, max 3 MB. If upload fails, HQ may still need to enable Supabase photo storage.',
+          scrollToId: 'dash-profile-photo',
+        },
       ],
     }
   }
@@ -599,6 +613,20 @@ function computeStandardGuidanceBundle(
     stateExplanation:
       'Roster checks, branch, and orientation all look good for this slice. Future live routing will drop canvass or phone tasks here; for now I stay deterministic.',
     prompts: [
+      {
+        id: 'rd-ops-missions',
+        label: 'Triage mission queue',
+        response:
+          'Scroll to mission tasks — knock down stalled items first so your captain sees honest demand.',
+        scrollToId: 'mission-tasks',
+      },
+      {
+        id: 'rd-ops-daily',
+        label: "Today's activation beat",
+        response:
+          'Daily activation is your steady drum — finish the checklist when you have ten focused minutes.',
+        scrollToId: 'daily-activation',
+      },
       {
         id: 'rd-ready-next',
         label: 'What should I do next?',
@@ -623,6 +651,13 @@ function computeStandardGuidanceBundle(
         response:
           'Scrolling you back to training, tasks & team for a quick status loop.',
         scrollToId: 'workspace-cards',
+      },
+      {
+        id: 'rd-profile-photo',
+        label: 'How do I add my profile photo?',
+        response:
+          'Scroll to your initials at the top: tap the small round camera button (no text label). Choose a JPEG, PNG, WebP, or GIF up to 3 MB — it appears in the ring next to your name. To replace or remove, use the same control (and the tiny trash control when you already have a photo). If you see a storage or “bucket” error, Supabase needs the public “profile-photos” bucket from the campaign migration — ask HQ, then try again.',
+        scrollToId: 'dash-profile-photo',
       },
     ],
   }

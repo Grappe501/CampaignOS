@@ -48,6 +48,8 @@ type AgentJonesVolunteerMissionSafe = {
   next_best_template_key: string | null
   recent_completed: { title: string; completed_at: string }[]
   stalled_titles: string[]
+  next_assignment_due_at?: string | null
+  assignments_due_within_7d_count?: number
   points?: number
   streaks?: { active_days: number; completion_days: number }
 }
@@ -139,6 +141,7 @@ type AgentJonesOperatingSafe = {
   urgent_signals: {
     id: string
     label: string
+    explanation: string
     severity: 'info' | 'watch' | 'urgent'
     owner_hint: string | null
     route_hint: string | null
@@ -162,7 +165,153 @@ type AgentJonesOperatingSafe = {
     weakest_pct_of_target: number | null
   }
   readiness_summary: string
+  signal_epoch?: string
 }
+
+type AgentJonesTaskPressureSafe = {
+  mission_active: number
+  mission_stalled: number
+  daily_remaining: number | null
+  intern_pipeline_assigned: number
+  intern_overdue_first_contact: number
+  coord_blocked: number
+  coord_overdue: number
+  open_assignments: number
+  headline: string
+}
+
+type AgentJonesSessionCoachingSafe = {
+  signal_epoch: string
+  avoid_repeating: string[]
+}
+
+type AgentJonesPrioritySignalSafe = {
+  id: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  category: string
+  title: string
+  explanation: string
+  owner_hint: string | null
+  route_hint: string | null
+  target_id: string | null
+  confidence: 0 | 1
+}
+
+type AgentJonesDeskSummarySafe = {
+  desk: 'volunteer' | 'intern' | 'coordinator' | 'candidate' | 'admin'
+  headline: string
+  attention_now: string[]
+  on_track: string[]
+  next_steps: string[]
+  recent_changes: string[]
+  recommended_mode: string
+  readiness_summary: string
+}
+
+type AgentJonesNavigationHintSafe = {
+  kind: 'scroll' | 'navigate'
+  label: string
+  route: string | null
+  target_id: string | null
+  reason: string
+  priority: 1 | 2 | 3
+}
+
+type AgentJonesCalendarSummarySafe = {
+  next_event_title?: string | null
+  next_event_at?: string | null
+  next_deadline_title?: string | null
+  next_deadline_at?: string | null
+  upcoming_count_7d?: number | null
+  staffing_gap_count?: number | null
+  governance_warning_count?: number | null
+  has_meaningful_upcoming_activity?: boolean | null
+}
+
+type AgentJonesProactiveAlertSafe = {
+  id: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  title: string
+  explanation: string
+  route_hint?: string | null
+  target_id?: string | null
+  dismissible?: boolean
+}
+
+type AgentJonesLeadershipCommandSafe = {
+  synthesis_lines: string[]
+  recommended_intervention: string | null
+}
+
+type AgentJonesReadinessCoverageSafe = {
+  summary_lines: string[]
+  thin_areas: string[]
+}
+
+type AgentJonesGeoIntelligenceSafe = {
+  scope_type?: 'campaign' | 'district' | 'county' | 'precinct' | 'region' | null
+  primary_area_label?: string | null
+  target_area_labels?: string[]
+  undercovered_area_labels?: string[]
+  high_opportunity_area_labels?: string[]
+  area_count_in_view?: number | null
+}
+
+type AgentJonesFieldIntelligenceSafe = {
+  weakest_area_label?: string | null
+  strongest_area_label?: string | null
+  undercovered_area_count?: number | null
+  high_pressure_area_count?: number | null
+  volunteer_capacity_warning_count?: number | null
+  coordinator_pressure_count?: number | null
+  area_readiness_summary?: string | null
+  top_field_risks?: string[]
+}
+
+type AgentJonesCoverageIntelligenceSafe = {
+  county_coverage_watch_count?: number | null
+  precinct_coverage_watch_count?: number | null
+  missing_leadership_slots?: string[]
+  event_staffing_pressure_count?: number | null
+  volunteer_shortage_area_labels?: string[]
+  readiness_headline?: string | null
+}
+
+type AgentJonesDemographicSummarySafe = {
+  area_label?: string | null
+  population_band?: string | null
+  turnout_relevant_notes?: string[]
+  demographic_highlights?: string[]
+  organizing_considerations?: string[]
+  confidence_note?: string | null
+}
+
+type AgentJonesEscalationSummarySafe = {
+  cross_desk_issue_count?: number | null
+  top_escalation_headline?: string | null
+  escalation_routes?: string[]
+  blocked_downstream_work_count?: number | null
+}
+
+type AgentJonesCampaignManagerCommandSafe = {
+  command_lines: string[]
+  top_opportunity_hint: string | null
+  top_risk_hint: string | null
+  cross_desk_note: string | null
+  top_risk_area_hint?: string | null
+  top_opportunity_area_hint?: string | null
+  recommended_intervention?: string | null
+  field_readiness_framing?: string | null
+  coverage_task_pressure_line?: string | null
+}
+
+const GEO_SCOPE_TYPES = new Set([
+  'campaign',
+  'district',
+  'county',
+  'precinct',
+  'region',
+])
 
 type AgentJonesSafeContextV2 = {
   surface: AgentJonesSurfaceSafe
@@ -175,6 +324,7 @@ type AgentJonesSafeContextV2 = {
     onboarding_micro_commitment_key?: string | null
     onboarding_last_prompt?: string | null
     onboarding_last_action_at?: string | null
+    exception_requested_at?: string | null
     voterMatched: boolean
     precinct?: string | null
     county?: string | null
@@ -206,6 +356,21 @@ type AgentJonesSafeContextV2 = {
   coordinator_ops?: AgentJonesCoordinatorOpsSafe
   leadership_snapshot?: AgentJonesLeadershipSnapshotSafe
   operating?: AgentJonesOperatingSafe
+  priority_signals?: AgentJonesPrioritySignalSafe[]
+  desk_summary?: AgentJonesDeskSummarySafe
+  navigation_hints?: AgentJonesNavigationHintSafe[]
+  task_pressure?: AgentJonesTaskPressureSafe
+  session_coaching?: AgentJonesSessionCoachingSafe
+  calendar_summary?: AgentJonesCalendarSummarySafe
+  proactive_alerts?: AgentJonesProactiveAlertSafe[]
+  leadership_command?: AgentJonesLeadershipCommandSafe
+  readiness_coverage?: AgentJonesReadinessCoverageSafe
+  geo_intelligence?: AgentJonesGeoIntelligenceSafe
+  field_intelligence?: AgentJonesFieldIntelligenceSafe
+  coverage_intelligence?: AgentJonesCoverageIntelligenceSafe
+  demographic_summary?: AgentJonesDemographicSummarySafe
+  escalation_summary?: AgentJonesEscalationSummarySafe
+  campaign_manager_command?: AgentJonesCampaignManagerCommandSafe
 }
 
 type AgentJonesSafeContextLegacy = {
@@ -283,6 +448,7 @@ const SCROLL_IDS = new Set([
   'intern-desk',
   'campaign-kpis',
   'agent-jones',
+  'dash-profile-photo',
   'coordinator-mission-ops',
   'candidate-health-snapshot',
   'admin-overview',
@@ -343,6 +509,23 @@ const OPERATING_MODES = new Set([
   'calendar',
   'leadership',
   'training',
+])
+
+const PRIORITY_CATEGORIES = new Set([
+  'exceptions',
+  'kpi',
+  'intern',
+  'coordinator',
+  'missions',
+  'readiness',
+])
+
+const DESK_SUMMARY_DESKS = new Set([
+  'volunteer',
+  'intern',
+  'coordinator',
+  'candidate',
+  'admin',
 ])
 
 const corsHeaders: Record<string, string> = {
@@ -586,6 +769,13 @@ function validateUser(raw: unknown): AgentJonesSafeContextV2['user'] | null {
       out.onboarding_last_action_at = t
     }
   }
+  const er = raw.exception_requested_at
+  if (typeof er === 'string') {
+    const t = er.trim().slice(0, 40)
+    if (t && !/[<>\\]/.test(t)) {
+      out.exception_requested_at = t
+    }
+  }
 
   return out
 }
@@ -672,13 +862,34 @@ function validateVolunteerMission(
   }
   if (points !== undefined) out.points = points
   if (streaks) out.streaks = streaks
+  let next_assignment_due_at: string | null | undefined
+  const nda = raw.next_assignment_due_at
+  if (nda === null) next_assignment_due_at = null
+  else if (typeof nda === 'string') {
+    const t = nda.trim().slice(0, 40)
+    if (t && !/[<>\\]/.test(t)) next_assignment_due_at = t
+  }
+  let assignments_due_within_7d_count: number | undefined
+  const awc = raw.assignments_due_within_7d_count
+  if (typeof awc === 'number' && Number.isFinite(awc)) {
+    const n = Math.floor(awc)
+    if (n >= 0 && n <= 500) assignments_due_within_7d_count = n
+  }
+  if (next_assignment_due_at !== undefined) {
+    out.next_assignment_due_at = next_assignment_due_at
+  }
+  if (assignments_due_within_7d_count !== undefined) {
+    out.assignments_due_within_7d_count = assignments_due_within_7d_count
+  }
   if (
     !active_summaries.length &&
     next_best_title === null &&
     !recent_completed.length &&
     !stalled_titles.length &&
     points === undefined &&
-    !streaks
+    !streaks &&
+    next_assignment_due_at === undefined &&
+    assignments_due_within_7d_count === undefined
   ) {
     return undefined
   }
@@ -1038,8 +1249,8 @@ function validateOperatingRaw(raw: unknown): AgentJonesOperatingSafe | undefined
   if (!isRecord(cs)) return undefined
   const attention_now = validateStringList(cs.attention_now, 8, 320)
   const on_track = validateStringList(cs.on_track, 6, 320)
-  const next_steps = validateStringList(cs.next_steps, 5, 320)
-  const recent_changes = validateStringList(cs.recent_changes, 3, 320)
+  const next_steps = validateStringList(cs.next_steps, 6, 320)
+  const recent_changes = validateStringList(cs.recent_changes, 4, 320)
 
   const urgRaw = raw.urgent_signals
   const urgent_signals: AgentJonesOperatingSafe['urgent_signals'] = []
@@ -1052,6 +1263,9 @@ function validateOperatingRaw(raw: unknown): AgentJonesOperatingSafe | undefined
       if (!id || id.length > 64 || !label || label.length > 220) continue
       if (sev !== 'info' && sev !== 'watch' && sev !== 'urgent') continue
       if (/[<>\\]/.test(label)) continue
+      let explanation =
+        typeof row.explanation === 'string' ? row.explanation.trim().slice(0, 320) : ''
+      if (!explanation || /[<>\\]/.test(explanation)) explanation = label
       const oh =
         row.owner_hint === null
           ? null
@@ -1064,7 +1278,14 @@ function validateOperatingRaw(raw: unknown): AgentJonesOperatingSafe | undefined
           : typeof row.route_hint === 'string'
             ? row.route_hint.trim().slice(0, 80) || null
             : null
-      urgent_signals.push({ id, label, severity: sev, owner_hint: oh, route_hint: rh })
+      urgent_signals.push({
+        id,
+        label,
+        explanation,
+        severity: sev,
+        owner_hint: oh,
+        route_hint: rh,
+      })
     }
   }
 
@@ -1124,6 +1345,13 @@ function validateOperatingRaw(raw: unknown): AgentJonesOperatingSafe | undefined
     typeof raw.readiness_summary === 'string' ? raw.readiness_summary.trim().slice(0, 400) : ''
   if (!readiness || /[<>\\]/.test(readiness)) return undefined
 
+  let signal_epoch: string | undefined
+  const seRaw = raw.signal_epoch
+  if (typeof seRaw === 'string') {
+    const t = seRaw.trim().slice(0, 2400)
+    if (t && !/[<>\\]/.test(t)) signal_epoch = t
+  }
+
   return {
     normalized_role: nr,
     desk_route: dr,
@@ -1145,7 +1373,230 @@ function validateOperatingRaw(raw: unknown): AgentJonesOperatingSafe | undefined
     desk_health,
     kpi_telemetry,
     readiness_summary: readiness,
+    ...(signal_epoch ? { signal_epoch } : {}),
   }
+}
+
+function validateTaskPressureRaw(raw: unknown): AgentJonesTaskPressureSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const nn = (k: string, max: number) => {
+    const v = raw[k]
+    if (typeof v !== 'number' || !Number.isFinite(v)) return null
+    const n = Math.floor(v)
+    if (n < 0 || n > max) return null
+    return n
+  }
+  const nullOrNn = (k: string, max: number): number | null => {
+    const v = raw[k]
+    if (v === null) return null
+    return nn(k, max)
+  }
+  const ma = nn('mission_active', 5000)
+  const ms = nn('mission_stalled', 5000)
+  const dr = nullOrNn('daily_remaining', 5000)
+  const ipa = nn('intern_pipeline_assigned', 50_000)
+  const iof = nn('intern_overdue_first_contact', 50_000)
+  const cb = nn('coord_blocked', 50_000)
+  const co = nn('coord_overdue', 50_000)
+  const oa = nn('open_assignments', 50_000)
+  if (
+    ma === null ||
+    ms === null ||
+    ipa === null ||
+    iof === null ||
+    cb === null ||
+    co === null ||
+    oa === null
+  ) {
+    return undefined
+  }
+  const headline =
+    typeof raw.headline === 'string' ? raw.headline.trim().slice(0, 240) : ''
+  if (!headline || /[<>\\]/.test(headline)) return undefined
+  return {
+    mission_active: ma,
+    mission_stalled: ms,
+    daily_remaining: dr,
+    intern_pipeline_assigned: ipa,
+    intern_overdue_first_contact: iof,
+    coord_blocked: cb,
+    coord_overdue: co,
+    open_assignments: oa,
+    headline,
+  }
+}
+
+function validateSessionCoachingRaw(
+  raw: unknown,
+): AgentJonesSessionCoachingSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const epoch =
+    typeof raw.signal_epoch === 'string' ? raw.signal_epoch.trim().slice(0, 320) : ''
+  if (!epoch || /[<>\\]/.test(epoch)) return undefined
+  const avoid: string[] = []
+  const ar = raw.avoid_repeating
+  if (Array.isArray(ar)) {
+    for (const item of ar.slice(0, 3)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 100)
+      if (!t || /[<>\\]/.test(t)) continue
+      avoid.push(t)
+    }
+  }
+  return { signal_epoch: epoch, avoid_repeating: avoid }
+}
+
+function validatePrioritySignalsRaw(
+  raw: unknown,
+): AgentJonesPrioritySignalSafe[] | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!Array.isArray(raw)) return undefined
+  const out: AgentJonesPrioritySignalSafe[] = []
+  for (const row of raw.slice(0, 8)) {
+    if (!isRecord(row)) continue
+    const id = typeof row.id === 'string' ? row.id.trim() : ''
+    if (!id || id.length > 64 || /[<>\\]/.test(id)) continue
+    const sev = row.severity
+    if (sev !== 'critical' && sev !== 'high' && sev !== 'medium' && sev !== 'low') {
+      continue
+    }
+    const catRaw = typeof row.category === 'string' ? row.category.trim() : ''
+    if (!catRaw || !PRIORITY_CATEGORIES.has(catRaw)) continue
+    const title = typeof row.title === 'string' ? row.title.trim() : ''
+    if (!title || title.length > 160 || /[<>\\]/.test(title)) continue
+    let explanation =
+      typeof row.explanation === 'string' ? row.explanation.trim().slice(0, 320) : ''
+    if (!explanation || /[<>\\]/.test(explanation)) explanation = title
+    const oh =
+      row.owner_hint === null
+        ? null
+        : typeof row.owner_hint === 'string'
+          ? row.owner_hint.trim().slice(0, 80) || null
+          : null
+    if (oh && /[<>\\]/.test(oh)) continue
+    const rh =
+      row.route_hint === null
+        ? null
+        : typeof row.route_hint === 'string'
+          ? row.route_hint.trim().slice(0, 80) || null
+          : null
+    if (rh && rh !== '' && !NAV_PATHS.has(rh)) continue
+    const tidRaw = row.target_id
+    const target_id =
+      tidRaw === null || tidRaw === undefined
+        ? null
+        : typeof tidRaw === 'string'
+          ? tidRaw.trim().slice(0, 64) || null
+          : null
+    if (target_id && !SCROLL_IDS.has(target_id)) continue
+    const conf = row.confidence
+    if (conf !== 0 && conf !== 1) continue
+    out.push({
+      id,
+      severity: sev,
+      category: catRaw,
+      title,
+      explanation,
+      owner_hint: oh,
+      route_hint: rh && rh !== '' ? rh : null,
+      target_id: target_id && target_id !== '' ? target_id : null,
+      confidence: conf,
+    })
+  }
+  return out.length ? out : undefined
+}
+
+function validateDeskSummaryRaw(raw: unknown): AgentJonesDeskSummarySafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const desk = typeof raw.desk === 'string' ? raw.desk.trim() : ''
+  if (!DESK_SUMMARY_DESKS.has(desk)) return undefined
+  const headline =
+    typeof raw.headline === 'string' ? raw.headline.trim().slice(0, 220) : ''
+  if (!headline || /[<>\\]/.test(headline)) return undefined
+  const rm =
+    typeof raw.recommended_mode === 'string' ? raw.recommended_mode.trim() : ''
+  if (!OPERATING_MODES.has(rm)) return undefined
+  const readiness =
+    typeof raw.readiness_summary === 'string'
+      ? raw.readiness_summary.trim().slice(0, 400)
+      : ''
+  if (!readiness || /[<>\\]/.test(readiness)) return undefined
+  const attention_now = validateStringList(raw.attention_now, 8, 320)
+  const on_track = validateStringList(raw.on_track, 6, 320)
+  const next_steps = validateStringList(raw.next_steps, 5, 320)
+  const recent_changes = validateStringList(raw.recent_changes, 3, 320)
+  return {
+    desk: desk as AgentJonesDeskSummarySafe['desk'],
+    headline,
+    attention_now,
+    on_track,
+    next_steps,
+    recent_changes,
+    recommended_mode: rm,
+    readiness_summary: readiness,
+  }
+}
+
+function validateNavigationHintsRaw(
+  raw: unknown,
+): AgentJonesNavigationHintSafe[] | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!Array.isArray(raw)) return undefined
+  const out: AgentJonesNavigationHintSafe[] = []
+  for (const row of raw.slice(0, 3)) {
+    if (!isRecord(row)) continue
+    if (row.kind !== 'scroll' && row.kind !== 'navigate') continue
+    const label = typeof row.label === 'string' ? row.label.trim().slice(0, 80) : ''
+    if (!label || /[<>\\]/.test(label)) continue
+    const reason = typeof row.reason === 'string' ? row.reason.trim().slice(0, 120) : ''
+    if (!reason || /[<>\\]/.test(reason)) continue
+    const pr = row.priority
+    if (pr !== 1 && pr !== 2 && pr !== 3) continue
+    if (row.kind === 'scroll') {
+      const tid = typeof row.target_id === 'string' ? row.target_id.trim() : ''
+      if (!SCROLL_IDS.has(tid)) continue
+      const routeVal = row.route
+      if (
+        routeVal !== null &&
+        routeVal !== undefined &&
+        String(routeVal).trim() !== ''
+      ) {
+        continue
+      }
+      out.push({
+        kind: 'scroll',
+        label,
+        route: null,
+        target_id: tid,
+        reason,
+        priority: pr,
+      })
+    } else {
+      const r = typeof row.route === 'string' ? row.route.trim() : ''
+      if (!NAV_PATHS.has(r)) continue
+      const tid = row.target_id
+      if (
+        tid !== null &&
+        tid !== undefined &&
+        typeof tid === 'string' &&
+        tid.trim() !== ''
+      ) {
+        continue
+      }
+      out.push({
+        kind: 'navigate',
+        label,
+        route: r,
+        target_id: null,
+        reason,
+        priority: pr,
+      })
+    }
+  }
+  return out.length ? out : undefined
 }
 
 function validateSurfaceRaw(raw: unknown): AgentJonesSurfaceSafe {
@@ -1266,6 +1717,423 @@ function validateLeadershipSnapshotRaw(
   }
 }
 
+function calOptStr(raw: unknown, max: number): string | null | undefined {
+  if (raw === undefined) return undefined
+  if (raw === null) return null
+  if (typeof raw !== 'string') return undefined
+  const t = raw.trim().slice(0, max)
+  if (!t || /[<>\\]/.test(t)) return undefined
+  return t
+}
+
+function validateCalendarSummaryRaw(
+  raw: unknown,
+): AgentJonesCalendarSummarySafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const out: AgentJonesCalendarSummarySafe = {}
+  const net = calOptStr(raw.next_event_title, 200)
+  if (net !== undefined) out.next_event_title = net
+  const nea = calOptStr(raw.next_event_at, 48)
+  if (nea !== undefined) out.next_event_at = nea
+  const ndt = calOptStr(raw.next_deadline_title, 200)
+  if (ndt !== undefined) out.next_deadline_title = ndt
+  const nda = calOptStr(raw.next_deadline_at, 48)
+  if (nda !== undefined) out.next_deadline_at = nda
+  const u7 = raw.upcoming_count_7d
+  if (u7 === null) {
+    out.upcoming_count_7d = null
+  } else if (typeof u7 === 'number' && Number.isFinite(u7)) {
+    const n = Math.floor(u7)
+    if (n >= 0 && n <= 500) out.upcoming_count_7d = n
+  }
+  const sg = raw.staffing_gap_count
+  if (sg === null) {
+    out.staffing_gap_count = null
+  } else if (typeof sg === 'number' && Number.isFinite(sg)) {
+    const n = Math.floor(sg)
+    if (n >= 0 && n <= 500) out.staffing_gap_count = n
+  }
+  const gw = raw.governance_warning_count
+  if (gw === null) {
+    out.governance_warning_count = null
+  } else if (typeof gw === 'number' && Number.isFinite(gw)) {
+    const n = Math.floor(gw)
+    if (n >= 0 && n <= 50) out.governance_warning_count = n
+  }
+  const hm = raw.has_meaningful_upcoming_activity
+  if (hm === null) {
+    out.has_meaningful_upcoming_activity = null
+  } else if (typeof hm === 'boolean') {
+    out.has_meaningful_upcoming_activity = hm
+  }
+  if (Object.keys(out).length === 0) return undefined
+  return out
+}
+
+function validateProactiveAlertsRaw(
+  raw: unknown,
+): AgentJonesProactiveAlertSafe[] | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!Array.isArray(raw)) return undefined
+  const out: AgentJonesProactiveAlertSafe[] = []
+  for (const row of raw.slice(0, 5)) {
+    if (!isRecord(row)) continue
+    const id = typeof row.id === 'string' ? row.id.trim() : ''
+    if (!id || id.length > 64 || /[<>\\]/.test(id)) continue
+    const sev = row.severity
+    if (sev !== 'critical' && sev !== 'high' && sev !== 'medium' && sev !== 'low') {
+      continue
+    }
+    const title = typeof row.title === 'string' ? row.title.trim().slice(0, 160) : ''
+    const explanation =
+      typeof row.explanation === 'string' ? row.explanation.trim().slice(0, 320) : ''
+    if (!title || !explanation || /[<>\\]/.test(title) || /[<>\\]/.test(explanation)) {
+      continue
+    }
+    let route_hint: string | null | undefined
+    const rh = row.route_hint
+    if (rh === null) route_hint = null
+    else if (typeof rh === 'string') {
+      const t = rh.trim()
+      if (t && NAV_PATHS.has(t)) route_hint = t
+    }
+    let target_id: string | null | undefined
+    const tid = row.target_id
+    if (tid === null) target_id = null
+    else if (typeof tid === 'string') {
+      const t = tid.trim()
+      if (t && SCROLL_IDS.has(t)) target_id = t
+    }
+    let dismissible: boolean | undefined
+    if (typeof row.dismissible === 'boolean') dismissible = row.dismissible
+    out.push({
+      id,
+      severity: sev as AgentJonesProactiveAlertSafe['severity'],
+      title,
+      explanation,
+      ...(route_hint !== undefined ? { route_hint } : {}),
+      ...(target_id !== undefined ? { target_id } : {}),
+      ...(dismissible !== undefined ? { dismissible } : {}),
+    })
+  }
+  return out.length ? out : undefined
+}
+
+function validateLeadershipCommandRaw(
+  raw: unknown,
+): AgentJonesLeadershipCommandSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const linesRaw = raw.synthesis_lines
+  const synthesis_lines: string[] = []
+  if (Array.isArray(linesRaw)) {
+    for (const item of linesRaw.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 320)
+      if (!t || /[<>\\]/.test(t)) continue
+      synthesis_lines.push(t)
+    }
+  }
+  let recommended_intervention: string | null = null
+  const ri = raw.recommended_intervention
+  if (ri === null) {
+    recommended_intervention = null
+  } else if (typeof ri === 'string') {
+    const t = ri.trim().slice(0, 360)
+    if (t && !/[<>\\]/.test(t)) recommended_intervention = t
+  }
+  if (!synthesis_lines.length && recommended_intervention === null) return undefined
+  return { synthesis_lines, recommended_intervention }
+}
+
+function validateGeoIntelligenceRaw(
+  raw: unknown,
+): AgentJonesGeoIntelligenceSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const out: AgentJonesGeoIntelligenceSafe = {}
+  const st = raw.scope_type
+  if (st === null) {
+    out.scope_type = null
+  } else if (typeof st === 'string' && GEO_SCOPE_TYPES.has(st)) {
+    out.scope_type = st as AgentJonesGeoIntelligenceSafe['scope_type']
+  }
+  const pal = raw.primary_area_label
+  if (pal === null) out.primary_area_label = null
+  else if (typeof pal === 'string') {
+    const t = pal.trim().slice(0, 200)
+    if (t && !/[<>\\]/.test(t)) out.primary_area_label = t
+  }
+  const pushStrArr = (key: 'target_area_labels' | 'undercovered_area_labels' | 'high_opportunity_area_labels') => {
+    const arr: string[] = []
+    const rawArr = raw[key]
+    if (!Array.isArray(rawArr)) return
+    for (const item of rawArr.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 120)
+      if (!t || /[<>\\]/.test(t)) continue
+      arr.push(t)
+    }
+    if (arr.length) out[key] = arr
+  }
+  pushStrArr('target_area_labels')
+  pushStrArr('undercovered_area_labels')
+  pushStrArr('high_opportunity_area_labels')
+  const ac = raw.area_count_in_view
+  if (ac === null) out.area_count_in_view = null
+  else if (typeof ac === 'number' && Number.isFinite(ac)) {
+    const n = Math.floor(ac)
+    if (n >= 0 && n <= 500) out.area_count_in_view = n
+  }
+  if (Object.keys(out).length === 0) return undefined
+  return out
+}
+
+function validateFieldIntelligenceRaw(
+  raw: unknown,
+): AgentJonesFieldIntelligenceSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const out: AgentJonesFieldIntelligenceSafe = {}
+  for (const key of ['weakest_area_label', 'strongest_area_label', 'area_readiness_summary'] as const) {
+    const v = raw[key]
+    if (v === null) {
+      out[key] = null
+    } else if (typeof v === 'string') {
+      const t = v.trim().slice(0, 360)
+      if (t && !/[<>\\]/.test(t)) out[key] = t
+    }
+  }
+  for (const key of [
+    'undercovered_area_count',
+    'high_pressure_area_count',
+    'volunteer_capacity_warning_count',
+    'coordinator_pressure_count',
+  ] as const) {
+    const v = raw[key]
+    if (v === null) out[key] = null
+    else if (typeof v === 'number' && Number.isFinite(v)) {
+      const n = Math.floor(v)
+      if (n >= 0 && n <= 5000) out[key] = n
+    }
+  }
+  const risks: string[] = []
+  if (Array.isArray(raw.top_field_risks)) {
+    for (const item of raw.top_field_risks.slice(0, 4)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 320)
+      if (!t || /[<>\\]/.test(t)) continue
+      risks.push(t)
+    }
+  }
+  if (risks.length) out.top_field_risks = risks
+  if (Object.keys(out).length === 0) return undefined
+  return out
+}
+
+function validateCoverageIntelligenceRaw(
+  raw: unknown,
+): AgentJonesCoverageIntelligenceSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const out: AgentJonesCoverageIntelligenceSafe = {}
+  for (const key of ['county_coverage_watch_count', 'precinct_coverage_watch_count'] as const) {
+    const v = raw[key]
+    if (v === null) out[key] = null
+    else if (typeof v === 'number' && Number.isFinite(v)) {
+      const n = Math.floor(v)
+      if (n >= 0 && n <= 5000) out[key] = n
+    }
+  }
+  const esp = raw.event_staffing_pressure_count
+  if (esp === null) out.event_staffing_pressure_count = null
+  else if (typeof esp === 'number' && Number.isFinite(esp)) {
+    const n = Math.floor(esp)
+    if (n >= 0 && n <= 5000) out.event_staffing_pressure_count = n
+  }
+  const rh = raw.readiness_headline
+  if (rh === null) out.readiness_headline = null
+  else if (typeof rh === 'string') {
+    const t = rh.trim().slice(0, 400)
+    if (t && !/[<>\\]/.test(t)) out.readiness_headline = t
+  }
+  const slots: string[] = []
+  if (Array.isArray(raw.missing_leadership_slots)) {
+    for (const item of raw.missing_leadership_slots.slice(0, 4)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 200)
+      if (!t || /[<>\\]/.test(t)) continue
+      slots.push(t)
+    }
+  }
+  if (slots.length) out.missing_leadership_slots = slots
+  const vshort: string[] = []
+  if (Array.isArray(raw.volunteer_shortage_area_labels)) {
+    for (const item of raw.volunteer_shortage_area_labels.slice(0, 4)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 120)
+      if (!t || /[<>\\]/.test(t)) continue
+      vshort.push(t)
+    }
+  }
+  if (vshort.length) out.volunteer_shortage_area_labels = vshort
+  if (Object.keys(out).length === 0) return undefined
+  return out
+}
+
+function validateDemographicSummaryRaw(
+  raw: unknown,
+): AgentJonesDemographicSummarySafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const out: AgentJonesDemographicSummarySafe = {}
+  for (const key of ['area_label', 'population_band', 'confidence_note'] as const) {
+    const v = raw[key]
+    if (v === null) out[key] = null
+    else if (typeof v === 'string') {
+      const max = key === 'confidence_note' ? 400 : 280
+      const t = v.trim().slice(0, max)
+      if (t && !/[<>\\]/.test(t)) out[key] = t
+    }
+  }
+  const arrKeys = [
+    'turnout_relevant_notes',
+    'demographic_highlights',
+    'organizing_considerations',
+  ] as const
+  for (const ak of arrKeys) {
+    const lines: string[] = []
+    if (Array.isArray(raw[ak])) {
+      for (const item of raw[ak].slice(0, 6)) {
+        if (typeof item !== 'string') continue
+        const t = item.trim().slice(0, 400)
+        if (!t || /[<>\\]/.test(t)) continue
+        lines.push(t)
+      }
+    }
+    if (lines.length) out[ak] = lines
+  }
+  if (Object.keys(out).length === 0) return undefined
+  return out
+}
+
+function validateEscalationSummaryRaw(
+  raw: unknown,
+): AgentJonesEscalationSummarySafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const out: AgentJonesEscalationSummarySafe = {}
+  const cd = raw.cross_desk_issue_count
+  if (cd === null) out.cross_desk_issue_count = null
+  else if (typeof cd === 'number' && Number.isFinite(cd)) {
+    const n = Math.floor(cd)
+    if (n >= 0 && n <= 20) out.cross_desk_issue_count = n
+  }
+  const bd = raw.blocked_downstream_work_count
+  if (bd === null) out.blocked_downstream_work_count = null
+  else if (typeof bd === 'number' && Number.isFinite(bd)) {
+    const n = Math.floor(bd)
+    if (n >= 0 && n <= 5000) out.blocked_downstream_work_count = n
+  }
+  const top = raw.top_escalation_headline
+  if (top === null) out.top_escalation_headline = null
+  else if (typeof top === 'string') {
+    const t = top.trim().slice(0, 400)
+    if (t && !/[<>\\]/.test(t)) out.top_escalation_headline = t
+  }
+  const routes: string[] = []
+  if (Array.isArray(raw.escalation_routes)) {
+    for (const item of raw.escalation_routes.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      routes.push(t)
+    }
+  }
+  if (routes.length) out.escalation_routes = routes
+  if (Object.keys(out).length === 0) return undefined
+  return out
+}
+
+function validateCampaignManagerCommandRaw(
+  raw: unknown,
+): AgentJonesCampaignManagerCommandSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const lines: string[] = []
+  if (Array.isArray(raw.command_lines)) {
+    for (const item of raw.command_lines.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 420)
+      if (!t || /[<>\\]/.test(t)) continue
+      lines.push(t)
+    }
+  }
+  if (!lines.length) return undefined
+  const pick = (k: string): string | null => {
+    const v = raw[k]
+    if (v === null) return null
+    if (typeof v !== 'string') return null
+    const t = v.trim().slice(0, 420)
+    if (!t || /[<>\\]/.test(t)) return null
+    return t
+  }
+  const pickOpt = (k: string, max: number): string | null | undefined => {
+    if (!(k in raw)) return undefined
+    const v = raw[k]
+    if (v === null) return null
+    if (typeof v !== 'string') return undefined
+    const t = v.trim().slice(0, max)
+    if (!t || /[<>\\]/.test(t)) return undefined
+    return t
+  }
+  const out: AgentJonesCampaignManagerCommandSafe = {
+    command_lines: lines,
+    top_opportunity_hint: pick('top_opportunity_hint'),
+    top_risk_hint: pick('top_risk_hint'),
+    cross_desk_note: pick('cross_desk_note'),
+  }
+  const riskArea = pickOpt('top_risk_area_hint', 200)
+  if (riskArea !== undefined) out.top_risk_area_hint = riskArea
+  const oppArea = pickOpt('top_opportunity_area_hint', 200)
+  if (oppArea !== undefined) out.top_opportunity_area_hint = oppArea
+  const intervention = pickOpt('recommended_intervention', 420)
+  if (intervention !== undefined) out.recommended_intervention = intervention
+  const readiness = pickOpt('field_readiness_framing', 320)
+  if (readiness !== undefined) out.field_readiness_framing = readiness
+  const covCal = pickOpt('coverage_task_pressure_line', 420)
+  if (covCal !== undefined) out.coverage_task_pressure_line = covCal
+  return out
+}
+
+function validateReadinessCoverageRaw(
+  raw: unknown,
+): AgentJonesReadinessCoverageSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const summary_lines: string[] = []
+  const thin_areas: string[] = []
+  if (Array.isArray(raw.summary_lines)) {
+    for (const item of raw.summary_lines.slice(0, 4)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      summary_lines.push(t)
+    }
+  }
+  if (Array.isArray(raw.thin_areas)) {
+    for (const item of raw.thin_areas.slice(0, 4)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      thin_areas.push(t)
+    }
+  }
+  if (!summary_lines.length && !thin_areas.length) return undefined
+  return { summary_lines, thin_areas }
+}
+
 function legacyToV2(raw: AgentJonesSafeContextLegacy): AgentJonesSafeContextV2 {
   return {
     surface: 'volunteer_dashboard',
@@ -1314,6 +2182,23 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
     const intern_layer = validateInternLayer(raw.intern_layer)
     const campaign_goals = validateCampaignGoals(raw.campaign_goals)
     const operating = validateOperatingRaw(raw.operating)
+    const priority_signals = validatePrioritySignalsRaw(raw.priority_signals)
+    const desk_summary = validateDeskSummaryRaw(raw.desk_summary)
+    const navigation_hints = validateNavigationHintsRaw(raw.navigation_hints)
+    const task_pressure = validateTaskPressureRaw(raw.task_pressure)
+    const session_coaching = validateSessionCoachingRaw(raw.session_coaching)
+    const calendar_summary = validateCalendarSummaryRaw(raw.calendar_summary)
+    const proactive_alerts = validateProactiveAlertsRaw(raw.proactive_alerts)
+    const leadership_command = validateLeadershipCommandRaw(raw.leadership_command)
+    const readiness_coverage = validateReadinessCoverageRaw(raw.readiness_coverage)
+    const geo_intelligence = validateGeoIntelligenceRaw(raw.geo_intelligence)
+    const field_intelligence = validateFieldIntelligenceRaw(raw.field_intelligence)
+    const coverage_intelligence = validateCoverageIntelligenceRaw(raw.coverage_intelligence)
+    const demographic_summary = validateDemographicSummaryRaw(raw.demographic_summary)
+    const escalation_summary = validateEscalationSummaryRaw(raw.escalation_summary)
+    const campaign_manager_command = validateCampaignManagerCommandRaw(
+      raw.campaign_manager_command,
+    )
     return {
       surface,
       user,
@@ -1339,6 +2224,21 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
       ...(coordinator_ops ? { coordinator_ops } : {}),
       ...(leadership_snapshot ? { leadership_snapshot } : {}),
       ...(operating ? { operating } : {}),
+      ...(priority_signals ? { priority_signals } : {}),
+      ...(desk_summary ? { desk_summary } : {}),
+      ...(navigation_hints ? { navigation_hints } : {}),
+      ...(task_pressure ? { task_pressure } : {}),
+      ...(session_coaching ? { session_coaching } : {}),
+      ...(calendar_summary ? { calendar_summary } : {}),
+      ...(proactive_alerts ? { proactive_alerts } : {}),
+      ...(leadership_command ? { leadership_command } : {}),
+      ...(readiness_coverage ? { readiness_coverage } : {}),
+      ...(geo_intelligence ? { geo_intelligence } : {}),
+      ...(field_intelligence ? { field_intelligence } : {}),
+      ...(coverage_intelligence ? { coverage_intelligence } : {}),
+      ...(demographic_summary ? { demographic_summary } : {}),
+      ...(escalation_summary ? { escalation_summary } : {}),
+      ...(campaign_manager_command ? { campaign_manager_command } : {}),
     }
   }
 
@@ -1354,7 +2254,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
 }
 
 function buildSystemPrompt(context: AgentJonesSafeContextV2): string {
-  return `You are Agent Jones V2, a context-aware campaign operator inside CampaignOS.
+  return `You are Agent Jones V3.2, a context-aware campaign operator inside CampaignOS (field-intelligence and coverage-command layer on top of v3 / v3.1).
 
 Rules:
 - You ONLY reason about the volunteer using the JSON "dashboardContext" below. Do not claim you queried a database, opened Supabase, or accessed tools beyond this context.
@@ -1373,14 +2273,34 @@ Rules:
 - If dashboardContext.campaign_goals exists, it lists top campaign KPIs (name, current, target, unit, pct toward goal) and optional user_contribution_summary (slug + contributed). Tie encouragement to these numbers (e.g. “moves us toward 20,000 volunteers”, “about 60% to fundraising goal” when pct matches). Connect completed mission tasks to moving these metrics. Suggest scrolling to campaign-kpis when pointing at the goal strip.
 - If dashboardContext.coordinator_ops exists, it is a bounded coordinator summary: supervisor scope flag, supervised_team_count, open_assignments_total, lane counts (blocked, overdue, in_progress, assigned_not_started), optional intern pipeline aggregates, desk_loading. Prioritize blocked/overdue assignments, then intern escalations/overdue first contacts. Suggest scroll coordinator-mission-ops when discussing supervised missions. Do not name volunteers.
 - If dashboardContext.leadership_snapshot exists, it summarizes KPI health for a principal/leadership desk: active_kpi_count, kpi_mean_progress_pct, kpis_below_half_target, optional weakest_kpi_name / weakest_kpi_pct_of_target, missions_visible_count. Stay strategic — align narratives with these numbers; suggest scroll candidate-health-snapshot when pointing at the executive snapshot. Do not claim access to polling or ad-buy systems.
-- If dashboardContext.operating exists, it is a deterministic “campaign operating brain” snapshot built client-side: normalized_role (volunteer/intern/coordinator/candidate/admin/campaign_manager/etc.), desk_route, leadership_level, user_scope (self | supervised_teams | campaign_wide), recommended_mode (guide|command|ops|task|calendar|leadership|training), command_summary (attention_now, on_track, next_steps, recent_changes — all grounded strings), urgent_signals (ranked labels with severity, optional owner_hint and route_hint paths like /dashboard), exception_summary, desk_health lane statuses (healthy|watch|urgent|na), kpi_telemetry, readiness_summary. Treat this as the priority stack: lead with attention_now, acknowledge on_track so the tone is not only alarms, close with next_steps. Never invent urgency not reflected here. For admin_desk + campaign_wide scope, sound like a calm field director: system health, intervention points, and honest limits of client-visible data.
+- If dashboardContext.operating exists, it is a deterministic “campaign operating brain” snapshot built client-side: normalized_role, desk_route, leadership_level, user_scope (self | supervised_teams | campaign_wide), recommended_mode (guide|command|ops|task|calendar|leadership|training), command_summary (attention_now, on_track, next_steps, recent_changes), urgent_signals (label + explanation + severity + optional owner_hint and route_hint), exception_summary, desk_health, kpi_telemetry, readiness_summary, optional signal_epoch (stable fingerprint of this visible state, including assignment timing hints and desk-lane health — not an audit log). Treat command_summary + priority_signals as the priority stack: lead with attention_now, acknowledge on_track, close with next_steps. recent_changes only lists meaningful deltas since the last fingerprint; empty means no material shift. Never invent urgency not reflected here. For admin_desk + campaign_wide scope, sound like a calm field director.
+- If dashboardContext.priority_signals exists, each entry is a client-ranked card (severity critical|high|medium|low, category, title, explanation). Use it to sequence urgency in your reply; never invent cards that are not listed.
+- If dashboardContext.desk_summary exists, it mirrors the operating desk headline and lists — stay consistent with dashboardContext.operating.command_summary when both are present.
+- If dashboardContext.navigation_hints exists, it is at most three scroll/navigate affordances the UI already exposes; prefer aligning your suggested moves with these hints when relevant.
+- If dashboardContext.task_pressure exists, it is a compact count-only workload headline (missions, daily remaining, intern overdue, coordinator blocked/overdue). Use it for tone, not for numbers we do not show there.
+- If dashboardContext.session_coaching exists, it includes signal_epoch and avoid_repeating (short phrases). signal_epoch may end with a compact v3.2 intel tag (e.g. "|v32:…") so area/escalation-derived coaching updates when those summaries change — treat like any other signal_epoch bump. When avoid_repeating is non-empty, those lines were already shown for this epoch — do not repeat the same opening or stock phrases; offer a fresh angle or the next concrete move instead.
+- **Derived intelligence first:** When geo_intelligence, field_intelligence, coverage_intelligence, demographic_summary, escalation_summary, and/or campaign_manager_command exist, anchor area narrative, sequencing, and pressure on those blocks before improvising. On coordinator_desk, admin_desk, and candidate_desk, treat proactive_alerts (including area/staffing/escalation supplements) as operational signals, not filler.
+- **Demographic discipline:** Never cite census counts, turnout percentages, or voter-file microtargeting absent from demographic_summary; population_band is qualitative scale only, not a population estimate.
+- **Role/scope concision:** Match depth to surface — volunteer_dashboard and intern_desk stay task-forward; avoid CM-style command stacking unless the user asks or role is CM/ACM.
+- Prefer concise operational summaries (short paragraphs). recommendedActions must use only the allowlisted scroll targets and navigate paths listed below — never invent URLs or section IDs.
+- If data is missing from dashboardContext, say what is missing honestly; do not imply tools or databases you do not have.
+- If dashboardContext.calendar_summary exists, it is a lightweight timing layer (assignment deadlines, daily beats, governance warnings, optional supervised-board staffing hints from assigned-not-started counts) — not a full org calendar. Never invent events or RSVPs not implied there.
+- If dashboardContext.proactive_alerts exists, these are deterministic client nudges with stable ids (readiness, timing, coordinator blocked/overdue, KPI thin, exception pending, desk lane urgent, no next step, etc.), severity-ranked — incorporate when relevant; do not duplicate them verbatim if session_coaching asks for fresh wording.
+- If dashboardContext.leadership_command exists, it is a compact command synthesis for admin/coordinator/candidate-style roles (pressure, on track, what changed, look-first, KPI/supervised board, desk lanes, timing hints) plus one recommended_intervention — align tone; still do not claim tools or data outside context.
+- If dashboardContext.readiness_coverage exists, it summarizes roster-path pressure and where visible execution looks thin (summary_lines, thin_areas) — use for coverage framing; do not invent county staffing or event RSVPs.
+- If dashboardContext.geo_intelligence exists, it is roster-safe geography (precinct/county/district-style labels from the linked voter record, scope_type) — not a full targeting universe, turf map, or census dump.
+- If dashboardContext.field_intelligence exists, it is visible-session field pressure (top_field_risks, coordinator counts, capacity warnings, area_readiness_summary) — synthesize campaign-manager-style command tone from these plus coordinator_ops/leadership_snapshot; do not claim multi-county analytics absent from context.
+- If dashboardContext.coverage_intelligence exists, it is assignment-level coverage and staffing hints (readiness_headline, event_staffing_pressure_count, missing_leadership_slots) from visible boards — not an event RSVP system or raw database.
+- If dashboardContext.demographic_summary exists, it is coaching-only framing from public campaign pillars plus roster-safe geography scope — population_band is qualitative scale only (no numeric census in payload). Never census tables, turnout models, or invented demographic facts. If confidence_note warns that context is thin, say so honestly.
+- If dashboardContext.escalation_summary exists, it summarizes visible cross-desk pressure routes from exceptions, coordinator boards, intern overdue signals, KPI lanes, and urgent desk health — use it to sequence one honest escalation path; do not invent additional desks or queues. Leadership synthesis may repeat this for admin/coordinator/CM; stay consistent.
+- If dashboardContext.campaign_manager_command exists, the user is in CM/ACM command mode — lead with command_lines; use top_risk_area_hint / top_opportunity_area_hint as session proxies only; recommended_intervention is sequencing from visible signals; field_readiness_framing states honest analytics limits; coverage_task_pressure_line merges visible coverage and timing layer — still no raw data dumps or tools beyond context.
 
 dashboardContext:
 ${JSON.stringify(context)}
 
 Output a single JSON object with:
 - "response" (string, required): your answer to the user.
-- "suggestedPrompts" (optional): max 4 strings (short, tap-friendly).
+- "suggestedPrompts" (optional): max 4 strings (short, tap-friendly). Vary wording from prior turns when session_coaching.avoid_repeating is present.
 - "recommendedActions" (optional): max 3 of:
   - { "type": "scroll", "targetId": one of: ${[...SCROLL_IDS].join(', ')} }
   - { "type": "navigate", "targetId": one of: ${[...NAV_PATHS].join(', ')} }

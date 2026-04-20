@@ -16,6 +16,10 @@ export type PersistedAgentJonesState = {
   aiError: string | null
   draftInput: string
   transcript: AgentJonesTranscriptEntry[]
+  /** Last operating signal_epoch when we stored coaching phrases (Pass 3). */
+  coachingEpoch?: string | null
+  /** Phrases to avoid repeating for that epoch. */
+  lastAvoidPhrases?: string[]
 }
 
 export type AgentJonesShellPersisted = {

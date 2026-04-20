@@ -7,7 +7,17 @@ import {
   scrollToDashboardId,
   type AgentJonesPrompt,
 } from '../lib/agentJonesGuidance'
+import { enrichLeadershipCommandWithV32 } from '../lib/agentJonesLeadershipCommand'
 import { buildAgentJonesOperatingContext } from '../lib/agentJonesPriorities'
+import { buildAgentJonesTaskPressure } from '../lib/agentJonesTaskPressure'
+import { buildAgentJonesV31Pack } from '../lib/agentJonesV31Pack'
+import {
+  agentJonesV32CommandScope,
+  buildAgentJonesV32IntelEpoch,
+  buildAgentJonesV32Pack,
+} from '../lib/agentJonesV32Pack'
+import { buildAgentJonesV32ProactiveSupplements, mergeProactiveAlertLists } from '../lib/agentJonesProactiveV32'
+import { buildAgentJonesV3Brain } from '../lib/agentJonesV3Brain'
 import {
   buildAgentJonesContextV2,
   type AgentJonesContextV2,
@@ -46,6 +56,21 @@ import type { MomentumAction } from '../lib/onboardingEngine'
 import { isDevAuthBypassEnabled } from '../lib/devAuth'
 import { applyDevOnboardingMomentumAction } from '../lib/devOnboardingMomentum'
 import { useAgentJonesVoiceRecorder } from '../hooks/useAgentJonesVoiceRecorder'
+import AgentJonesSummaryStrip from './agentJones/AgentJonesSummaryStrip'
+import AgentJonesPriorityCards from './agentJones/AgentJonesPriorityCards'
+import AgentJonesNextActions from './agentJones/AgentJonesNextActions'
+import AgentJonesResponseComposer from './agentJones/AgentJonesResponseComposer'
+import AgentJonesCalendarSummaryBlock from './agentJones/AgentJonesCalendarSummary'
+import AgentJonesProactiveAlerts from './agentJones/AgentJonesProactiveAlerts'
+import AgentJonesLeadershipSummary from './agentJones/AgentJonesLeadershipSummary'
+import AgentJonesReadinessCoverageBlock from './agentJones/AgentJonesReadinessCoverage'
+import AgentJonesV32Pass1Panel from './agentJones/AgentJonesV32Pass1Panel'
+import {
+  buildAgentJonesSessionCoachingPayload,
+  composeAgentJonesCoachingSignalEpoch,
+  extractAvoidPhrasesFromReply,
+  normalizeCoachPhrase,
+} from '../lib/agentJonesSessionCoaching'
 
 export const AGENT_JONES_CLEAR_EVENT = 'campaignos:agent-jones-clear'
 
@@ -139,6 +164,26 @@ function nextTranscriptId(): string {
   return `aj-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
+function scrollActionLabel(targetId: string | undefined): string {
+  if (!targetId) return 'Go to section'
+  const map: Record<string, string> = {
+    'mission-tasks': 'Mission tasks',
+    'daily-activation': 'Daily activation',
+    'coordinator-mission-ops': 'Mission ops',
+    'intern-desk': 'Intern desk',
+    'campaign-kpis': 'KPIs',
+    'candidate-health-snapshot': 'Health snapshot',
+    'admin-exceptions': 'Exceptions',
+    'admin-desks': 'Desks',
+    'admin-tasks': 'Tasks',
+    'exception-request': 'Exception',
+    'voter-workspace': 'Voter workspace',
+    'workspace-cards': 'Workspace',
+    'dash-profile-photo': 'Profile photo',
+  }
+  return map[targetId] ?? 'Go to section'
+}
+
 export type AgentJonesPanelProps = {
   progressSlice: DashboardProgressSlice
   profile: CampaignProfile | null
@@ -183,6 +228,7 @@ export default function AgentJonesPanel({
 }: AgentJonesPanelProps) {
   const location = useLocation()
   const headingId = useId()
+  const composeId = useId()
   const persisted = useMemo(() => loadAgentJonesPersisted(), [])
   const caps = useMemo(
     () => getAgentJonesCapabilities(profile?.primary_role),
@@ -224,6 +270,162 @@ export default function AgentJonesPanel({
     ],
   )
 
+  const taskPressure = useMemo(
+    () =>
+      buildAgentJonesTaskPressure({
+        volunteerMission: volunteerMission ?? null,
+        dailyActivation: dailyActivation ?? null,
+        internLayer: internLayer ?? null,
+        coordinatorOps: coordinatorOps ?? null,
+      }),
+    [volunteerMission, dailyActivation, internLayer, coordinatorOps],
+  )
+
+  const v31Pack = useMemo(
+    () =>
+      buildAgentJonesV31Pack({
+        surface: surface ?? 'volunteer_dashboard',
+        operating,
+        volunteerMission: volunteerMission ?? null,
+        dailyActivation: dailyActivation ?? null,
+        coordinatorOps: coordinatorOps ?? null,
+        leadershipSnapshot: leadershipSnapshot ?? null,
+        profile,
+        progressSlice,
+        internLayer: internLayer ?? null,
+      }),
+    [
+      surface,
+      operating,
+      volunteerMission,
+      dailyActivation,
+      coordinatorOps,
+      leadershipSnapshot,
+      profile,
+      progressSlice,
+      internLayer,
+    ],
+  )
+
+  const v32CampaignStub = useMemo(
+    () => ({
+      issuePillars: CHRIS_JONES_FOR_CONGRESS_PUBLIC.issuePillars.map((p) => ({
+        title: p.title,
+        summary: p.summary,
+      })),
+    }),
+    [],
+  )
+
+  const v32Pack = useMemo(
+    () =>
+      buildAgentJonesV32Pack({
+        surface: surface ?? 'volunteer_dashboard',
+        operating,
+        matchedVoter: matchedVoter ?? null,
+        voterMatched,
+        coordinatorOps: coordinatorOps ?? null,
+        leadershipSnapshot: leadershipSnapshot ?? null,
+        volunteerMission: volunteerMission ?? null,
+        internLayer: internLayer ?? null,
+        calendarSummary: v31Pack.calendar_summary ?? null,
+        taskPressure,
+        campaign: v32CampaignStub,
+      }),
+    [
+      surface,
+      operating,
+      matchedVoter,
+      voterMatched,
+      coordinatorOps,
+      leadershipSnapshot,
+      volunteerMission,
+      internLayer,
+      v31Pack.calendar_summary,
+      taskPressure,
+      v32CampaignStub,
+    ],
+  )
+
+  const v3Brain = useMemo(
+    () =>
+      buildAgentJonesV3Brain({
+        pathname: location.pathname,
+        surface: surface ?? 'volunteer_dashboard',
+        operating,
+        v32:
+          v32Pack.geo_intelligence != null ||
+          v32Pack.field_intelligence != null ||
+          v32Pack.coverage_intelligence != null
+            ? {
+                geo: v32Pack.geo_intelligence,
+                field: v32Pack.field_intelligence,
+                coverage: v32Pack.coverage_intelligence,
+              }
+            : null,
+      }),
+    [location.pathname, surface, operating, v32Pack],
+  )
+
+  const leadershipCommandDisplay = useMemo(
+    () =>
+      enrichLeadershipCommandWithV32({
+        base: v31Pack.leadership_command ?? null,
+        operating,
+        geo: v32Pack.geo_intelligence,
+        field: v32Pack.field_intelligence,
+        coverage: v32Pack.coverage_intelligence,
+        escalation: v32Pack.escalation_summary,
+        surface: surface ?? 'volunteer_dashboard',
+      }),
+    [
+      v31Pack.leadership_command,
+      operating,
+      v32Pack.geo_intelligence,
+      v32Pack.field_intelligence,
+      v32Pack.coverage_intelligence,
+      v32Pack.escalation_summary,
+      surface,
+    ],
+  )
+
+  const proactiveAlertsMerged = useMemo(() => {
+    const surf = surface ?? 'volunteer_dashboard'
+    const cmdScope = agentJonesV32CommandScope({
+      surface: surf,
+      normalizedRole: operating.normalized_role,
+      userScope: operating.user_scope,
+    })
+    return mergeProactiveAlertLists(
+      v31Pack.proactive_alerts,
+      buildAgentJonesV32ProactiveSupplements({
+        operating,
+        commandScope: cmdScope,
+        surface: surf,
+        geo: v32Pack.geo_intelligence,
+        field: v32Pack.field_intelligence,
+        coverage: v32Pack.coverage_intelligence,
+        escalation: v32Pack.escalation_summary,
+      }),
+      cmdScope ? 6 : 5,
+    )
+  }, [
+    v31Pack.proactive_alerts,
+    operating,
+    surface,
+    v32Pack.geo_intelligence,
+    v32Pack.field_intelligence,
+    v32Pack.coverage_intelligence,
+    v32Pack.escalation_summary,
+  ])
+
+  const leadershipPanelIntel = useMemo(() => {
+    const s = surface ?? 'volunteer_dashboard'
+    return s === 'admin_desk' || s === 'candidate_desk' || s === 'coordinator_desk'
+  }, [surface])
+
+  const v32IntelEpoch = useMemo(() => buildAgentJonesV32IntelEpoch(v32Pack), [v32Pack])
+
   const bundle = useMemo(
     () =>
       getAgentJonesGuidanceBundle({
@@ -259,6 +461,13 @@ export default function AgentJonesPanel({
   const [transcript, setTranscript] = useState<AgentJonesTranscriptEntry[]>(
     () => persisted.transcript ?? [],
   )
+  const [coachingMeta, setCoachingMeta] = useState<{
+    epoch: string | null
+    phrases: string[]
+  }>(() => ({
+    epoch: persisted.coachingEpoch ?? null,
+    phrases: persisted.lastAvoidPhrases ?? [],
+  }))
 
   const voice = useAgentJonesVoiceRecorder()
 
@@ -269,6 +478,7 @@ export default function AgentJonesPanel({
     setAiError(null)
     setDraftInput('')
     setTranscript([])
+    setCoachingMeta({ epoch: null, phrases: [] })
   }, [])
 
   useEffect(() => {
@@ -278,6 +488,21 @@ export default function AgentJonesPanel({
     window.addEventListener(AGENT_JONES_CLEAR_EVENT, onClear)
     return () => window.removeEventListener(AGENT_JONES_CLEAR_EVENT, onClear)
   }, [resetConversation])
+
+  const contextForApi = useCallback(
+    (ctx: AgentJonesContextV2): AgentJonesContextV2 => {
+      const coaching = buildAgentJonesSessionCoachingPayload({
+        signalEpoch: composeAgentJonesCoachingSignalEpoch(
+          operating.signal_epoch,
+          v32IntelEpoch,
+        ),
+        persistedEpoch: coachingMeta.epoch,
+        persistedPhrases: coachingMeta.phrases,
+      })
+      return coaching ? { ...ctx, session_coaching: coaching } : ctx
+    },
+    [operating.signal_epoch, v32IntelEpoch, coachingMeta.epoch, coachingMeta.phrases],
+  )
 
   const runRecommendedActions = useCallback(
     (actions: AgentJonesResponse['recommendedActions']) => {
@@ -316,10 +541,14 @@ export default function AgentJonesPanel({
           throw new AgentJonesApiError('Agent Jones context not ready', 0, null)
         }
         const next = await callAgentJones({
-          context: built,
+          context: contextForApi(built),
           userMessage,
         })
         setReply(next)
+        setCoachingMeta({
+          epoch: operating.signal_epoch,
+          phrases: extractAvoidPhrasesFromReply(next),
+        })
         runRecommendedActions(next.recommendedActions)
         setTranscript((t) => [
           ...t,
@@ -381,6 +610,7 @@ export default function AgentJonesPanel({
     },
     [
       contextV2,
+      contextForApi,
       progressSlice,
       profile,
       voterLoading,
@@ -404,6 +634,8 @@ export default function AgentJonesPanel({
       aiError,
       draftInput,
       transcript: transcript.slice(-48),
+      coachingEpoch: coachingMeta.epoch,
+      lastAvoidPhrases: coachingMeta.phrases,
     })
   }, [
     activePromptId,
@@ -411,16 +643,22 @@ export default function AgentJonesPanel({
     aiError,
     draftInput,
     transcript,
+    coachingMeta.epoch,
+    coachingMeta.phrases,
     persistSession,
   ])
 
-  const gridPrompts = useMemo(
-    () =>
-      reply?.suggestedPrompts?.length
-        ? [...bundle.prompts, ...stringsToFollowUps(reply.suggestedPrompts)]
-        : bundle.prompts,
-    [bundle.prompts, reply],
-  )
+  const gridPrompts = useMemo(() => {
+    const raw = reply?.suggestedPrompts ?? []
+    if (!raw.length) return bundle.prompts
+    const avoid =
+      coachingMeta.epoch === operating.signal_epoch
+        ? new Set(coachingMeta.phrases.map(normalizeCoachPhrase))
+        : new Set<string>()
+    const filtered = raw.filter((p) => !avoid.has(normalizeCoachPhrase(p)))
+    const useList = filtered.length ? filtered : raw
+    return [...bundle.prompts, ...stringsToFollowUps(useList)]
+  }, [bundle.prompts, reply, coachingMeta, operating.signal_epoch])
 
   const policyPayload = useMemo(() => agentJonesPolicyPayload(caps), [caps])
 
@@ -434,6 +672,7 @@ export default function AgentJonesPanel({
         progressSlice,
         voterLoading,
         surface: surface ?? 'volunteer_dashboard',
+        pathname: location.pathname,
         relationalPower5: relationalPower5 ?? null,
         volunteerMission: volunteerMission ?? null,
         dailyActivation: dailyActivation ?? null,
@@ -492,6 +731,7 @@ export default function AgentJonesPanel({
     leadershipSnapshot,
     policyPayload,
     operating,
+    location.pathname,
   ])
 
   const handleSelect = async (prompt: AgentJonesPrompt) => {
@@ -541,10 +781,14 @@ export default function AgentJonesPanel({
         throw new AgentJonesApiError('Agent Jones context not ready', 0, null)
       }
       const next = await callAgentJones({
-        context: built,
+        context: contextForApi(built),
         userMessage,
       })
       setReply(next)
+      setCoachingMeta({
+        epoch: operating.signal_epoch,
+        phrases: extractAvoidPhrasesFromReply(next),
+      })
       runRecommendedActions(next.recommendedActions)
       setTranscript((t) => [
         ...t,
@@ -630,6 +874,37 @@ export default function AgentJonesPanel({
     (a) => a.type === 'scroll' || a.type === 'navigate',
   )
 
+  const deskFraming = useMemo(() => {
+    const s = surface ?? 'volunteer_dashboard'
+    switch (s) {
+      case 'intern_desk':
+        return {
+          eyebrow: 'Intern operations',
+          lede: 'Queue pressure, first contacts, and follow-ups — from data visible on this desk.',
+        }
+      case 'coordinator_desk':
+        return {
+          eyebrow: 'Coordinator operations',
+          lede: 'Supervised lanes, intern pipeline risk, and reassignment — no volunteer PII in this panel.',
+        }
+      case 'candidate_desk':
+        return {
+          eyebrow: 'Leadership desk',
+          lede: 'Campaign health and where principals spend attention — KPI-grounded, no invented systems.',
+        }
+      case 'admin_desk':
+        return {
+          eyebrow: 'Governance',
+          lede: 'Exceptions, desk health, and honest limits of what this client session can see.',
+        }
+      default:
+        return {
+          eyebrow: 'Volunteer field desk',
+          lede: 'Missions, daily activation, and roster-safe next steps — tied to the operating strip above.',
+        }
+    }
+  }, [surface])
+
   const rootClass =
     sectionClassName ?? 'card agent-jones-card stack-section agent-jones-premium'
 
@@ -638,14 +913,11 @@ export default function AgentJonesPanel({
       className={rootClass}
       aria-labelledby={headingId}
     >
-      <p className="subtitle agent-jones-eyebrow">Strategic advisor</p>
+      <p className="subtitle agent-jones-eyebrow">{deskFraming.eyebrow}</p>
       <h2 id={headingId} className="agent-jones-title">
-        Jones AI
+        Agent Jones
       </h2>
-      <p className="agent-jones-lede">
-        Precision briefings from the dashboard state we share with the server — no
-        theatrics, no data we do not already hold.
-      </p>
+      <p className="agent-jones-lede">{deskFraming.lede}</p>
 
       <div
         className={`agent-jones-access-pill agent-jones-access-pill--${caps.internetAccessTier}`}
@@ -654,6 +926,40 @@ export default function AgentJonesPanel({
         <span className="agent-jones-access-pill-label">{caps.accessModeLabel}</span>
         <span className="agent-jones-access-pill-desc">{caps.accessModeDescription}</span>
       </div>
+
+      <AgentJonesSummaryStrip
+        summary={v3Brain.desk_summary}
+        taskPressureHeadline={taskPressure.headline}
+      />
+      {leadershipPanelIntel && leadershipCommandDisplay ? (
+        <AgentJonesLeadershipSummary command={leadershipCommandDisplay} />
+      ) : null}
+      <AgentJonesV32Pass1Panel
+        geo={v32Pack.geo_intelligence}
+        field={v32Pack.field_intelligence}
+        coverage={v32Pack.coverage_intelligence}
+        demographic={v32Pack.demographic_summary}
+        escalation={v32Pack.escalation_summary}
+        campaignManagerCommand={v32Pack.campaign_manager_command}
+        panelLayout={leadershipPanelIntel ? 'leadership' : 'default'}
+      />
+      {v31Pack.calendar_summary ? (
+        <AgentJonesCalendarSummaryBlock summary={v31Pack.calendar_summary} />
+      ) : null}
+      {proactiveAlertsMerged.length ? (
+        <AgentJonesProactiveAlerts alerts={proactiveAlertsMerged} />
+      ) : null}
+      {!leadershipPanelIntel && leadershipCommandDisplay ? (
+        <AgentJonesLeadershipSummary command={leadershipCommandDisplay} />
+      ) : null}
+      {v31Pack.readiness_coverage ? (
+        <AgentJonesReadinessCoverageBlock coverage={v31Pack.readiness_coverage} />
+      ) : null}
+      <AgentJonesPriorityCards signals={v3Brain.priority_signals} />
+      <AgentJonesNextActions
+        hints={v3Brain.navigation_hints}
+        nextStepLines={operating.command_summary.next_steps}
+      />
 
       <p className="subtitle agent-jones-internal-notice" role="note">
         {AGENT_JONES_ACCESS_NOTICE}
@@ -710,34 +1016,19 @@ export default function AgentJonesPanel({
         onSelect={handleSelect}
       />
 
-      <div className="agent-jones-typed-compose">
-        <label className="sr-only" htmlFor="agent-jones-draft-input">
-          Message to Agent Jones
-        </label>
-        <textarea
-          id="agent-jones-draft-input"
-          className="agent-jones-draft-input input-stretch"
-          rows={3}
-          maxLength={600}
-          value={draftInput}
-          placeholder="Type a question (max 600 characters)…"
-          onChange={(e) => setDraftInput(e.target.value)}
-          disabled={aiLoading || !contextV2}
-        />
-        <button
-          type="button"
-          className="btn-touch btn-primary agent-jones-send-btn"
-          disabled={aiLoading || !contextV2 || !draftInput.trim()}
-          onClick={() => {
-            const t = draftInput.trim()
-            if (!t) return
-            setDraftInput('')
-            void submitCustomUserMessage(t)
-          }}
-        >
-          Send
-        </button>
-      </div>
+      <AgentJonesResponseComposer
+        id={composeId}
+        surface={surface ?? 'volunteer_dashboard'}
+        value={draftInput}
+        disabled={aiLoading || !contextV2}
+        onChange={setDraftInput}
+        onSend={() => {
+          const t = draftInput.trim()
+          if (!t) return
+          setDraftInput('')
+          void submitCustomUserMessage(t)
+        }}
+      />
 
       <div className="agent-jones-voice-row">
         <button
@@ -814,7 +1105,9 @@ export default function AgentJonesPanel({
                 if (a.type === 'navigate' && a.targetId) window.location.assign(a.targetId)
               }}
             >
-              {a.type === 'scroll' ? 'Go to section' : 'Open link'}
+              {a.type === 'scroll'
+                ? scrollActionLabel(a.targetId)
+                : `Open ${(a.targetId ?? '/').replace(/^\//, '') || 'page'}`}
             </button>
           ))}
         </div>

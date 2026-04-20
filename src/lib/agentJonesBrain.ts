@@ -20,6 +20,39 @@ function trunc(s: unknown, max: number): string {
   return t.length > max ? t.slice(0, max) : t
 }
 
+function isLeadershipFallbackRole(op: AgentJonesOperatingContext): boolean {
+  const r = op.normalized_role
+  return (
+    r === 'admin' ||
+    r === 'campaign_manager' ||
+    r === 'assistant_campaign_manager' ||
+    r === 'candidate' ||
+    r === 'coordinator'
+  )
+}
+
+function operatingFallbackProse(op: AgentJonesOperatingContext): string {
+  const lines: string[] = []
+  lines.push(`Readiness: ${op.readiness_summary}`)
+  if (isLeadershipFallbackRole(op) && op.command_summary.recent_changes[0]) {
+    lines.push(`What changed: ${op.command_summary.recent_changes[0]}`)
+  }
+  if (op.command_summary.attention_now[0]) {
+    lines.push(`Attention: ${op.command_summary.attention_now[0]}`)
+  }
+  if (op.command_summary.on_track[0]) {
+    lines.push(`On track: ${op.command_summary.on_track[0]}`)
+  }
+  if (op.command_summary.next_steps[0]) {
+    lines.push(`Next: ${op.command_summary.next_steps[0]}`)
+  }
+  const top = op.urgent_signals[0]
+  if (top) {
+    lines.push(`Signal — ${top.label}: ${top.explanation || top.label}`)
+  }
+  return lines.join('\n')
+}
+
 function missionFallbackLines(m: AgentJonesVolunteerMissionContext): string[] {
   const lines: string[] = []
   const pts = m.active_summaries[0]?.why_points
@@ -264,8 +297,10 @@ export function buildAgentJonesFallbackV2(input: {
     ...(goalsScroll ?? []),
   ].slice(0, 3)
 
+  const opBlock = input.operating ? `${operatingFallbackProse(input.operating)}\n\n` : ''
+
   return {
-    response: `${bundle.greeting}\n\n${bundle.stateExplanation}${missionExtra}${dailyExtra}${internExtra}${goalsExtra}`.trim(),
+    response: `${opBlock}${bundle.greeting}\n\n${bundle.stateExplanation}${missionExtra}${dailyExtra}${internExtra}${goalsExtra}`.trim(),
     ...(suggestedPrompts.length ? { suggestedPrompts } : {}),
     ...(mergedScrolls.length ? { recommendedActions: mergedScrolls } : {}),
     ...(!mergedScrolls.length && recommendedActions ? { recommendedActions } : {}),

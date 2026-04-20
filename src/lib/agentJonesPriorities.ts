@@ -19,22 +19,61 @@ import {
   type AgentJonesDeskRoute,
   type AgentJonesNormalizedRole,
 } from './agentJonesRoleDesk'
+import { operatingFingerprintDeltaLines } from './agentJonesWhatChanged'
 
 const FP_KEY = 'campaignos:agent-jones-operating-fp'
+
+function nextAssignmentDueDateKey(iso: string | null | undefined): string {
+  if (!iso || typeof iso !== 'string') return ''
+  const t = Date.parse(iso)
+  if (!Number.isFinite(t)) return ''
+  return new Date(t).toISOString().slice(0, 10)
+}
 
 function bumpRecentChangeNote(fingerprint: string): string[] {
   try {
     const prev = sessionStorage.getItem(FP_KEY)
     sessionStorage.setItem(FP_KEY, fingerprint)
     if (prev && prev !== fingerprint) {
-      return [
-        'Desk signals changed since your last Agent Jones check — the priority list below is refreshed from current data.',
-      ]
+      return operatingFingerprintDeltaLines(prev, fingerprint)
     }
   } catch {
     /* ignore */
   }
   return []
+}
+
+function buildReadinessSummary(
+  desk: AgentJonesDeskRoute,
+  readinessParts: string[],
+): string {
+  if (readinessParts.length === 0) {
+    switch (desk) {
+      case '/admin':
+        return 'Admin: visible governance signals look steady — still verify exceptions and desk rollups on-page.'
+      case '/candidate':
+        return 'Leadership: KPI snapshot for this session is aligned — use weakest lanes to choose where principals spend time.'
+      case '/coordinator':
+        return 'Coordinator: supervised board and intern aggregates are in view — keep blocked/overdue honest before new asks.'
+      case '/intern':
+        return 'Intern: queue signals are visible — keep first-contact windows human and escalate after three honest tries.'
+      default:
+        return 'Volunteer: roster slice looks ready for field routing — confirm the next mission or daily beat with your captain if unsure.'
+    }
+  }
+  const gap = `Readiness gaps: ${readinessParts.join('; ')}.`
+  switch (desk) {
+    case '/admin':
+      return `Admin — ${gap} Stay within client-visible reads; no invented org-wide queues.`
+    case '/candidate':
+      return `Leadership — ${gap} Ground narrative in the KPI cards you can see here.`
+    case '/coordinator':
+      return `Coordinator — ${gap} Clear supervised lanes before optional volunteer nudges.`
+    case '/intern':
+      return `Intern desk — ${gap} Prioritize overdue first contacts with a short human touch.`
+    default:
+      return `Volunteer — ${gap} Finish roster/branch steps before voter-gated execution.`
+  }
 }
 
 function laneStatus(
@@ -233,6 +272,7 @@ export function buildAgentJonesOperatingContext(input: {
   let id = 0
   const addSig = (
     label: string,
+    explanation: string,
     severity: 'info' | 'watch' | 'urgent',
     owner_hint: string | null,
     route_hint: string | null,
@@ -240,25 +280,56 @@ export function buildAgentJonesOperatingContext(input: {
     urgent_signals.push({
       id: `sig-${++id}`,
       label: label.slice(0, 220),
+      explanation: explanation.slice(0, 320),
       severity,
       owner_hint,
       route_hint,
     })
   }
   if (exception_summary.pending_review) {
-    addSig('Roster exception pending review', 'urgent', 'Coordinator', '/coordinator')
+    addSig(
+      'Roster exception pending review',
+      'Voter-gated tools stay off until a coordinator changes exception status — nudge HQ instead of forcing gated work.',
+      'urgent',
+      'Coordinator',
+      '/coordinator',
+    )
   }
   if (hasCoordScope && overdue > 0) {
-    addSig(`${overdue} supervised assignment(s) overdue`, 'urgent', 'Coordinator', '/coordinator')
+    addSig(
+      `${overdue} supervised assignment(s) overdue`,
+      'Overdue supervised rows usually mean a volunteer is blocked or waiting — clear or reassign before adding new asks.',
+      'urgent',
+      'Coordinator',
+      '/coordinator',
+    )
   }
   if (hasCoordScope && blocked > 0) {
-    addSig(`${blocked} supervised assignment(s) blocked`, 'watch', 'Coordinator', '/coordinator')
+    addSig(
+      `${blocked} supervised assignment(s) blocked`,
+      'Blocked lanes need a human decision — dependency, policy, or capacity — before the board looks healthy again.',
+      'watch',
+      'Coordinator',
+      '/coordinator',
+    )
   }
   if (stalled > 0) {
-    addSig(`${stalled} stalled mission task(s)`, 'watch', 'Volunteer / captain', '/dashboard')
+    addSig(
+      `${stalled} stalled mission task(s)`,
+      'Stalled tasks inflate perceived workload — close, reopen, or delete honestly so captains see real demand.',
+      'watch',
+      'Volunteer / captain',
+      '/dashboard',
+    )
   }
   if (internOd > 0 || internOdLocal > 0) {
-    addSig('Intern first-contact overdue', 'urgent', 'Intern lead', '/intern')
+    addSig(
+      'Intern first-contact overdue',
+      'First-contact windows are time-bound — a short call or text beats another internal note.',
+      'urgent',
+      'Intern lead',
+      '/intern',
+    )
   }
 
   const hasVolunteerSignal =
@@ -291,10 +362,7 @@ export function buildAgentJonesOperatingContext(input: {
   if (input.progressSlice !== 'matched_ready') {
     readinessParts.push(`progress: ${input.progressSlice}`)
   }
-  const readiness_summary =
-    readinessParts.length === 0
-      ? 'Roster slice looks ready for field routing; confirm orientation with your captain if unsure.'
-      : `Readiness gaps: ${readinessParts.join('; ')}.`
+  const readiness_summary = buildReadinessSummary(desk, readinessParts)
 
   const recommended_mode = inferRecommendedMode({
     desk,
@@ -302,7 +370,7 @@ export function buildAgentJonesOperatingContext(input: {
     hasCoordinatorPressure,
   })
 
-  const fingerprint = [
+  const signal_epoch = [
     desk,
     normalized_role,
     input.progressSlice,
@@ -311,9 +379,54 @@ export function buildAgentJonesOperatingContext(input: {
     String(overdue),
     String(stalled),
     String(snap?.kpis_below_half_target ?? ''),
+    String(internOdLocal),
+    String(internEsc),
+    String(activeM),
+    String(daily?.completed_today ?? ''),
+    String(daily?.total_today ?? ''),
+    desk_health.volunteer_lane,
+    desk_health.intern_lane,
+    desk_health.coordinator_lane,
+    desk_health.leadership_lane,
+    String(mission?.assignments_due_within_7d_count ?? ''),
+    nextAssignmentDueDateKey(mission?.next_assignment_due_at ?? null),
   ].join('|')
 
-  const recent_changes = bumpRecentChangeNote(fingerprint)
+  const recent_changes = bumpRecentChangeNote(signal_epoch)
+
+  const leadPackRole =
+    normalized_role === 'admin' ||
+    normalized_role === 'campaign_manager' ||
+    normalized_role === 'assistant_campaign_manager' ||
+    normalized_role === 'candidate' ||
+    normalized_role === 'coordinator'
+
+  const nextStepsLeadership: string[] = []
+  if (leadPackRole) {
+    if (recent_changes.length) {
+      nextStepsLeadership.push(
+        'Use recent_changes in this summary as the honest “what moved” signal before outbound comms.',
+      )
+    }
+    if (desk === '/admin') {
+      nextStepsLeadership.push(
+        'Look first on-page: exceptions and desk rollups (scroll targets admin-exceptions, admin-desks).',
+      )
+    }
+    if (desk === '/candidate' && snap && snap.active_kpi_count > 0) {
+      nextStepsLeadership.push(
+        'Look first on-page: campaign health snapshot and weakest KPI (candidate-health-snapshot).',
+      )
+    }
+    if (desk === '/coordinator' && hasCoordScope) {
+      nextStepsLeadership.push(
+        'Look first on-page: supervised mission ops and intern aggregates (coordinator-mission-ops).',
+      )
+    }
+  }
+
+  const nextStepsMerged = [...nextStepsLeadership, ...next_steps]
+  const nextStepsCap = leadPackRole ? 6 : 5
 
   return {
     normalized_role,
@@ -324,13 +437,14 @@ export function buildAgentJonesOperatingContext(input: {
     command_summary: {
       attention_now: attention_now.slice(0, 8),
       on_track: on_track.slice(0, 6),
-      next_steps: next_steps.slice(0, 5),
-      recent_changes: recent_changes.slice(0, 3),
+      next_steps: nextStepsMerged.slice(0, nextStepsCap),
+      recent_changes: recent_changes.slice(0, 4),
     },
     urgent_signals: urgent_signals.slice(0, 8),
     exception_summary,
     desk_health,
     kpi_telemetry,
     readiness_summary: readiness_summary.slice(0, 360),
+    signal_epoch,
   }
 }

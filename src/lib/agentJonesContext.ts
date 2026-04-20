@@ -15,6 +15,7 @@ export const AGENT_JONES_SCROLL_TARGET_IDS = [
   'intern-desk',
   'campaign-kpis',
   'agent-jones',
+  'dash-profile-photo',
   'coordinator-mission-ops',
   'candidate-health-snapshot',
   'admin-overview',

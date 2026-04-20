@@ -158,11 +158,13 @@ export default function DashboardHeader({
                 </span>
               )}
             </span>
-            <ProfilePhotoUpload
-              profileId={profileId}
-              hasCustomPhoto={hasCustomPhoto}
-              onDone={() => onProfileRefresh?.()}
-            />
+            <div id="dash-profile-photo">
+              <ProfilePhotoUpload
+                profileId={profileId}
+                hasCustomPhoto={hasCustomPhoto}
+                onDone={() => onProfileRefresh?.()}
+              />
+            </div>
           </div>
           <div className="dash-identity-center-cluster">
             <img
