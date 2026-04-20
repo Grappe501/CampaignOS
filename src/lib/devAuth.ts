@@ -5,7 +5,7 @@ const DEV_USER_ID = '00000000-0000-4000-8000-000000000001'
 
 /**
  * Presets for dashboard progression when auth bypass is on (dev only).
- * `matched_no_branch` — voter matched, `onboarding_branch` empty → select branch.
+ * `matched_no_branch` — `onboarding_branch` empty → select path first (voter matched optional).
  */
 export type DevMockDashboardState =
   | 'unmatched'

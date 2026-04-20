@@ -700,15 +700,51 @@
 }
 
 .app-site-footer-social-link {
-  font-size: 0.9rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 10px;
   color: #fff;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-sizing: border-box;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
 }
 
 .app-site-footer-social-link:hover {
   color: #ffd12a;
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 209, 42, 0.45);
+}
+
+.app-site-footer-social-link:focus-visible {
+  outline: 2px solid #ffd12a;
+  outline-offset: 3px;
+}
+
+.app-site-footer-social-link:active {
+  transform: scale(0.96);
+}
+
+.app-site-footer-social-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.app-site-footer-social-icon svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .app-site-footer-contact {
@@ -1171,6 +1207,165 @@
   border-inline-start: 4px solid var(--accent);
 }
 
+.card.dash-identity--tight.stack-section {
+  padding: 10px 12px 12px;
+  gap: 8px;
+}
+
+.dash-identity-banner {
+  margin: 0;
+}
+
+.dash-brand-mark--header {
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dash-candidate-headshot--tight {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  object-fit: cover;
+  /* Favor upper third of source art so the face sits in the circle, not the chest. */
+  object-position: center 16%;
+  border: 2px solid rgba(237, 163, 86, 0.45);
+  box-shadow: var(--shadow);
+  background: rgba(247, 240, 228, 0.6);
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .dash-candidate-headshot--tight {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+.dash-campaign-logo--tight {
+  height: 22px;
+  width: auto;
+  max-width: min(42vw, 200px);
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .dash-campaign-logo--tight {
+    height: 24px;
+    max-width: min(50vw, 240px);
+  }
+}
+
+.dash-identity-heading-cluster {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-dashboard-kicker {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cj-primary);
+  line-height: 1.2;
+}
+
+.dash-tagline-tight {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  opacity: 0.88;
+  line-height: 1.25;
+}
+
+.dash-identity-name-row {
+  margin-top: 2px;
+}
+
+.dash-identity-h1 {
+  margin: 0;
+  font-size: clamp(1.05rem, 2.4vw + 0.55rem, 1.45rem);
+  line-height: 1.2;
+  color: var(--text-h);
+}
+
+.dash-identity-email {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: var(--text);
+  opacity: 0.9;
+  word-break: break-all;
+  line-height: 1.25;
+}
+
+.dash-header-3col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px 14px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+@media (min-width: 600px) {
+  .dash-header-3col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .dash-header-3col {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.dash-header-col {
+  min-width: 0;
+}
+
+.dash-header-col-title {
+  margin: 0 0 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.dash-header-col-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dash-header-meta-line {
+  display: grid;
+  grid-template-columns: minmax(4.2rem, 38%) minmax(0, 1fr);
+  gap: 6px 8px;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  align-items: baseline;
+}
+
+.dash-header-meta-k {
+  color: var(--text);
+  opacity: 0.82;
+  font-weight: 500;
+}
+
+.dash-header-meta-v {
+  color: var(--text-h);
+  font-weight: 600;
+  word-break: break-word;
+}
+
 .dash-identity-top {
   display: flex;
   flex-direction: column;
@@ -1189,8 +1384,7 @@
   height: 56px;
   border-radius: 999px;
   object-fit: cover;
-  /* Lower framing so face sits nearer the vertical center of the circle */
-  object-position: center 32%;
+  object-position: center 16%;
   border: 2px solid rgba(237, 163, 86, 0.45);
   box-shadow: var(--shadow);
   background: rgba(247, 240, 228, 0.6);
@@ -1211,6 +1405,96 @@
 
 .dash-identity-strip {
   margin-top: 4px;
+}
+
+.dash-two-col--post-match {
+  gap: 10px;
+}
+
+.dash-two-col--post-match .card--compact {
+  padding: 10px 12px;
+}
+
+.voter-status-card--matched .voter-status-strip {
+  font-size: 0.82rem;
+}
+
+.voter-status-card--matched .voter-status-dl {
+  margin-top: 6px;
+  font-size: 0.78rem;
+}
+
+.voter-workspace-section--collapsed .voter-workspace-panel-body {
+  max-height: min(200px, 28vh);
+  overflow: auto;
+  transition: max-height 0.22s ease-out;
+}
+
+.voter-workspace-section--expanded .voter-workspace-panel-body {
+  max-height: min(88vh, 920px);
+  min-height: min(52vh, 560px);
+  overflow: auto;
+  transition: max-height 0.25s ease-out;
+}
+
+.voter-workspace-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.voter-workspace-panel-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.voter-workspace-toggle {
+  min-height: 48px;
+  padding-left: 16px;
+  padding-right: 16px;
+  font-weight: 600;
+}
+
+.voter-widget--compact {
+  padding: 10px 12px;
+  margin: 0;
+}
+
+.voter-widget-compact-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.voter-widget-compact-name {
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.voter-widget-compact-sep {
+  opacity: 0.45;
+}
+
+.voter-widget-compact-meta {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.76rem;
+}
+
+.voter-widget--expanded {
+  padding: 12px 14px;
+}
+
+.voter-widget-expanded-title {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: var(--text-h);
 }
 
 .dash-two-col {

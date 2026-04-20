@@ -2,8 +2,8 @@ import type { DevMockDashboardState } from '../lib/devAuth'
 import { devMockStateDescription } from '../lib/devAuth'
 
 const OPTIONS: { value: DevMockDashboardState; hint: string }[] = [
-  { value: 'unmatched', hint: 'Next step: verify voter' },
-  { value: 'matched_no_branch', hint: 'Next step: select branch' },
+  { value: 'unmatched', hint: 'Path set · needs clearance' },
+  { value: 'matched_no_branch', hint: 'Next step: select path first' },
   { value: 'exception_pending', hint: 'Next step: exception review' },
   { value: 'matched_ready', hint: 'Next step: ready' },
 ]

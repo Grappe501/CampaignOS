@@ -42,8 +42,8 @@ export default function ExceptionRequestCard({
           Roster exception approved
         </h2>
         <p className="subtitle" style={{ margin: 0 }}>
-          Coordinators approved your path without a voter-file self-match. Pick
-          your onboarding branch next.
+          Coordinators approved your path without a voter-file self-match. Continue
+          with workspace orientation and training cards below.
         </p>
       </section>
     )

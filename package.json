@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "setup:env": "node scripts/setup-env.mjs",
+    "ingest:api-keys": "node scripts/ingest-api-keys.mjs",
     "check:env": "node scripts/check-env.mjs",
     "bootstrap": "npm install && npm run check:env",
     "verify": "npm run lint && npm run build",
     "audit:build": "node scripts/audit-build.mjs",
+    "handoff:chatgpt": "node scripts/generate-chatgpt-handoff.mjs",
     "db:list": "node scripts/list-migrations.mjs",
     "launch": "node scripts/launch.mjs",
     "dev": "vite",

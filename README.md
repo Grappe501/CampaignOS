@@ -82,6 +82,7 @@ You must type `YES` to confirm. Prefer setting sensitive values directly in the 
 | Script | Purpose |
 |--------|---------|
 | `npm run setup:env` | Interactive `.env` bootstrap |
+| `npm run ingest:api-keys` | Merge civics/news API keys into `.env` (server-only); see `docs/campaign-api-keys.md` |
 | `npm run check:env` | Validate env (required client vars) |
 | `npm run bootstrap` | `npm install` + `check:env` |
 | `npm run verify` | `lint` + production `build` |

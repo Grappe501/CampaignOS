@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import {
   ONBOARDING_BRANCH_OPTIONS,
+  REGISTERED_ARKANSAS_VOTER_BRANCH,
   type OnboardingBranchValue,
 } from '../../lib/dashboardState'
 import { useOnboardingBranch } from '../../hooks/useOnboardingBranch'
+
+function scrollToId(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 export default function OnboardingBranchCard({
   profileId,
@@ -35,10 +40,11 @@ export default function OnboardingBranchCard({
           margin: 0,
         }}
       >
-        Onboarding branch
+        Choose your volunteer path
       </h2>
       <p className="subtitle" style={{ margin: 0 }}>
-        One selection is required. Large tap targets work on phones and iPads.
+        Pick one option, then save. Registered Arkansas voters go to voter lookup next;
+        other paths use the roster exception block.
       </p>
 
       <fieldset className="branch-fieldset">
@@ -76,9 +82,18 @@ export default function OnboardingBranchCard({
         type="button"
         className="btn-touch btn-primary"
         disabled={saving || !selected}
-        onClick={() => void save(selected as OnboardingBranchValue)}
+        onClick={() =>
+          void save(selected as OnboardingBranchValue).then((ok) => {
+            if (!ok || !selected) return
+            if (selected === REGISTERED_ARKANSAS_VOTER_BRANCH) {
+              scrollToId('voter-workspace')
+            } else {
+              scrollToId('exception-request')
+            }
+          })
+        }
       >
-        {saving ? 'Saving…' : 'Save branch'}
+        {saving ? 'Saving…' : 'Save and continue'}
       </button>
     </section>
   )

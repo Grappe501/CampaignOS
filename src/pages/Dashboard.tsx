@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useProfile } from '../hooks/useProfile'
 import { useTasks } from '../hooks/useTasks'
 import { useTraining } from '../hooks/useTraining'
@@ -13,10 +13,11 @@ import {
   getFirstTaskCardModel,
   getNextStep,
   getTrainingCardModel,
-  hasProgressIdentity,
+  isRegisteredArkansasVoterBranch,
   needsOnboardingPath,
   normalizeKey,
   progressionGateMessage,
+  REGISTERED_ARKANSAS_VOTER_BRANCH,
 } from '../lib/dashboardState'
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
@@ -34,6 +35,16 @@ import StatusCard from '../components/dashboard/StatusCard'
 import TrainingCard from '../components/dashboard/TrainingCard'
 import VoterStatusCard from '../components/dashboard/VoterStatusCard'
 import WorkspaceDock from '../components/WorkspaceDock'
+
+const VOTER_WORKSPACE_EXPANDED_KEY = 'campaignos-voter-workspace-expanded'
+
+function readVoterWorkspaceExpanded(): boolean {
+  try {
+    return sessionStorage.getItem(VOTER_WORKSPACE_EXPANDED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 type DashboardProps = {
   /** Clears the dev-only React session in App (Supabase sign-out alone is not enough). */
@@ -56,6 +67,21 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     isDevAuthBypassEnabled() ? devBypassDisplayEmail() : null,
   )
   const [agentJonesOpen, setAgentJonesOpen] = useState(false)
+  const [voterWorkspaceExpanded, setVoterWorkspaceExpanded] = useState(false)
+  const voterMatchReadyRef = useRef(false)
+  const prevVoterMatchedRef = useRef(false)
+
+  const toggleVoterWorkspace = useCallback(() => {
+    setVoterWorkspaceExpanded((prev) => {
+      const next = !prev
+      try {
+        sessionStorage.setItem(VOTER_WORKSPACE_EXPANDED_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     if (isDevAuthBypassEnabled()) {
@@ -80,11 +106,22 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
       profile?.linked_voter_id != null && String(profile.linked_voter_id).trim() !== '',
     )
   const voterMatched = voterLinked
-  const identity = hasProgressIdentity(
-    voterMatched,
-    profile?.exception_request_status,
-  )
   const branchSet = Boolean(normalizeKey(profile?.onboarding_branch))
+
+  useEffect(() => {
+    if (isDevAuthBypassEnabled() || !profileId || !voterMatched || branchSet) return
+    let cancelled = false
+    void supabase
+      .from('campaign_profiles')
+      .update({ onboarding_branch: REGISTERED_ARKANSAS_VOTER_BRANCH })
+      .eq('id', profileId)
+      .then(({ error }) => {
+        if (!cancelled && !error) void refetch()
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [profileId, voterMatched, branchSet, refetch])
 
   useEffect(() => {
     if (voterMatched) {
@@ -94,6 +131,33 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only refetch when match flips; avoid tasks/training object identity churn
   }, [voterMatched, refetch, tasks.refetch, training.refetch])
+
+  useEffect(() => {
+    if (voterMatch.matchedLoading) return
+
+    if (!voterMatchReadyRef.current) {
+      voterMatchReadyRef.current = true
+      prevVoterMatchedRef.current = voterMatched
+      if (voterMatched) {
+        queueMicrotask(() => {
+          setVoterWorkspaceExpanded(readVoterWorkspaceExpanded())
+        })
+      }
+      return
+    }
+
+    if (voterMatched && !prevVoterMatchedRef.current) {
+      queueMicrotask(() => {
+        setVoterWorkspaceExpanded(false)
+      })
+      try {
+        sessionStorage.setItem(VOTER_WORKSPACE_EXPANDED_KEY, '0')
+      } catch {
+        /* ignore */
+      }
+    }
+    prevVoterMatchedRef.current = voterMatched
+  }, [voterMatched, voterMatch.matchedLoading])
 
   const nextStep = getNextStep({
     profile,
@@ -160,11 +224,21 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
 
           <NextStepCard step={nextStep} />
 
-          <div className="dash-two-col dash-two-col--compact">
+          {!branchSet ? (
+            <OnboardingBranchCard
+              profileId={profileId}
+              currentBranch={profile?.onboarding_branch}
+              onSaved={() => void refetch()}
+            />
+          ) : null}
+
+          <div
+            className={`dash-two-col dash-two-col--compact${voterMatched ? ' dash-two-col--post-match' : ''}`}
+          >
             <VoterStatusCard profile={profile} voterMatched={voterMatched} />
             <StatusCard title="Workspace snapshot" id="workspace-summary">
               <dl className="summary-grid">
-                <dt>Onboarding branch</dt>
+                <dt>Volunteer path</dt>
                 <dd>
                   {profile?.onboarding_branch != null &&
                   String(profile.onboarding_branch).trim() !== ''
@@ -212,14 +286,43 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
 
           <section
             id="voter-workspace"
-            className="voter-workspace-section stack-section"
+            className={`voter-workspace-section stack-section${
+              voterMatched && !voterWorkspaceExpanded
+                ? ' voter-workspace-section--collapsed'
+                : ''
+            }${voterMatched && voterWorkspaceExpanded ? ' voter-workspace-section--expanded' : ''}`}
             aria-label="Voter look up"
           >
             <h2 className="sr-only">Voter look up</h2>
             {voterMatch.matchedLoading ? (
               <p className="subtitle">Loading voter match…</p>
             ) : voterMatch.matched ? (
-              <VoterWidget voter={voterMatch.matched} />
+              <div className="voter-workspace-panel">
+                <div className="voter-workspace-panel-toolbar">
+                  <button
+                    type="button"
+                    className="btn-touch voter-workspace-toggle"
+                    onClick={toggleVoterWorkspace}
+                    aria-expanded={voterWorkspaceExpanded}
+                    aria-controls="voter-workspace-panel-body"
+                  >
+                    {voterWorkspaceExpanded
+                      ? 'Collapse voter workspace'
+                      : 'Expand voter workspace'}
+                  </button>
+                </div>
+                <div
+                  id="voter-workspace-panel-body"
+                  className="voter-workspace-panel-body"
+                >
+                  <VoterWidget
+                    voter={voterMatch.matched}
+                    panelMode={
+                      voterWorkspaceExpanded ? 'expanded' : 'compact'
+                    }
+                  />
+                </div>
+              </div>
             ) : profile?.linked_voter_id ? (
               <div className="card voter-resync-hint">
                 <p className="subtitle" style={{ margin: 0 }}>
@@ -236,8 +339,22 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
                   Refresh voter display
                 </button>
               </div>
-            ) : (
+            ) : !branchSet ? (
+              <div className="card voter-resync-hint">
+                <p className="subtitle" style={{ margin: 0 }}>
+                  Choose your volunteer path above. Registered Arkansas voters can
+                  look up their voter ID next; other paths use roster exception.
+                </p>
+              </div>
+            ) : isRegisteredArkansasVoterBranch(profile) ? (
               <VoterMatchForm vm={voterMatch} campaignProfileId={profileId} />
+            ) : (
+              <div className="card voter-resync-hint">
+                <p className="subtitle" style={{ margin: 0 }}>
+                  For your path, coordinators clear your roster via the exception
+                  request below — not the voter file lookup.
+                </p>
+              </div>
             )}
           </section>
 
@@ -248,14 +365,6 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             voterMatched={voterMatched}
             onSubmitted={() => void refetch()}
           />
-
-          {identity && !branchSet ? (
-            <OnboardingBranchCard
-              profileId={profileId}
-              currentBranch={profile?.onboarding_branch}
-              onSaved={() => void refetch()}
-            />
-          ) : null}
 
           <section
             id="workspace-cards"

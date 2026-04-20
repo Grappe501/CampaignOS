@@ -4,6 +4,7 @@ import {
   APPLICATION_USE_NOTICE,
   CAMPAIGN_PAID_FOR,
 } from '../brand/compliance'
+import SocialMediaIcon from './SocialMediaIcon'
 
 const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
 
@@ -29,13 +30,17 @@ export default function AppFooter() {
         <nav className="app-site-footer-social" aria-label="Campaign social media">
           {footer.social.map((s) => (
             <a
-              key={s.platform}
+              key={`${s.platform}-${s.url}`}
               href={s.url}
               target="_blank"
               rel="noopener noreferrer"
               className="app-site-footer-social-link"
+              aria-label={`${s.label} (opens in new tab)`}
+              title={s.label}
             >
-              {s.label}
+              <span className="app-site-footer-social-icon" aria-hidden>
+                <SocialMediaIcon platform={s.platform} />
+              </span>
             </a>
           ))}
         </nav>

@@ -1,6 +1,9 @@
 import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from './dashboardState'
-import { needsOnboardingPath } from './dashboardState'
+import {
+  isRegisteredArkansasVoterBranch,
+  needsOnboardingPath,
+} from './dashboardState'
 
 export type AgentJonesPrompt = {
   id: string
@@ -101,37 +104,42 @@ export function getAgentJonesGuidanceBundle(
   }
 
   if (slice === 'unmatched') {
+    const reg = isRegisteredArkansasVoterBranch(profile)
     return {
-      greeting: 'Let us anchor your identity before we route real tasks.',
-      stateExplanation:
-        'You do not yet have a voter file match or an approved roster exception, so the workspace keeps you in verification-first mode.',
+      greeting: 'Almost there — finish roster clearance for your path.',
+      stateExplanation: reg
+        ? 'You chose the Arkansas voter path. Complete self-match in the voter workspace, or switch paths if that is no longer right.'
+        : 'You chose a path that skips voter-file lookup. Coordinators clear you via the roster exception card.',
       prompts: [
         {
           id: 'un-how-verify',
-          label: 'How do I verify?',
-          response:
-            'Use the voter workspace below: enter the details the form asks for so we can attempt a self-match against the public voter file.',
-          scrollToId: 'voter-workspace',
+          label: reg ? 'How do I verify?' : 'What goes in the exception?',
+          response: reg
+            ? 'Use the voter workspace: enter the details the form asks for so we can self-match against the public voter file.'
+            : 'Short, honest context (youth, out-of-state supporter, staff placement, etc.) — nothing sensitive. Submit once and wait for review.',
+          scrollToId: reg ? 'voter-workspace' : 'exception-request',
         },
         {
           id: 'un-not-in-file',
-          label: 'I am not in the voter file',
-          response:
-            'Use the roster exception card. Short, honest context (youth, out-of-state supporter, staff placement, etc.) helps coordinators approve faster.',
-          scrollToId: 'exception-request',
+          label: reg ? 'I am not in the voter file' : 'Can I self-match instead?',
+          response: reg
+            ? 'Go back to the path selector, pick the option that fits (youth, remote, etc.), then use the roster exception flow.'
+            : 'If you are actually in the Arkansas file, change your path to Registered Arkansas voter and use voter lookup.',
+          scrollToId: reg ? 'onboarding-branch' : 'onboarding-branch',
         },
         {
           id: 'un-why-matter',
           label: 'Why does this matter?',
           response:
-            'Campaigns must keep elevated tools tied to real people. Self-match or an approved exception proves you belong in the roster before sensitive queues open.',
+            'Campaigns keep elevated tools tied to real people. Self-match or an approved exception proves you belong in the roster before sensitive queues open.',
         },
         {
           id: 'un-go-verify',
-          label: 'Take me to verification',
-          response:
-            'Scrolling you to the voter workspace block so you can start or resume self-match.',
-          scrollToId: 'voter-workspace',
+          label: reg ? 'Take me to voter lookup' : 'Take me to roster exception',
+          response: reg
+            ? 'Scrolling you to the voter workspace so you can start or resume self-match.'
+            : 'Scrolling you to the roster exception card.',
+          scrollToId: reg ? 'voter-workspace' : 'exception-request',
         },
       ],
     }
@@ -139,34 +147,33 @@ export function getAgentJonesGuidanceBundle(
 
   if (slice === 'matched_no_branch') {
     return {
-      greeting: 'Great — you are matched. One more fork before routing deepens.',
+      greeting: 'Start with one choice — it sets up everything below.',
       stateExplanation:
-        'Your voter identity is on file, but onboarding branch is still empty. Captains use that branch to pick playbooks, training tracks, and pod defaults.',
+        'Pick the volunteer path that fits you first. Arkansas-registered volunteers go to voter lookup next; everyone else starts roster exception instead.',
       prompts: [
         {
           id: 'mb-why-branch',
-          label: 'Why pick a branch?',
+          label: 'Why is this first?',
           response:
-            'It tells HQ whether you are Arkansas-registered, remote support, youth, staff-placed, etc. Each path unlocks different cards and future task types.',
+            'It routes you to the right clearance step immediately so you are not asked to verify twice or in the wrong order.',
         },
         {
           id: 'mb-how-choose',
           label: 'How do I choose?',
           response:
-            'Read each row, tap the option that fits, then save once. You can discuss with your captain if you are unsure — honesty beats guessing.',
+            'Read each row, tap the option that fits, then save. You can discuss with your captain if you are unsure.',
           scrollToId: 'onboarding-branch',
         },
         {
           id: 'mb-wrong',
           label: 'What if I pick the wrong one?',
           response:
-            'Tell your captain early. They can help you correct it before assignments harden — better now than after canvass lists are cut.',
+            'Tell your captain early. They can help you correct it before assignments harden.',
         },
         {
           id: 'mb-open-selector',
-          label: 'Open the branch selector',
-          response:
-            'Scrolling you to the onboarding branch card so you can finish the selection.',
+          label: 'Open the path selector',
+          response: 'Scrolling you to the path card to finish the selection.',
           scrollToId: 'onboarding-branch',
         },
       ],

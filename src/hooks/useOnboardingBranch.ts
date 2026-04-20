@@ -10,10 +10,10 @@ export function useOnboardingBranch(
   const [error, setError] = useState<string | null>(null)
 
   const save = useCallback(
-    async (branch: OnboardingBranchValue) => {
+    async (branch: OnboardingBranchValue): Promise<boolean> => {
       if (!profileId) {
         setError('No campaign profile.')
-        return
+        return false
       }
       setSaving(true)
       setError(null)
@@ -25,9 +25,10 @@ export function useOnboardingBranch(
       setSaving(false)
       if (e) {
         setError(e.message)
-        return
+        return false
       }
       onSaved()
+      return true
     },
     [profileId, onSaved],
   )

@@ -68,6 +68,7 @@ export type NextStepKind =
   | 'loading'
   | 'exception_pending'
   | 'verify_voter'
+  | 'roster_exception'
   | 'select_branch'
   | 'choose_onboarding'
   | 'ready'
@@ -86,6 +87,17 @@ export function normalizeKey(s: unknown): string {
   return String(s ?? '')
     .trim()
     .toLowerCase()
+}
+
+/** Stored in `campaign_profiles.onboarding_branch` — voter self-match path. */
+export const REGISTERED_ARKANSAS_VOTER_BRANCH = 'registered_arkansas_voter' as const
+
+export function needsOnboardingBranchSelection(profile: CampaignProfile | null): boolean {
+  return !normalizeKey(profile?.onboarding_branch)
+}
+
+export function isRegisteredArkansasVoterBranch(profile: CampaignProfile | null): boolean {
+  return normalizeKey(profile?.onboarding_branch) === REGISTERED_ARKANSAS_VOTER_BRANCH
 }
 
 export function hasProgressIdentity(
@@ -176,28 +188,38 @@ export function getNextStep(input: {
     }
   }
 
+  if (needsOnboardingBranchSelection(profile)) {
+    return {
+      kind: 'select_branch',
+      title: 'Start here: choose your volunteer path',
+      description:
+        'Registered Arkansas voters continue to voter ID self-match. Other paths use a short roster exception instead — same page, clearer order.',
+      ctaLabel: 'Open path selector',
+      ctaTargetId: 'onboarding-branch',
+    }
+  }
+
   const identity = hasProgressIdentity(voterMatched, ex)
 
-  if (!identity) {
+  if (!identity && isRegisteredArkansasVoterBranch(profile)) {
     return {
       kind: 'verify_voter',
-      title: 'Verify your voter registration',
+      title: 'Find your record in the voter file',
       description:
-        'Self-match is fastest when you are in the voter file. If you cannot match (youth, out-of-state, staff placement, etc.), submit a short roster exception below — no email blast required for this step.',
-      ctaLabel: 'Go to verification',
+        'Use the voter lookup below with your name, date of birth, and county so we can link your registration.',
+      ctaLabel: 'Go to voter lookup',
       ctaTargetId: 'voter-workspace',
     }
   }
 
-  const branch = normalizeKey(profile?.onboarding_branch)
-  if (!branch) {
+  if (!identity) {
     return {
-      kind: 'select_branch',
-      title: 'Choose your onboarding branch',
+      kind: 'roster_exception',
+      title: 'Request roster clearance for your path',
       description:
-        'Pick the path that fits you. This is required once before deeper workspace setup — one tap per row, then save.',
-      ctaLabel: 'Open branch selector',
-      ctaTargetId: 'onboarding-branch',
+        'Your path does not use voter-file self-match. Add a short note for coordinators — they will approve or follow up.',
+      ctaLabel: 'Open roster exception',
+      ctaTargetId: 'exception-request',
     }
   }
 
@@ -240,12 +262,11 @@ export function getDashboardProgressSlice(input: {
   if (isExceptionPending(ex)) {
     return 'exception_pending'
   }
+  if (needsOnboardingBranchSelection(profile)) {
+    return 'matched_no_branch'
+  }
   if (!hasProgressIdentity(voterMatched, ex)) {
     return 'unmatched'
-  }
-  const branch = normalizeKey(profile?.onboarding_branch)
-  if (!branch) {
-    return 'matched_no_branch'
   }
   return 'matched_ready'
 }
@@ -284,14 +305,18 @@ export function getFirstTaskCardModel(input: {
   }
 
   if (slice === 'unmatched') {
+    const reg = isRegisteredArkansasVoterBranch(profile)
     return mergeStructuredWorkspaceCard(
       {
-        title: 'Verify identity to receive tasks',
-        explanation:
-          'Self-match or an approved roster exception unlocks canvass, phone bank, and data tasks tied to your precinct.',
+        title: reg
+          ? 'Verify identity to receive tasks'
+          : 'Roster clearance for your path',
+        explanation: reg
+          ? 'Complete voter self-match below, or switch your path if you need a coordinator exception instead.'
+          : 'Submit a short roster exception. Coordinators approve paths that do not use the Arkansas voter file.',
         primaryCta: {
-          label: 'Go to verification',
-          targetId: 'voter-workspace',
+          label: reg ? 'Go to voter lookup' : 'Open roster exception',
+          targetId: reg ? 'voter-workspace' : 'exception-request',
         },
       },
       structured,
@@ -301,11 +326,11 @@ export function getFirstTaskCardModel(input: {
   if (slice === 'matched_no_branch') {
     return mergeStructuredWorkspaceCard(
       {
-        title: 'Choose your path before task routing',
+        title: 'Pick your path first',
         explanation:
-          'Your branch tells the campaign which playbooks and captains to use — one quick selection unlocks the right task queue.',
+          'One choice routes you to voter lookup or to a coordinator exception — then tasks and training align with how you are joining the campaign.',
         primaryCta: {
-          label: 'Open branch selector',
+          label: 'Open path selector',
           targetId: 'onboarding-branch',
         },
       },
@@ -371,14 +396,16 @@ export function getTrainingCardModel(input: {
   }
 
   if (slice === 'unmatched') {
+    const reg = isRegisteredArkansasVoterBranch(profile)
     return mergeStructuredWorkspaceCard(
       {
         title: 'Training unlocks with roster clearance',
-        explanation:
-          'Volunteer Basics and compliance modules open once we know you are an approved volunteer or an approved exception.',
+        explanation: reg
+          ? 'Finish voter self-match (or an approved exception if you change paths) to open Volunteer Basics and tool walkthroughs.'
+          : 'After coordinators approve your exception, training tracks unlock for your volunteer path.',
         primaryCta: {
-          label: 'Start verification',
-          targetId: 'voter-workspace',
+          label: reg ? 'Go to voter lookup' : 'Open roster exception',
+          targetId: reg ? 'voter-workspace' : 'exception-request',
         },
       },
       structured,
@@ -388,11 +415,11 @@ export function getTrainingCardModel(input: {
   if (slice === 'matched_no_branch') {
     return mergeStructuredWorkspaceCard(
       {
-        title: 'Pick a branch for tailored training',
+        title: 'Choose your path for tailored training',
         explanation:
-          'Canvass, remote, and youth tracks differ — select your onboarding branch so the right modules surface next.',
+          'Canvass, remote, and youth tracks differ — pick the option that fits you first, then verification or roster clearance.',
         primaryCta: {
-          label: 'Select your branch',
+          label: 'Select your path',
           targetId: 'onboarding-branch',
         },
       },

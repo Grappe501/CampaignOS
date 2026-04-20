@@ -191,7 +191,7 @@ export default function VoterMatchForm({
       ) : null}
 
       {vm.candidates.length > 0 ? (
-        <div className="stack-section">
+        <div className="stack-section" id="voter-confirm-record">
           <h3 style={{ fontSize: 'clamp(1.1rem, 2vw + 0.5rem, 1.35rem)', margin: 0 }}>
             Confirm your record
           </h3>

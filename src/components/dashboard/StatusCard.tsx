@@ -5,18 +5,21 @@ export default function StatusCard({
   id,
   children,
   compact,
+  className,
 }: {
   title: string
   id?: string
   children: ReactNode
   /** Tighter padding and heading — for dense dashboard tiles. */
   compact?: boolean
+  className?: string
 }) {
   const baseId = id ?? `status-${title.replace(/\W+/g, '-').toLowerCase()}`
+  const cls = ['card', 'stack-section', compact ? 'card--compact' : '', className ?? '']
+    .filter(Boolean)
+    .join(' ')
   return (
-    <section
-      className={`card stack-section${compact ? ' card--compact' : ''}`}
-      id={id}
+    <section className={cls} id={id}
       aria-labelledby={`${baseId}-h`}
     >
       <h2

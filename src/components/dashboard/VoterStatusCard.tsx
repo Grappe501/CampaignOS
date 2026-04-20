@@ -25,7 +25,12 @@ export default function VoterStatusCard({
     : ''
 
   return (
-    <StatusCard title="Voter status" id="voter-status-card" compact>
+    <StatusCard
+      title="Voter status"
+      id="voter-status-card"
+      compact
+      className={voterMatched ? 'voter-status-card--matched' : undefined}
+    >
       <p className="voter-status-strip">
         <strong>{voterMatched ? 'Verified' : 'Not verified'}</strong>
         {vid ? (
