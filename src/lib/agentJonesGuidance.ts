@@ -4,6 +4,12 @@ import {
   isRegisteredArkansasVoterBranch,
   needsOnboardingPath,
 } from './dashboardState'
+import type { MomentumAction } from './onboardingMomentum'
+import {
+  findMicroCommitment,
+  getMicroCommitmentsForDirection,
+  getMomentumGuidancePhase,
+} from './onboardingMomentum'
 
 export type AgentJonesPrompt = {
   id: string
@@ -13,6 +19,8 @@ export type AgentJonesPrompt = {
   scrollToId?: string
   /** When set, this chip came from a prior AI reply (not the static roster bundle). */
   followUpSourceId?: string
+  /** Persist guided momentum (no wizard; optional onboarding). */
+  momentumAction?: MomentumAction
 }
 
 export type AgentJonesGuidanceBundle = {
@@ -33,12 +41,121 @@ function orientationLeft(profile: CampaignProfile | null): boolean {
   return needsOnboardingPath(profile)
 }
 
+function buildMomentumOnboardingBundle(
+  profile: CampaignProfile | null,
+): AgentJonesGuidanceBundle | null {
+  const phase = getMomentumGuidancePhase(profile)
+  if (!phase) return null
+
+  if (phase === 'direction') {
+    return {
+      greeting: 'Hey — I am Agent Jones. No forms, no homework.',
+      stateExplanation:
+        'Tap what sounds like you today. Everything is optional; the dashboard stays open either way. This just gives us direction.',
+      prompts: [
+        {
+          id: 'mom-dir-talk',
+          label: 'Talk to people',
+          response:
+            'Love it. Relationship organizing is our edge — small circles, honest asks, follow-up you actually do.',
+          momentumAction: { type: 'set_direction', key: 'talk_to_people' },
+        },
+        {
+          id: 'mom-dir-show',
+          label: 'Show up locally',
+          response:
+            'Visibility matters — shifts, tables, office nights. We will get you one credible date on the calendar.',
+          momentumAction: { type: 'set_direction', key: 'show_up_locally' },
+        },
+        {
+          id: 'mom-dir-behind',
+          label: 'Help behind the scenes',
+          response:
+            'Quiet work keeps the field loud — data, calls, finance, event prep. Reliability beats heroics.',
+          momentumAction: { type: 'set_direction', key: 'help_behind_scenes' },
+        },
+        {
+          id: 'mom-dir-spread',
+          label: 'Spread the word',
+          response:
+            'Amplify truthfully — your voice plus HQ-approved content reaches people who already trust you.',
+          momentumAction: { type: 'set_direction', key: 'spread_the_word' },
+        },
+        {
+          id: 'mom-dir-browse',
+          label: 'I will just look around first',
+          response:
+            'Perfect. Explore at your pace — voter path, training cards, whatever you need. Tap me anytime.',
+          momentumAction: { type: 'advance_engaged', mode: 'from_direction_skip' },
+        },
+      ],
+    }
+  }
+
+  if (phase === 'micro') {
+    const dir = String(profile?.onboarding_direction_key ?? '').trim()
+    const micros = getMicroCommitmentsForDirection(dir)
+    const prompts: AgentJonesPrompt[] = micros.map((m) => ({
+      id: `mom-micro-${m.key}`,
+      label: m.label,
+      response: m.response,
+      momentumAction: { type: 'set_micro', key: m.key },
+    }))
+    prompts.push({
+      id: 'mom-micro-skip',
+      label: 'Not today — keep it light',
+      response:
+        'No guilt. Momentum can wait. When you are ready, open this panel again and we will pick a smaller step.',
+      momentumAction: { type: 'advance_engaged', mode: 'from_micro_skip' },
+    })
+    return {
+      greeting: 'Quick next beat — pick one tiny commitment.',
+      stateExplanation:
+        'Micro-steps build trust. Choose one you can finish this week, or skip — nothing is gated.',
+      prompts,
+    }
+  }
+
+  const dir = String(profile?.onboarding_direction_key ?? '').trim()
+  const microKey = String(profile?.onboarding_micro_commitment_key ?? '').trim()
+  const picked = findMicroCommitment(dir, microKey)
+  const label = picked?.label ?? 'your step'
+
+  return {
+    greeting: 'You chose a real-world step — that is the whole game.',
+    stateExplanation: `${label} — keep it human, keep it honest. Small promises kept beat big promises broken.`,
+    prompts: [
+      {
+        id: 'mom-ref-why',
+        label: 'Why tiny steps win',
+        response:
+          'Campaigns are marathons dressed as sprints. One kept commitment builds the habit that scales your pod.',
+      },
+      {
+        id: 'mom-ref-captain',
+        label: 'Who do I tell when I am done?',
+        response:
+          'Your county captain or HQ contact — quick note is enough so we can celebrate and route the next ask.',
+      },
+      {
+        id: 'mom-ref-got',
+        label: 'On it — thanks',
+        response:
+          'That is momentum. I will stay out of your way — dashboard stays yours; tap me when you want the next nudge.',
+        momentumAction: { type: 'advance_engaged', mode: 'from_reinforce_done' },
+      },
+    ],
+  }
+}
+
 export function getAgentJonesGuidanceBundle(
   input: AgentJonesGuidanceInput,
 ): AgentJonesGuidanceBundle {
   const { slice, profile, voterLoading } = input
 
   if (voterLoading) {
+    const momentumWhileLoading = buildMomentumOnboardingBundle(profile)
+    if (momentumWhileLoading) return momentumWhileLoading
     return {
       greeting: 'Hang tight — I am syncing your roster link.',
       stateExplanation:
@@ -65,6 +182,9 @@ export function getAgentJonesGuidanceBundle(
       ],
     }
   }
+
+  const momentumBundle = buildMomentumOnboardingBundle(profile)
+  if (momentumBundle) return momentumBundle
 
   if (slice === 'exception_pending') {
     return {

@@ -1228,7 +1228,7 @@
   border-radius: 999px;
   object-fit: cover;
   /* Favor upper third of source art so the face sits in the circle, not the chest. */
-  object-position: center 16%;
+  object-position: center 51%;
   border: 2px solid rgba(237, 163, 86, 0.45);
   box-shadow: var(--shadow);
   background: rgba(247, 240, 228, 0.6);
@@ -1384,7 +1384,7 @@
   height: 56px;
   border-radius: 999px;
   object-fit: cover;
-  object-position: center 16%;
+  object-position: center 51%;
   border: 2px solid rgba(237, 163, 86, 0.45);
   box-shadow: var(--shadow);
   background: rgba(247, 240, 228, 0.6);

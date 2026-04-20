@@ -10,6 +10,8 @@ Apply SQL in `migrations/` sorted by filename (timestamp prefix):
 4. `20260420180000_workspace_tasks_training.sql` — workspace task/training catalog + per-profile progress + seed + trigger  
 5. `20260421140000_fix_signup_triggers_and_profile_pk.sql` — fix sign-up: profile `id = user_id`, trigger owners, INSERT grants  
 6. `20260421150000_ensure_profile_rpc_drop_auth_trigger.sql` — **recommended:** drop `auth.users` profile trigger; add `ensure_campaign_profile()` RPC (client creates row after session exists)  
+7. `20260424100000_onboarding_welcome_kit_tables.sql` — onboarding modules, lanes, talk tracks, values (Welcome Kit + org outline model)  
+8. `20260424100001_onboarding_welcome_kit_seed.sql` — seed for `chris-jones-for-congress`; replace copy when source docs land in `content/onboarding-source/`  
 
 **Hosted project:** Supabase Dashboard → SQL Editor (paste each file), or CLI:
 

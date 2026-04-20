@@ -12,6 +12,7 @@ export type FloatingAgentJonesProps = {
   matchedVoter?: MatchedVoterDisplayRow | null
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  onProfileRefresh?: () => void | Promise<void>
 }
 
 export default function FloatingAgentJones({
@@ -22,6 +23,7 @@ export default function FloatingAgentJones({
   matchedVoter,
   open: controlledOpen,
   onOpenChange,
+  onProfileRefresh,
 }: FloatingAgentJonesProps) {
   const panelId = useId()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
@@ -103,6 +105,7 @@ export default function FloatingAgentJones({
                 matchedVoter={matchedVoter}
                 persistSession
                 sectionClassName="agent-jones-floating-surface stack-section"
+                onProfileRefresh={onProfileRefresh}
               />
             </div>
           </div>

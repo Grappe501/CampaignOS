@@ -1,7 +1,7 @@
 {
   "name": "campaignos",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "setup:env": "node scripts/setup-env.mjs",

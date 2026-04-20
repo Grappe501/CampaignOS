@@ -1,0 +1,43 @@
+{
+  "campaign_slug": "chris-jones-for-congress",
+  "source_files": [
+    {
+      "path": "content/onboarding-source/Volunteer Welcome Kit.md",
+      "document_key": "volunteer_welcome_kit",
+      "maps_to_tables": [
+        "campaign_onboarding_modules",
+        "campaign_onboarding_sections",
+        "campaign_onboarding_prompts",
+        "campaign_values",
+        "volunteer_talk_tracks",
+        "volunteer_accountability_rules",
+        "volunteer_growth_paths"
+      ]
+    },
+    {
+      "path": "content/onboarding-source/Vol organization (2).pptx",
+      "document_key": "volunteer_org_outline",
+      "maps_to_tables": [
+        "volunteer_lanes",
+        "volunteer_lane_specialties",
+        "volunteer_first_actions"
+      ]
+    }
+  ],
+  "onboarding_flow_module_keys": [
+    "welcome_purpose",
+    "how_we_work_together",
+    "how_we_grow",
+    "pick_your_lane",
+    "first_actions",
+    "messaging_show_up",
+    "escalation_when_unsure"
+  ],
+  "initial_lane_keys": [
+    "voter_registration_county_captain",
+    "power_of_five_evangelist",
+    "fundraising_hero",
+    "campaign_ambassador",
+    "event_management"
+  ]
+}

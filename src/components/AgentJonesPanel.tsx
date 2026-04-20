@@ -22,6 +22,72 @@ import {
   loadAgentJonesPersisted,
   saveAgentJonesPersisted,
 } from '../lib/agentJonesSessionStorage'
+import { supabase } from '../lib/supabaseClient'
+import type { MomentumAction } from '../lib/onboardingMomentum'
+import { isDevAuthBypassEnabled } from '../lib/devAuth'
+import { applyDevOnboardingMomentumAction } from '../lib/devOnboardingMomentum'
+
+async function persistMomentumAction(
+  profileId: string | undefined,
+  action: MomentumAction,
+): Promise<void> {
+  if (isDevAuthBypassEnabled()) {
+    applyDevOnboardingMomentumAction(action)
+    return
+  }
+  if (!profileId) return
+
+  if (action.type === 'set_direction') {
+    const { error } = await supabase
+      .from('campaign_profiles')
+      .update({
+        onboarding_momentum_state: 'exploring',
+        onboarding_direction_key: action.key,
+      })
+      .eq('id', profileId)
+    if (error) console.error('Momentum direction update:', error)
+    return
+  }
+  if (action.type === 'set_micro') {
+    const { error } = await supabase
+      .from('campaign_profiles')
+      .update({
+        onboarding_momentum_state: 'committed',
+        onboarding_micro_commitment_key: action.key,
+      })
+      .eq('id', profileId)
+    if (error) console.error('Momentum micro update:', error)
+    return
+  }
+  if (action.mode === 'from_direction_skip') {
+    const { error } = await supabase
+      .from('campaign_profiles')
+      .update({
+        onboarding_momentum_state: 'engaged',
+        onboarding_direction_key: null,
+        onboarding_micro_commitment_key: null,
+      })
+      .eq('id', profileId)
+    if (error) console.error('Momentum skip direction:', error)
+    return
+  }
+  if (action.mode === 'from_micro_skip') {
+    const { error } = await supabase
+      .from('campaign_profiles')
+      .update({
+        onboarding_momentum_state: 'engaged',
+        onboarding_micro_commitment_key: null,
+      })
+      .eq('id', profileId)
+    if (error) console.error('Momentum skip micro:', error)
+    return
+  }
+  const { error } = await supabase
+    .from('campaign_profiles')
+    .update({ onboarding_momentum_state: 'engaged' })
+    .eq('id', profileId)
+  if (error) console.error('Momentum reinforce done:', error)
+}
 
 function stringsToFollowUps(items: string[]): AgentJonesPrompt[] {
   return items.map((label, i) => ({
@@ -42,6 +108,8 @@ export type AgentJonesPanelProps = {
   persistSession?: boolean
   /** Optional class on root section (floating uses different surface). */
   sectionClassName?: string
+  /** After momentum DB updates, refresh parent profile (floating panel). */
+  onProfileRefresh?: () => void | Promise<void>
 }
 
 export default function AgentJonesPanel({
@@ -52,6 +120,7 @@ export default function AgentJonesPanel({
   matchedVoter,
   persistSession = false,
   sectionClassName,
+  onProfileRefresh,
 }: AgentJonesPanelProps) {
   const persisted = useMemo(() => loadAgentJonesPersisted(), [])
   const bundle = useMemo(
@@ -140,6 +209,15 @@ export default function AgentJonesPanel({
     setAiError(null)
     if (prompt.scrollToId) {
       scrollToDashboardId(prompt.scrollToId)
+    }
+
+    if (prompt.momentumAction) {
+      const pid =
+        profile?.id != null && profile.id !== ''
+          ? String(profile.id)
+          : undefined
+      await persistMomentumAction(pid, prompt.momentumAction)
+      await onProfileRefresh?.()
     }
 
     const isFollowUp = Boolean(prompt.followUpSourceId)

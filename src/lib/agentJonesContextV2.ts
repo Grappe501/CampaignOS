@@ -8,6 +8,9 @@ export type AgentJonesContextV2 = {
     role?: string | null
     onboarding_status?: string | null
     onboarding_branch?: string | null
+    onboarding_momentum_state?: string | null
+    onboarding_direction_key?: string | null
+    onboarding_micro_commitment_key?: string | null
     voterMatched: boolean
     precinct?: string | null
     county?: string | null
@@ -20,6 +23,25 @@ export type AgentJonesContextV2 = {
     shortBio?: string
     issuePillars?: { title: string; summary: string }[]
     ctas?: { label: string; url: string }[]
+    /** Welcome Kit + org outline model (server-safe excerpts). */
+    onboardingBrief?: {
+      flowSteps?: string[]
+      welcomePurpose?: string
+      howWeWork?: string
+      howWeGrow?: string
+      pickLane?: string
+      firstActions?: string
+      messaging?: string
+      escalation?: string
+      valueTitles?: string[]
+      laneOptions?: {
+        key: string
+        title: string
+        summary?: string
+        firstAction?: string
+      }[]
+      talkTrackTitles?: string[]
+    }
   }
   operational: {
     progressSlice: DashboardProgressSlice
@@ -60,6 +82,12 @@ export function buildAgentJonesContextV2(input: {
       role: trunc(profile?.primary_role, 120),
       onboarding_status: trunc(profile?.onboarding_status, 120),
       onboarding_branch: trunc(profile?.onboarding_branch, 120),
+      onboarding_momentum_state: trunc(profile?.onboarding_momentum_state, 32),
+      onboarding_direction_key: trunc(profile?.onboarding_direction_key, 64),
+      onboarding_micro_commitment_key: trunc(
+        profile?.onboarding_micro_commitment_key,
+        64,
+      ),
       voterMatched: safeBool(voterMatched),
       precinct: trunc(matchedVoter?.precinct_name, 140),
       county: trunc(matchedVoter?.county, 120),

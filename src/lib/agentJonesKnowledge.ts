@@ -5,6 +5,7 @@ import {
   getCampaignKnowledgeSnippets,
   getCampaignSlogan,
 } from './campaignKnowledge'
+import { getOnboardingBriefForAgent } from './onboardingCampaignModel'
 
 /**
  * Pull a *small* public campaign context snapshot from ingestion tables.
@@ -21,7 +22,7 @@ export async function getRelevantCampaignContext(input: {
 
   const out: NonNullable<AgentJonesContextV2['campaign']> = {}
 
-  const [slogan, issuePillars, ctas, bioSnippets] = await Promise.all([
+  const [slogan, issuePillars, ctas, bioSnippets, onboardingBrief] = await Promise.all([
     getCampaignSlogan({ campaignSlug }),
     getCampaignIssuePillars({ campaignSlug }),
     getCampaignCtas({ campaignSlug }),
@@ -32,6 +33,10 @@ export async function getRelevantCampaignContext(input: {
       onboardingBranch: input.context.user.onboarding_branch ?? null,
       limit: 2,
     }),
+    getOnboardingBriefForAgent({
+      campaignSlug,
+      onboardingBranch: input.context.user.onboarding_branch ?? null,
+    }),
   ])
 
   if (slogan) out.slogan = slogan
@@ -40,6 +45,8 @@ export async function getRelevantCampaignContext(input: {
 
   const bioLine = bioSnippets.find((s) => s.tags.includes('bio'))?.text ?? bioSnippets[0]?.text
   if (bioLine) out.shortBio = bioLine
+
+  if (onboardingBrief) out.onboardingBrief = onboardingBrief
 
   return out
 }

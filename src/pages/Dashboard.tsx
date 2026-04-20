@@ -416,6 +416,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           voterLoading={voterMatch.matchedLoading}
           voterMatched={voterMatched}
           matchedVoter={voterMatch.matched}
+          onProfileRefresh={() => void refetch()}
         />
       </main>
       <AppFooter />

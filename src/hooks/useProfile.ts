@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useDevMockDashboard } from './useDevMockDashboard'
 import { getDevMockProfile, isDevAuthBypassEnabled } from '../lib/devAuth'
+import { readDevOnboardingMomentumPatch } from '../lib/devOnboardingMomentum'
 import { ensureCampaignProfile } from '../lib/ensureCampaignProfile'
 import { supabase } from '../lib/supabaseClient'
 
@@ -16,6 +17,9 @@ export type CampaignProfile = {
   active_space?: string | null
   onboarding_status?: string | null
   onboarding_branch?: string | null
+  onboarding_momentum_state?: string | null
+  onboarding_direction_key?: string | null
+  onboarding_micro_commitment_key?: string | null
   exception_request_status?: string | null
   exception_request_note?: string | null
   exception_requested_at?: string | null
@@ -25,13 +29,21 @@ export function useProfile() {
   const bypass = isDevAuthBypassEnabled()
   const { mockState } = useDevMockDashboard()
   const [profile, setProfile] = useState<CampaignProfile | null>(() =>
-    bypass ? (getDevMockProfile(mockState) as CampaignProfile) : null,
+    bypass
+      ? ({
+          ...(getDevMockProfile(mockState) as CampaignProfile),
+          ...readDevOnboardingMomentumPatch(),
+        } as CampaignProfile)
+      : null,
   )
   const [loading, setLoading] = useState(() => !bypass)
 
   const refetch = useCallback(async () => {
     if (isDevAuthBypassEnabled()) {
-      setProfile(getDevMockProfile(mockState) as CampaignProfile)
+      setProfile({
+        ...(getDevMockProfile(mockState) as CampaignProfile),
+        ...readDevOnboardingMomentumPatch(),
+      } as CampaignProfile)
       return
     }
 
@@ -88,7 +100,10 @@ export function useProfile() {
     let cancelled = false
     queueMicrotask(() => {
       if (!cancelled) {
-        setProfile(getDevMockProfile(mockState) as CampaignProfile)
+        setProfile({
+          ...(getDevMockProfile(mockState) as CampaignProfile),
+          ...readDevOnboardingMomentumPatch(),
+        } as CampaignProfile)
       }
     })
     return () => {

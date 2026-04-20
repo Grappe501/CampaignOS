@@ -6,11 +6,33 @@
  * independently so this bundle stays self-contained.
  */
 
+type AgentJonesOnboardingBrief = {
+  flowSteps?: string[]
+  welcomePurpose?: string
+  howWeWork?: string
+  howWeGrow?: string
+  pickLane?: string
+  firstActions?: string
+  messaging?: string
+  escalation?: string
+  valueTitles?: string[]
+  laneOptions?: {
+    key: string
+    title: string
+    summary?: string
+    firstAction?: string
+  }[]
+  talkTrackTitles?: string[]
+}
+
 type AgentJonesSafeContextV2 = {
   user: {
     role?: string | null
     onboarding_status?: string | null
     onboarding_branch?: string | null
+    onboarding_momentum_state?: string | null
+    onboarding_direction_key?: string | null
+    onboarding_micro_commitment_key?: string | null
     voterMatched: boolean
     precinct?: string | null
     county?: string | null
@@ -23,6 +45,7 @@ type AgentJonesSafeContextV2 = {
     shortBio?: string
     issuePillars?: { title: string; summary: string }[]
     ctas?: { label: string; url: string }[]
+    onboardingBrief?: AgentJonesOnboardingBrief
   }
   operational: {
     progressSlice:
@@ -54,6 +77,7 @@ type AgentJonesSafeContextLegacy = {
     shortBio?: string
     issuePillars?: { title: string; summary: string }[]
     ctas?: { label: string; url: string }[]
+    onboardingBrief?: AgentJonesOnboardingBrief
     contact?: { addressLabel?: string; addressUrl?: string }
     social?: { platform: string; label: string; url: string }[]
   }
@@ -122,7 +146,7 @@ function validateProfileHints(
 ): AgentJonesSafeContextLegacy['profileHints'] | undefined {
   if (raw === undefined || raw === null) return undefined
   if (!isRecord(raw)) return undefined
-  const out: NonNullable<AgentJonesSafeContext['profileHints']> = {}
+  const out: NonNullable<AgentJonesSafeContextLegacy['profileHints']> = {}
   const keys = [
     'onboarding_branch',
     'onboarding_status',
@@ -155,6 +179,78 @@ function validateUrl(raw: unknown, max: number): string | undefined {
   if (!/^https?:\/\//i.test(t)) return undefined
   if (/[<>\\"']/u.test(t)) return undefined
   return t
+}
+
+function validateOnboardingBrief(raw: unknown): AgentJonesOnboardingBrief | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const out: AgentJonesOnboardingBrief = {}
+
+  const fsRaw = raw.flowSteps
+  if (Array.isArray(fsRaw)) {
+    const flowSteps: string[] = []
+    for (const item of fsRaw.slice(0, 8)) {
+      const line = validateSummaryLine(item, 80)
+      if (line) flowSteps.push(line)
+    }
+    if (flowSteps.length) out.flowSteps = flowSteps
+  }
+
+  const strKeys = [
+    'welcomePurpose',
+    'howWeWork',
+    'howWeGrow',
+    'pickLane',
+    'firstActions',
+    'messaging',
+    'escalation',
+  ] as const
+  for (const k of strKeys) {
+    const v = validateSummaryLine(raw[k], 620)
+    if (v) out[k] = v
+  }
+
+  const vtRaw = raw.valueTitles
+  if (Array.isArray(vtRaw)) {
+    const valueTitles: string[] = []
+    for (const item of vtRaw.slice(0, 10)) {
+      const line = validateSummaryLine(item, 72)
+      if (line) valueTitles.push(line)
+    }
+    if (valueTitles.length) out.valueTitles = valueTitles
+  }
+
+  const ttRaw = raw.talkTrackTitles
+  if (Array.isArray(ttRaw)) {
+    const talkTrackTitles: string[] = []
+    for (const item of ttRaw.slice(0, 8)) {
+      const line = validateSummaryLine(item, 80)
+      if (line) talkTrackTitles.push(line)
+    }
+    if (talkTrackTitles.length) out.talkTrackTitles = talkTrackTitles
+  }
+
+  const loRaw = raw.laneOptions
+  if (Array.isArray(loRaw)) {
+    const laneOptions: NonNullable<AgentJonesOnboardingBrief['laneOptions']> = []
+    for (const item of loRaw.slice(0, 5)) {
+      if (!isRecord(item)) continue
+      const key = validateSummaryLine(item.key, 48)
+      const title = validateSummaryLine(item.title, 88)
+      if (!key || !title) continue
+      const summary = validateSummaryLine(item.summary, 240)
+      const firstAction = validateSummaryLine(item.firstAction, 320)
+      laneOptions.push({
+        key,
+        title,
+        ...(summary ? { summary } : {}),
+        ...(firstAction ? { firstAction } : {}),
+      })
+    }
+    if (laneOptions.length) out.laneOptions = laneOptions
+  }
+
+  return Object.keys(out).length ? out : undefined
 }
 
 function validateCampaign(
@@ -212,13 +308,17 @@ function validateCampaign(
     }
   }
 
-  const out: NonNullable<AgentJonesSafeContext['campaign']> = {}
+  const out: NonNullable<AgentJonesSafeContextLegacy['campaign']> = {}
   if (slogan) out.slogan = slogan
   if (shortBio) out.shortBio = shortBio
   if (issuePillars.length) out.issuePillars = issuePillars
   if (ctas.length) out.ctas = ctas
   if (contact && (contact.addressLabel || contact.addressUrl)) out.contact = contact
   if (social.length) out.social = social
+
+  const onboardingBrief = validateOnboardingBrief(raw.onboardingBrief)
+  if (onboardingBrief) out.onboardingBrief = onboardingBrief
+
   return Object.keys(out).length ? out : undefined
 }
 
@@ -230,6 +330,9 @@ function validateUser(raw: unknown): AgentJonesSafeContextV2['user'] | null {
     'role',
     'onboarding_status',
     'onboarding_branch',
+    'onboarding_momentum_state',
+    'onboarding_direction_key',
+    'onboarding_micro_commitment_key',
     'precinct',
     'county',
     'congressional_district',
@@ -280,6 +383,9 @@ function legacyToV2(raw: AgentJonesSafeContextLegacy): AgentJonesSafeContextV2 {
             ...(raw.campaign.shortBio ? { shortBio: raw.campaign.shortBio } : {}),
             ...(raw.campaign.issuePillars ? { issuePillars: raw.campaign.issuePillars } : {}),
             ...(raw.campaign.ctas ? { ctas: raw.campaign.ctas } : {}),
+            ...(raw.campaign.onboardingBrief
+              ? { onboardingBrief: raw.campaign.onboardingBrief }
+              : {}),
           },
         }
       : {}),
@@ -310,6 +416,9 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
               ...(campaign.shortBio ? { shortBio: campaign.shortBio } : {}),
               ...(campaign.issuePillars ? { issuePillars: campaign.issuePillars } : {}),
               ...(campaign.ctas ? { ctas: campaign.ctas } : {}),
+              ...(campaign.onboardingBrief
+                ? { onboardingBrief: campaign.onboardingBrief }
+                : {}),
             },
           }
         : {}),
@@ -335,8 +444,10 @@ Rules:
 - Progress is exactly one of: unmatched, matched_no_branch, exception_pending, matched_ready (dashboardContext.operational.progressSlice).
 - voterLoading means roster/voter linkage is still loading — be cautious/verification-first.
 - Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs) — ground wording and next-steps in it, but do not invent policy details.
+- If dashboardContext.campaign.onboardingBrief exists, it is the structured Volunteer Welcome Kit + Organization Outline (culture, lane options, first actions, messaging, escalation). Use it for how we work, lane fit, first tasks, and when to escalate — still do not invent policy beyond what is written there.
 - Stay practical, supportive, and brief (mobile screens). No legal/medical advice. Do not ask for passwords, SSNs, or full document uploads.
 - Never reveal sensitive voter history. You may reference precinct/county/district if present.
+- If dashboardContext.user includes onboarding_momentum_state / onboarding_direction_key / onboarding_micro_commitment_key, the volunteer is in optional guided momentum (not a wizard). Honor their direction and micro-commitment when suggesting next steps; never imply they are blocked from the dashboard.
 
 dashboardContext:
 ${JSON.stringify(context)}
