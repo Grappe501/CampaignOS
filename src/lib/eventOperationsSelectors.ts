@@ -48,15 +48,23 @@ export function buildCountyOperationsRows(rows: CampaignCalendarEventRecord[]): 
       const op: EventOperationalStatus =
         (record.operational_status as EventOperationalStatus) ?? 'scheduled'
 
+      const completedRatio = workflowPercent / 100
+      const venueConfirmed = Boolean(record.venue_name?.trim())
+      const materialsConfirmed = completedRatio >= 0.35
+      const dataCaptureReady =
+        venueConfirmed ||
+        completedRatio >= 0.15 ||
+        (record.staffing_state != null && record.staffing_state !== 'unstaffed')
+
       const readiness = calculateEventReadiness({
         operationalStatus: op,
-        completedCriticalTaskRatio: workflowPercent / 100,
+        completedCriticalTaskRatio: completedRatio,
         staffingCoverageRatio: staffingCoverage,
         rsvpProgressRatio: null,
-        venueConfirmed: Boolean(record.venue_name || record.address_or_virtual),
-        materialsConfirmed: record.stage_status !== 'draft',
-        dataCaptureReady: record.staffing_state !== 'unstaffed',
-        followupOwnerAssigned: Boolean(record.followup_state && record.followup_state !== 'none'),
+        venueConfirmed,
+        materialsConfirmed,
+        dataCaptureReady,
+        followupOwnerAssigned: Boolean(record.owner_user_id),
       })
       readinessScore =
         record.readiness_score != null && !Number.isNaN(Number(record.readiness_score))

@@ -8,6 +8,16 @@ import type { EventOperationalStatus } from './campaignEventDomain'
 import { operationalStatusFromReadinessAndClock } from './campaignEventOperationalSync'
 import { fetchEventTaskRows } from './campaignEventTasksDb'
 import { supabase } from './supabaseClient'
+
+async function attendanceCountForEvent(eventId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('campaign_event_attendance')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_id', eventId)
+
+  if (error) return 0
+  return count ?? 0
+}
 import type { CampaignEventTypeKey } from './campaignEventTypeMatrix'
 import { getStaffingMatrixForEventType } from './eventStaffingMatrix'
 
@@ -62,8 +72,17 @@ export async function recomputeAndPersistEventReadiness(
   const venueName = input.row.venue_name != null ? String(input.row.venue_name) : ''
   const venueConfirmed = venueName.trim().length > 0
   const materialsConfirmed = completedCriticalTaskRatio >= 0.35
+  let attendanceCount = 0
+  try {
+    attendanceCount = await attendanceCountForEvent(eventId)
+  } catch {
+    attendanceCount = 0
+  }
   const dataCaptureReady =
-    venueConfirmed || completedCriticalTaskRatio >= 0.15 || tasks.length > 0
+    venueConfirmed ||
+    completedCriticalTaskRatio >= 0.15 ||
+    tasks.length > 0 ||
+    attendanceCount > 0
   const followupOwnerAssigned = input.row.owner_user_id != null
 
   const op = (input.row.operational_status as EventOperationalStatus) ?? 'planning'

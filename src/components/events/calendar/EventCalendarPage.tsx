@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CampaignCalendarEventRecord } from '../../../lib/campaignCalendarArchitecture'
 import { useCampaignEventsContext } from '../../../context/CampaignEventsContext'
 import type { CampaignCalendarViewMode } from '../../../lib/campaignCalendarSegmentEngine'
 import {
@@ -40,7 +39,7 @@ export default function EventCalendarPage({ persona }: EventCalendarPageProps) {
     return () => window.clearInterval(id)
   }, [])
 
-  const source = sourceFromCtx as readonly CampaignCalendarEventRecord[]
+  const { events: source, loading: eventsLoading, error: eventsError } = useCampaignEventsContext()
 
   const filtered = useMemo(
     () => applyCalendarPageFilters(source, persona, ui, nowMs),

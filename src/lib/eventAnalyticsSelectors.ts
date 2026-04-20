@@ -9,6 +9,7 @@ import type { CampaignEventTypeKey } from './campaignEventTypeMatrix'
 import { isCampaignEventTypeKey } from './eventStaffingMatrix'
 import { evaluateStaffingMatrix } from './eventStaffingMatrix'
 import { getDevStaffingAssignmentsForEvent } from './campaignEventStaffingDevFixtures'
+import { isFollowupOverdue, normalizeFollowupPhase } from './eventPostEventWorkflow'
 
 export type EventAnalyticsSnapshot = {
   totalEvents: number
@@ -33,6 +34,17 @@ function readinessFromWorkflow(run: EventWorkflowRun): number {
   return getWorkflowProgress(run).percent
 }
 
+/** Prefer persisted `readiness_score` (operational truth); else template workflow progress. */
+function effectiveReadinessPercent(row: CampaignCalendarEventRecord): number | null {
+  const persisted = row.readiness_score
+  if (persisted != null && !Number.isNaN(Number(persisted))) {
+    return Math.round(Number(persisted))
+  }
+  if (!isCampaignEventTypeKey(row.event_type)) return null
+  const run = createWorkflowForCalendarRecord(row, row.event_type)
+  return readinessFromWorkflow(run)
+}
+
 export function buildEventAnalyticsSnapshot(rows: CampaignCalendarEventRecord[]): EventAnalyticsSnapshot {
   const byCounty: Record<string, number> = {}
   const byType: Record<string, number> = {}
@@ -55,9 +67,8 @@ export function buildEventAnalyticsSnapshot(rows: CampaignCalendarEventRecord[])
     const wk = weekKey(r.start_at)
     density[wk] = (density[wk] ?? 0) + 1
 
-    if (isCampaignEventTypeKey(r.event_type)) {
-      const run = createWorkflowForCalendarRecord(r, r.event_type)
-      const pct = readinessFromWorkflow(run)
+    const pct = effectiveReadinessPercent(r)
+    if (pct != null) {
       readinessSum += pct
       readinessN += 1
       if (pct < 50) low += 1
@@ -102,7 +113,13 @@ export function deriveCoverageGaps(rows: CampaignCalendarEventRecord[]): Coverag
       })
     }
   }
-  if (rows.some((r) => r.followup_state === 'overdue')) {
+  const now = Date.now()
+  if (
+    rows.some(
+      (r) =>
+        normalizeFollowupPhase(r.followup_state) === 'overdue' || isFollowupOverdue(r, now),
+    )
+  ) {
     gaps.push({
       kind: 'followup_weak',
       label: 'Follow-up',

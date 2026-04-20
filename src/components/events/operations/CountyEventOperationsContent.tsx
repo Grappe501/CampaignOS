@@ -3,11 +3,7 @@ import { Link } from 'react-router-dom'
 import { useCampaignEventsContext } from '../../../context/CampaignEventsContext'
 import { campaignEventRecordPath } from '../../../lib/campaignEventSystem'
 import { CAMPAIGN_EVENT_TYPE_MATRIX } from '../../../lib/campaignEventTypeMatrix'
-import {
-  buildCountyOperationsRows,
-  filterCountyRows,
-  type CountyOperationsEventRow,
-} from '../../../lib/eventOperationsSelectors'
+import { buildCountyOperationsRows, filterCountyRows } from '../../../lib/eventOperationsSelectors'
 import { buildEventAnalyticsSnapshot } from '../../../lib/eventAnalyticsSelectors'
 import { deriveCoverageGaps } from '../../../lib/eventAnalyticsSelectors'
 import { EXTERNAL_PUBLISH_STATES } from '../../../lib/eventExternalPublishing'

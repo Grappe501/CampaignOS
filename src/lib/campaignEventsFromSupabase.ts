@@ -7,6 +7,7 @@ import type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture
 import { mapCampaignEventRowToCalendarRecord } from './campaignEventRowMapper'
 import { createEventFromTemplate } from './campaignEventDomainServices'
 import type { CampaignEventTypeKey } from './campaignEventTypeMatrix'
+import { isCampaignEventTypeKey } from './eventStaffingMatrix'
 import { seedEventTasksIfEmpty } from './campaignEventTasksDb'
 import { recomputeAndPersistEventReadiness } from './campaignEventReadinessPersistence'
 
@@ -77,7 +78,9 @@ export async function fetchCampaignEventsForCampaign(campaignId = 'default'): Pr
   }
 
   return {
-    events: (data ?? []).map((r) => mapCampaignEventRowToCalendarRecord(r as Record<string, unknown>)),
+    events: (data ?? []).map((r) =>
+      mapCampaignEventRowToCalendarRecord(r as unknown as Record<string, unknown>),
+    ),
     error: null,
   }
 }
@@ -94,7 +97,9 @@ export async function fetchCountyEvents(countyId: string): Promise<FetchCampaign
   }
 
   return {
-    events: (data ?? []).map((r) => mapCampaignEventRowToCalendarRecord(r as Record<string, unknown>)),
+    events: (data ?? []).map((r) =>
+      mapCampaignEventRowToCalendarRecord(r as unknown as Record<string, unknown>),
+    ),
     error: null,
   }
 }
@@ -117,7 +122,7 @@ export async function fetchCampaignEventById(eventId: string): Promise<{
   }
 
   return {
-    event: mapCampaignEventRowToCalendarRecord(data as Record<string, unknown>),
+    event: mapCampaignEventRowToCalendarRecord(data as unknown as Record<string, unknown>),
     error: null,
   }
 }
@@ -147,7 +152,7 @@ export async function insertCampaignEventFromTemplate(input: {
     if (fullRow) {
       await recomputeAndPersistEventReadiness(row.id, {
         eventType: input.templateKey,
-        row: fullRow as Record<string, unknown>,
+        row: fullRow as unknown as Record<string, unknown>,
       })
     }
   } catch (e) {
@@ -180,6 +185,26 @@ export async function insertEventAttendance(
   })
 
   if (error) return { error: new Error(error.message) }
+
+  try {
+    const { data: fullRow, error: rowErr } = await supabase
+      .from('campaign_events')
+      .select(EVENT_SELECT)
+      .eq('id', eventId)
+      .single()
+    if (rowErr || !fullRow || typeof fullRow !== 'object') return { error: null }
+    const row = fullRow as unknown as Record<string, unknown>
+    const et = String(row.event_type ?? '')
+    if (isCampaignEventTypeKey(et)) {
+      await recomputeAndPersistEventReadiness(eventId, {
+        eventType: et,
+        row,
+      })
+    }
+  } catch {
+    /* readiness is best-effort after check-in */
+  }
+
   return { error: null }
 }
 
