@@ -82,7 +82,7 @@ export default function AppFooter() {
 
         <div className="app-site-footer-bottom">
           <p className="app-site-footer-app-line">
-            <span className="app-site-footer-app-name">CampaignOS</span>
+            <span className="app-site-footer-app-name">Jones-OS</span>
             <span className="app-site-footer-app-sep">·</span>
             <span>Volunteer workspace for {brand.campaignName}</span>
           </p>

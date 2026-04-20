@@ -15,7 +15,24 @@ export const AGENT_JONES_SCROLL_TARGET_IDS = [
   'intern-desk',
   'campaign-kpis',
   'agent-jones',
+  'coordinator-mission-ops',
+  'candidate-health-snapshot',
 ] as const
+
+/** Paths the model may suggest via navigate actions (client + Netlify must stay aligned). */
+export const AGENT_JONES_NAVIGATE_PATHS = [
+  '/',
+  '/dashboard',
+  '/intern',
+  '/coordinator',
+  '/candidate',
+] as const
+
+export type AgentJonesNavigatePath = (typeof AGENT_JONES_NAVIGATE_PATHS)[number]
+
+export function isAgentJonesNavigatePath(id: string): id is AgentJonesNavigatePath {
+  return (AGENT_JONES_NAVIGATE_PATHS as readonly string[]).includes(id)
+}
 
 export type AgentJonesScrollTargetId =
   (typeof AGENT_JONES_SCROLL_TARGET_IDS)[number]

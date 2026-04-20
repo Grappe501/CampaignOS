@@ -228,8 +228,8 @@ export function getNextStep(input: {
       kind: 'choose_onboarding',
       title: 'Finish workspace orientation',
       description:
-        'Set your active space and onboarding status with your captain when prompted. This slice still uses cards only — conversational onboarding ships later.',
-      ctaLabel: 'Review workspace cards',
+        'Confirm your active space and onboarding status with your captain, then work through the training and first-task cards below.',
+      ctaLabel: 'Open training & tasks',
       ctaTargetId: 'workspace-cards',
     }
   }
@@ -238,8 +238,8 @@ export function getNextStep(input: {
     kind: 'ready',
     title: 'You are clear to move forward',
     description:
-      'Branch saved, identity on file, and orientation looks good. Agent Jones and the workspace cards are ready on any screen size.',
-    ctaLabel: 'Jump to Agent Jones',
+      'Branch saved, identity on file, and orientation looks good. Use Agent Jones for quick help and the sections below for missions, daily work, and goals.',
+    ctaLabel: 'Open Agent Jones',
     ctaTargetId: 'agent-jones',
   }
 }

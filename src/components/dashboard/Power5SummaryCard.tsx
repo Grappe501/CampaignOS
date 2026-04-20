@@ -23,7 +23,7 @@ export default function Power5SummaryCard({
       aria-labelledby="power5-dash-summary-title"
     >
       <h2 id="power5-dash-summary-title" className="page-title">
-        Power of 5 snapshot
+        Power of 5
       </h2>
       {loading ? (
         <p className="subtitle">Loading network…</p>
@@ -50,7 +50,7 @@ export default function Power5SummaryCard({
           )}
           {onOpenWorkspace ? (
             <button type="button" className="btn-touch btn-primary" onClick={onOpenWorkspace}>
-              Open full Power of 5 workspace
+              Open full workspace
             </button>
           ) : null}
         </>

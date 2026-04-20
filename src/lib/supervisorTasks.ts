@@ -82,3 +82,52 @@ export function completionRate(assignments: SupervisorAssignmentRow[]): number {
   if (assignments.length === 0) return 0
   return Math.round((done / assignments.length) * 100)
 }
+
+export type VolunteerTaskTemplateOption = {
+  template_key: string
+  title: string
+}
+
+/** Active mission templates (coordinator dispatch). */
+export async function fetchVolunteerTaskTemplateOptions(): Promise<
+  VolunteerTaskTemplateOption[]
+> {
+  if (isDevAuthBypassEnabled()) return []
+  const { data, error } = await supabase
+    .from('volunteer_task_templates')
+    .select('template_key, title')
+    .eq('is_active', true)
+    .order('title')
+
+  if (error) {
+    console.warn('volunteer_task_templates:', error.message)
+    return []
+  }
+  return (data ?? []) as VolunteerTaskTemplateOption[]
+}
+
+/**
+ * Enqueue a mission for a volunteer on a team you supervise.
+ * Uses `volunteer_assign_task` (same authorization as other supervisor RPCs).
+ */
+export async function supervisorEnqueueMission(
+  assigneeProfileId: string,
+  templateKey: string,
+): Promise<{ ok: boolean; error: string | null }> {
+  if (isDevAuthBypassEnabled()) {
+    return { ok: false, error: 'Not available in dev bypass mode.' }
+  }
+  const id = assigneeProfileId.trim()
+  const key = templateKey.trim()
+  if (!id || !key) {
+    return { ok: false, error: 'Assignee and template are required.' }
+  }
+  const { error } = await supabase.rpc('volunteer_assign_task', {
+    p_assignee_profile_id: id,
+    p_template_key: key,
+  })
+  if (error) {
+    return { ok: false, error: error.message }
+  }
+  return { ok: true, error: null }
+}

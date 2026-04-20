@@ -31,7 +31,7 @@ export default function NextStepCard({
           color: 'var(--accent)',
         }}
       >
-        Next step
+        What matters now
       </p>
       <h2
         id="next-step-title"

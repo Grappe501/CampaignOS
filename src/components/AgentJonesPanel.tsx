@@ -14,6 +14,9 @@ import {
   type AgentJonesDailyActivationContext,
   type AgentJonesInternLayerContext,
   type AgentJonesCampaignGoalsContext,
+  type AgentJonesSurface,
+  type AgentJonesCoordinatorOpsContext,
+  type AgentJonesLeadershipSnapshotContext,
 } from '../lib/agentJonesContextV2'
 import {
   AgentJonesApiError,
@@ -139,6 +142,9 @@ export type AgentJonesPanelProps = {
   dailyActivation?: AgentJonesDailyActivationContext | null
   internLayer?: AgentJonesInternLayerContext | null
   campaignGoals?: AgentJonesCampaignGoalsContext | null
+  surface?: AgentJonesSurface
+  coordinatorOps?: AgentJonesCoordinatorOpsContext | null
+  leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
 }
 
 export default function AgentJonesPanel({
@@ -155,6 +161,9 @@ export default function AgentJonesPanel({
   dailyActivation,
   internLayer,
   campaignGoals,
+  surface,
+  coordinatorOps,
+  leadershipSnapshot,
 }: AgentJonesPanelProps) {
   const persisted = useMemo(() => loadAgentJonesPersisted(), [])
   const bundle = useMemo(
@@ -163,8 +172,18 @@ export default function AgentJonesPanel({
         slice: progressSlice,
         profile,
         voterLoading,
+        surface: surface ?? 'volunteer_dashboard',
+        coordinatorOps: coordinatorOps ?? null,
+        leadershipSnapshot: leadershipSnapshot ?? null,
       }),
-    [progressSlice, profile, voterLoading],
+    [
+      progressSlice,
+      profile,
+      voterLoading,
+      surface,
+      coordinatorOps,
+      leadershipSnapshot,
+    ],
   )
 
   const [activePromptId, setActivePromptId] = useState<string | null>(
@@ -220,6 +239,9 @@ export default function AgentJonesPanel({
             slice: progressSlice,
             profile,
             voterLoading,
+            surface: surface ?? 'volunteer_dashboard',
+            coordinatorOps: coordinatorOps ?? null,
+            leadershipSnapshot: leadershipSnapshot ?? null,
             volunteerMission: volunteerMission ?? null,
             dailyActivation: dailyActivation ?? null,
             internLayer: internLayer ?? null,
@@ -240,6 +262,9 @@ export default function AgentJonesPanel({
       progressSlice,
       profile,
       voterLoading,
+      surface,
+      coordinatorOps,
+      leadershipSnapshot,
       volunteerMission,
       dailyActivation,
       internLayer,
@@ -274,11 +299,14 @@ export default function AgentJonesPanel({
         voterMatched,
         progressSlice,
         voterLoading,
+        surface: surface ?? 'volunteer_dashboard',
         relationalPower5: relationalPower5 ?? null,
         volunteerMission: volunteerMission ?? null,
         dailyActivation: dailyActivation ?? null,
         internLayer: internLayer ?? null,
         campaignGoals: campaignGoals ?? null,
+        coordinatorOps: coordinatorOps ?? null,
+        leadershipSnapshot: leadershipSnapshot ?? null,
       })
       try {
         const campaign = await getRelevantCampaignContext({
@@ -323,6 +351,9 @@ export default function AgentJonesPanel({
     dailyActivation,
     internLayer,
     campaignGoals,
+    surface,
+    coordinatorOps,
+    leadershipSnapshot,
   ])
 
   const handleSelect = async (prompt: AgentJonesPrompt) => {
@@ -374,6 +405,9 @@ export default function AgentJonesPanel({
             slice: progressSlice,
             profile,
             voterLoading,
+            surface: surface ?? 'volunteer_dashboard',
+            coordinatorOps: coordinatorOps ?? null,
+            leadershipSnapshot: leadershipSnapshot ?? null,
             volunteerMission: volunteerMission ?? null,
             dailyActivation: dailyActivation ?? null,
             internLayer: internLayer ?? null,

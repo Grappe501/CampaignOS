@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 import ElectionCountdownBar from './ElectionCountdownBar'
+import { useProfile } from '../hooks/useProfile'
+import {
+  getRoleHomePath,
+  getWorkspacePrimaryNavLabel,
+  shouldOmitTeamDeskNavLink,
+} from '../lib/roleHomeRouting'
 
 const DRAWER_ID = 'campaignos-nav-drawer'
 const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
@@ -15,6 +21,7 @@ type AppHeaderProps = {
 
 export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps) {
   const showTeamDeskLink = showInternDesk ?? Boolean(onSignOut)
+  const { profile, loading: profileLoading } = useProfile()
   const location = useLocation()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -31,13 +38,31 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
 
   const isDashboard = location.pathname.startsWith('/dashboard')
   const isInternDesk = location.pathname.startsWith('/intern')
+  const isCandidateDesk = location.pathname.startsWith('/candidate')
+  const isCoordinatorDesk = location.pathname.startsWith('/coordinator')
+
+  const useLegacyWorkspaceNav = Boolean(onSignOut && profileLoading)
+  const primaryPath = useLegacyWorkspaceNav
+    ? '/dashboard'
+    : getRoleHomePath(profile?.primary_role)
+  const primaryLabel = useLegacyWorkspaceNav
+    ? 'Dashboard'
+    : getWorkspacePrimaryNavLabel(profile?.primary_role)
+  const showVolunteerWorkspaceLink =
+    Boolean(onSignOut) && !useLegacyWorkspaceNav && primaryPath !== '/dashboard'
+  const omitTeamDeskDuplicate =
+    Boolean(onSignOut) &&
+    !useLegacyWorkspaceNav &&
+    shouldOmitTeamDeskNavLink(profile?.primary_role)
+  const showTeamDeskRow =
+    showTeamDeskLink && (!onSignOut || useLegacyWorkspaceNav || !omitTeamDeskDuplicate)
 
   return (
     <header className="app-topbar">
       <ElectionCountdownBar />
       <div className="app-topbar-main">
       <Link to="/" className="app-brand">
-        <span className="app-brand-lockup" aria-label="CAMPAIGN-OS">
+        <span className="app-brand-lockup" aria-label="Jones-OS">
           <img
             className="app-brand-logo"
             src={brand.assets.logoPrimaryUrl}
@@ -47,7 +72,7 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
             loading="eager"
             decoding="async"
           />
-          <span className="app-brand-text">CAMPAIGN-OS</span>
+          <span className="app-brand-text">Jones-OS</span>
         </span>
       </Link>
 
@@ -90,12 +115,28 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
         <div className="topbar-end">
           <nav className="desktop-nav" aria-label="Workspace">
             <Link
-              to="/dashboard"
-              aria-current={isDashboard ? 'page' : undefined}
+              to={primaryPath}
+              aria-current={
+                location.pathname === primaryPath ||
+                (primaryPath === '/dashboard' && isDashboard) ||
+                (primaryPath === '/intern' && isInternDesk) ||
+                (primaryPath === '/candidate' && isCandidateDesk) ||
+                (primaryPath === '/coordinator' && isCoordinatorDesk)
+                  ? 'page'
+                  : undefined
+              }
             >
-              Dashboard
+              {primaryLabel}
             </Link>
-            {showTeamDeskLink ? (
+            {showVolunteerWorkspaceLink ? (
+              <Link
+                to="/dashboard"
+                aria-current={isDashboard ? 'page' : undefined}
+              >
+                Volunteer workspace
+              </Link>
+            ) : null}
+            {showTeamDeskRow ? (
               <Link to="/intern" aria-current={isInternDesk ? 'page' : undefined}>
                 Team desk
               </Link>
@@ -181,14 +222,32 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
               <>
                 <p className="drawer-section-label">Workspace</p>
                 <Link
-                  to="/dashboard"
+                  to={primaryPath}
                   className="drawer-nav-link"
-                  aria-current={isDashboard ? 'page' : undefined}
+                  aria-current={
+                    location.pathname === primaryPath ||
+                    (primaryPath === '/dashboard' && isDashboard) ||
+                    (primaryPath === '/intern' && isInternDesk) ||
+                    (primaryPath === '/candidate' && isCandidateDesk) ||
+                    (primaryPath === '/coordinator' && isCoordinatorDesk)
+                      ? 'page'
+                      : undefined
+                  }
                   onClick={closeDrawer}
                 >
-                  Dashboard
+                  {primaryLabel}
                 </Link>
-                {showTeamDeskLink ? (
+                {showVolunteerWorkspaceLink ? (
+                  <Link
+                    to="/dashboard"
+                    className="drawer-nav-link"
+                    aria-current={isDashboard ? 'page' : undefined}
+                    onClick={closeDrawer}
+                  >
+                    Volunteer workspace
+                  </Link>
+                ) : null}
+                {showTeamDeskRow ? (
                   <Link
                     to="/intern"
                     className="drawer-nav-link"

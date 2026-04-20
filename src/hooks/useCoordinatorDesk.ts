@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  bucketCoordinatorAssignments,
   loadCoordinatorDeskData,
   parseInternOverview,
+  recentCompletedAssignments,
   type CoordinatorDeskLoad,
 } from '../lib/coordinatorDeskData'
 export function useCoordinatorDesk(
@@ -52,6 +54,16 @@ export function useCoordinatorDesk(
     [load?.assignments],
   )
 
+  const assignmentBuckets = useMemo(
+    () => bucketCoordinatorAssignments(load?.assignments ?? []),
+    [load?.assignments],
+  )
+
+  const recentCompletions = useMemo(
+    () => recentCompletedAssignments(load?.assignments ?? []),
+    [load?.assignments],
+  )
+
   return {
     loading,
     error,
@@ -59,6 +71,8 @@ export function useCoordinatorDesk(
     assignments: load?.assignments ?? [],
     activeAssignments,
     blockedAssignments,
+    assignmentBuckets,
+    recentCompletions,
     supervisedTeams: load?.supervisedTeams ?? [],
     activation: load?.activation ?? null,
     internParsed,

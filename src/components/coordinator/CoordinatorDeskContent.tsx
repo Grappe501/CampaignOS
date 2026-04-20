@@ -1,11 +1,17 @@
 import { Link } from 'react-router-dom'
+import { useMemo, useState } from 'react'
 import CampaignKpisCard from '../dashboard/CampaignKpisCard'
 import LeadershipKpiScaffold from '../dashboard/LeadershipKpiScaffold'
+import FloatingAgentJones from '../FloatingAgentJones'
 import { useCampaignKpis } from '../../hooks/useCampaignKpis'
 import { useCoordinatorDesk } from '../../hooks/useCoordinatorDesk'
+import { useVoterMatch } from '../../hooks/useVoterMatch'
 import type { CampaignProfile } from '../../hooks/useProfile'
+import { getDashboardProgressSlice, normalizeKey } from '../../lib/dashboardState'
+import { buildAgentJonesCoordinatorOps } from '../../lib/agentJonesDeskContext'
 import { countJsonArray, shortProfileId } from '../../lib/coordinatorDeskData'
-import CoordinatorMissionBoard from './CoordinatorMissionBoard'
+import CoordinatorOperationsBoard from './CoordinatorOperationsBoard'
+import CoordinatorMissionDispatch from './CoordinatorMissionDispatch'
 
 export default function CoordinatorDeskContent({
   profile,
@@ -27,31 +33,100 @@ export default function CoordinatorDeskContent({
 
   const desk = useCoordinatorDesk(homeTeam)
   const kpis = useCampaignKpis(profileId, primaryRole)
+  const voterMatch = useVoterMatch(profileId, {
+    onAfterMatch: () => void onRefreshProfile(),
+  })
+  const voterLinked =
+    Boolean(voterMatch.matched) ||
+    Boolean(
+      profile?.linked_voter_id != null && String(profile.linked_voter_id).trim() !== '',
+    )
+  const progressSlice = getDashboardProgressSlice({
+    profile,
+    voterMatched: voterLinked,
+    voterLoading: voterMatch.matchedLoading,
+  })
+  const coordinatorAgentOps = useMemo(
+    () =>
+      buildAgentJonesCoordinatorOps({
+        hasSupervisorScope: desk.hasSupervisorScope,
+        supervisedTeamCount: desk.supervisedTeams.length,
+        buckets: desk.assignmentBuckets,
+        internParsed: desk.internParsed,
+        deskLoading: desk.loading,
+      }),
+    [
+      desk.assignmentBuckets,
+      desk.hasSupervisorScope,
+      desk.internParsed,
+      desk.loading,
+      desk.supervisedTeams.length,
+    ],
+  )
+  const [agentJonesOpen, setAgentJonesOpen] = useState(false)
 
   const io = desk.internParsed
+  const b = desk.assignmentBuckets
   const emerging = countJsonArray(desk.activation?.emerging_leaders)
   const lowEng = countJsonArray(desk.activation?.low_engagement)
+
+  const exSelf = normalizeKey(profile?.exception_request_status) || 'none'
 
   const attentionParts: string[] = []
   if (desk.error) attentionParts.push(desk.error)
   if ((io?.overdueFirstContact ?? 0) > 0) {
     attentionParts.push(
-      `${io?.overdueFirstContact} first-contact pipeline overdue on this team`,
+      `${io?.overdueFirstContact} first-contact pipeline rows overdue on this team`,
     )
   }
   if ((io?.pipelinesEscalated ?? 0) > 0) {
-    attentionParts.push(`${io?.pipelinesEscalated} escalated pipeline rows`)
+    attentionParts.push(`${io?.pipelinesEscalated} escalated pipeline rows need triage`)
   }
-  if (desk.blockedAssignments.length > 0) {
-    attentionParts.push(`${desk.blockedAssignments.length} blocked mission assignments`)
+  if (b.blocked.length > 0) {
+    attentionParts.push(`${b.blocked.length} blocked mission assignment(s)`)
+  }
+  if (b.overdue.length > 0) {
+    attentionParts.push(`${b.overdue.length} overdue mission assignment(s)`)
   }
   if (!desk.hasSupervisorScope && !desk.loading) {
     attentionParts.push(
-      'No volunteer_supervisor_teams linkage on your profile — mission board stays empty until HQ assigns supervisor scope.',
+      'No volunteer_supervisor_teams linkage on your profile — mission operations stay empty until HQ assigns supervisor scope.',
     )
   }
 
-  const loadingShell = profileLoading || (desk.loading && !desk.assignments.length && !desk.error)
+  const pipelineNextSteps: string[] = []
+  if (io && desk.primaryTeamIdUsed) {
+    if ((io.pipelinesEscalated ?? 0) > 0) {
+      pipelineNextSteps.push(
+        `Triage ${io.pipelinesEscalated} escalated pipeline row(s) with interns — consider coordinator mission "intern_pipeline_escalated_coordinator" if it appears on your board.`,
+      )
+    }
+    if ((io.overdueFirstContact ?? 0) > 0) {
+      pipelineNextSteps.push(
+        `Pair with interns on ${io.overdueFirstContact} overdue first-contact commitment(s) — align on capacity or reassign in the intern desk tools.`,
+      )
+    }
+    if (
+      (io.pipelinesActive ?? 0) > 0 &&
+      (io.pipelinesEscalated ?? 0) === 0 &&
+      (io.overdueFirstContact ?? 0) === 0
+    ) {
+      pipelineNextSteps.push(
+        `${io.pipelinesActive} active pipeline row(s) — spot-check intern coverage before counts slip.`,
+      )
+    }
+  }
+  if (pipelineNextSteps.length === 0 && io && desk.primaryTeamIdUsed) {
+    pipelineNextSteps.push(
+      'No escalations or overdue first contacts in this snapshot — keep a light weekly rhythm with interns.',
+    )
+  }
+
+  const loadingShell =
+    profileLoading || (desk.loading && !desk.assignments.length && !desk.error)
+
+  const openMissionTotal =
+    b.blocked.length + b.overdue.length + b.inProgress.length + b.assigned.length
 
   return (
     <div className="coordinator-desk">
@@ -59,13 +134,62 @@ export default function CoordinatorDeskContent({
         <p className="subtitle coordinator-desk-eyebrow" style={{ margin: 0 }}>
           Volunteer coordinator
         </p>
-        <h1 className="page-title coordinator-desk-title">Coordination workspace</h1>
+        <h1 className="page-title coordinator-desk-title">Oversight console</h1>
         <p className="subtitle coordinator-desk-intro">
-          Supervise team missions, scan intern pipeline health on your Power of 5 team, and
-          watch activation signals — without leaving campaign tooling. Data respects your
-          supervisor membership and team scope in Postgres (RLS + SECURITY DEFINER RPCs).
+          Exceptions, mission lanes, intern pipeline signals, and dispatch — scoped by supervisor
+          membership and team RPCs (RLS + SECURITY DEFINER). No service-role shortcuts.
         </p>
       </header>
+
+      <section
+        className="coordinator-ops-overview card stack-section"
+        aria-label="Operations snapshot"
+      >
+        <h2 className="coordinator-section-title">Live snapshot</h2>
+        {loadingShell ? (
+          <p className="subtitle" role="status">
+            Loading counts…
+          </p>
+        ) : (
+          <ul className="coordinator-ops-chips">
+            <li>
+              <span className="coordinator-ops-chip coordinator-ops-chip--blocked">
+                Blocked missions <strong>{b.blocked.length}</strong>
+              </span>
+            </li>
+            <li>
+              <span className="coordinator-ops-chip coordinator-ops-chip--overdue">
+                Overdue missions <strong>{b.overdue.length}</strong>
+              </span>
+            </li>
+            <li>
+              <span className="coordinator-ops-chip">
+                In progress <strong>{b.inProgress.length}</strong>
+              </span>
+            </li>
+            <li>
+              <span className="coordinator-ops-chip">
+                Assigned (not started) <strong>{b.assigned.length}</strong>
+              </span>
+            </li>
+            <li>
+              <span className="coordinator-ops-chip">
+                Open missions total <strong>{openMissionTotal}</strong>
+              </span>
+            </li>
+            <li>
+              <span className="coordinator-ops-chip">
+                Pipeline overdue first contact <strong>{io?.overdueFirstContact ?? 0}</strong>
+              </span>
+            </li>
+            <li>
+              <span className="coordinator-ops-chip">
+                Pipeline escalated <strong>{io?.pipelinesEscalated ?? 0}</strong>
+              </span>
+            </li>
+          </ul>
+        )}
+      </section>
 
       <section
         className={`coordinator-attention card stack-section${attentionParts.length ? ' coordinator-attention--warn' : ''}`}
@@ -84,22 +208,21 @@ export default function CoordinatorDeskContent({
           </ul>
         ) : (
           <p className="subtitle" style={{ margin: 0 }}>
-            No automated red flags in this snapshot — still review missions and pipeline
-            counts below on your rhythm.
+            No automated red flags in this snapshot — still run the lanes and pipeline checklist
+            on your rhythm.
           </p>
         )}
         <ul className="subtitle coordinator-playbook" style={{ margin: '12px 0 0' }}>
           <li>
-            Clear <strong>blocked</strong> missions when volunteers are unblocked, or
-            document why they stay blocked.
+            <strong>Blocked</strong> missions need a decision: unblock, reassign, or document the
+            hold.
           </li>
           <li>
-            Use <strong>nudge</strong> for gentle reminders; pair with a real message in your
-            channel where possible.
+            <strong>Overdue</strong> missions are past due — nudge or reassign before volunteers
+            churn.
           </li>
           <li>
-            Pipeline <strong>escalations</strong> often mean intern capacity or edge cases —
-            triage with HQ.
+            <strong>Pipeline escalations</strong> usually need intern capacity or HQ alignment.
           </li>
         </ul>
       </section>
@@ -109,17 +232,41 @@ export default function CoordinatorDeskContent({
           Roster exceptions
         </h2>
         <p className="subtitle coordinator-section-lede">
-          Volunteers submit roster exceptions from their dashboard; statuses live on{' '}
-          <code>campaign_profiles.exception_request_*</code>. Under current RLS, profiles
-          are readable only by their owner, so an <strong>org-wide pending queue is not
-          available in this UI</strong>.
+          Volunteers submit exceptions from their dashboard; fields live on{' '}
+          <code>campaign_profiles.exception_request_*</code>. Under current RLS, each profile is
+          readable by its owner — an <strong>org-wide pending queue is not exposed in this app</strong>.
         </p>
-        <p className="subtitle" style={{ marginTop: 8 }}>
-          <strong>Operational path today:</strong> review pending and approved exceptions in
-          your authorized Supabase / ops workflow, or add a dedicated coordinator RPC when
-          product prioritizes it. Until then, watch for related notes in mission outcomes and
-          intern escalations.
-        </p>
+        <div className="coordinator-exception-panels">
+          <div className="coordinator-exception-panel card card--inner stack-section">
+            <h3 className="coordinator-subhead">Your profile (read-only)</h3>
+            <dl className="coordinator-dl coordinator-dl--compact">
+              <div>
+                <dt>Your exception status</dt>
+                <dd>{exSelf}</dd>
+              </div>
+              {profile?.exception_requested_at ? (
+                <div>
+                  <dt>Last requested</dt>
+                  <dd>{new Date(String(profile.exception_requested_at)).toLocaleString()}</dd>
+                </div>
+              ) : null}
+            </dl>
+            {exSelf === 'pending' ? (
+              <p className="subtitle" style={{ margin: '10px 0 0' }}>
+                Your own request is pending — use your ops channel if you need it cleared for
+                testing.
+              </p>
+            ) : null}
+          </div>
+          <div className="coordinator-exception-panel card card--inner stack-section">
+            <h3 className="coordinator-subhead">Org queue (not in client)</h3>
+            <p className="subtitle" style={{ margin: 0 }}>
+              Review pending volunteers in Supabase SQL, a secured admin surface, or a future{' '}
+              <code>coordinator_exception_inbox</code> RPC when product adds coordinator-safe
+              reads.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section className="card stack-section coordinator-card" aria-labelledby="coord-pipe-title">
@@ -127,9 +274,9 @@ export default function CoordinatorDeskContent({
           Intern pipeline & team snapshot
         </h2>
         <p className="subtitle coordinator-section-lede">
-          Aggregates from <code>supervisor_intern_overview</code> for your primary team (
-          home team ID if set, otherwise first supervised team). Requires membership on that
-          team or matching <code>power5_home_team_id</code>.
+          Aggregates from <code>supervisor_intern_overview</code> for your primary team (home team
+          ID if set, otherwise first supervised team). Requires team membership or matching{' '}
+          <code>power5_home_team_id</code>.
         </p>
         {!desk.primaryTeamIdUsed ? (
           <div className="coordinator-empty">
@@ -146,42 +293,58 @@ export default function CoordinatorDeskContent({
             Loading pipeline snapshot…
           </p>
         ) : io ? (
-          <dl className="coordinator-dl">
-            {desk.supervisedTeams.length > 0 ? (
+          <>
+            <dl className="coordinator-dl">
+              {desk.supervisedTeams.length > 0 ? (
+                <div>
+                  <dt>Teams you supervise</dt>
+                  <dd>
+                    {desk.supervisedTeams
+                      .map((t) => shortProfileId(t.team_id))
+                      .join(', ')}
+                  </dd>
+                </div>
+              ) : null}
               <div>
-                <dt>Teams you supervise</dt>
-                <dd>
-                  {desk.supervisedTeams
-                    .map((t) => shortProfileId(t.team_id))
-                    .join(', ')}
-                </dd>
+                <dt>Primary team (RPC scope)</dt>
+                <dd className="coordinator-mono">{shortProfileId(desk.primaryTeamIdUsed)}</dd>
               </div>
-            ) : null}
-            <div>
-              <dt>Primary team (RPC scope)</dt>
-              <dd className="coordinator-mono">{shortProfileId(desk.primaryTeamIdUsed)}</dd>
+              <div>
+                <dt>Intern profiles (home team)</dt>
+                <dd>{io.internProfileIds.length}</dd>
+              </div>
+              <div>
+                <dt>Active pipeline rows</dt>
+                <dd>{io.pipelinesActive}</dd>
+              </div>
+              <div>
+                <dt>Escalated pipeline rows</dt>
+                <dd>{io.pipelinesEscalated}</dd>
+              </div>
+              <div>
+                <dt>Overdue first contact</dt>
+                <dd>{io.overdueFirstContact}</dd>
+              </div>
+            </dl>
+            <div className="coordinator-next-steps card card--inner stack-section">
+              <h3 className="coordinator-subhead">Operational next steps</h3>
+              {pipelineNextSteps.length ? (
+                <ol className="coordinator-next-steps-list subtitle">
+                  {pipelineNextSteps.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="subtitle" style={{ margin: 0 }}>
+                  Set team scope to load pipeline-driven actions.
+                </p>
+              )}
             </div>
-            <div>
-              <dt>Intern profiles (home team)</dt>
-              <dd>{io.internProfileIds.length}</dd>
-            </div>
-            <div>
-              <dt>Active pipeline rows</dt>
-              <dd>{io.pipelinesActive}</dd>
-            </div>
-            <div>
-              <dt>Escalated pipeline rows</dt>
-              <dd>{io.pipelinesEscalated}</dd>
-            </div>
-            <div>
-              <dt>Overdue first contact</dt>
-              <dd>{io.overdueFirstContact}</dd>
-            </div>
-          </dl>
+          </>
         ) : (
           <p className="subtitle" role="note">
-            Overview did not return data — you may lack team authorization for this RPC, or
-            the team has no intern activity yet.
+            Overview did not return data — you may lack team authorization for this RPC, or the
+            team has no intern activity yet.
           </p>
         )}
       </section>
@@ -192,8 +355,7 @@ export default function CoordinatorDeskContent({
         </h2>
         <p className="subtitle coordinator-section-lede">
           Summary counts from <code>supervisor_activation_insights</code> (same team scope as
-          pipeline). Profile lists are capped in the database — use for prioritization, not
-          exhaustive roster review.
+          pipeline). Profile lists are capped server-side.
         </p>
         {!desk.primaryTeamIdUsed ? (
           <p className="subtitle">Set team scope (see above) to load signals.</p>
@@ -202,30 +364,58 @@ export default function CoordinatorDeskContent({
             Loading activation snapshot…
           </p>
         ) : desk.activation ? (
-          <ul className="coordinator-signal-list subtitle">
-            <li>
-              <strong>Emerging leaders</strong> (heuristic): {emerging}
-            </li>
-            <li>
-              <strong>Low weekly engagement</strong> (under-threshold slice): {lowEng}
-            </li>
-          </ul>
+          <>
+            <ul className="coordinator-signal-list subtitle">
+              <li>
+                <strong>Emerging leaders</strong> (heuristic): {emerging}
+              </li>
+              <li>
+                <strong>Low weekly engagement</strong> (under-threshold slice): {lowEng}
+              </li>
+            </ul>
+            {emerging === 0 && lowEng === 0 ? (
+              <p className="subtitle coordinator-empty-note" style={{ marginTop: 10 }}>
+                No one flagged in these slices — still check missions for quiet volunteers.
+              </p>
+            ) : null}
+          </>
         ) : (
           <p className="subtitle" role="note">
-            No activation payload — check team authorization or whether lane scores have
-            synced.
+            No activation payload — check team authorization or whether lane scores have synced.
           </p>
         )}
       </section>
 
-      <CoordinatorMissionBoard
-        rows={desk.assignments}
+      <div id="coordinator-mission-ops" aria-hidden="true" />
+      <CoordinatorOperationsBoard
+        buckets={b}
+        recentCompletions={desk.recentCompletions}
         loading={desk.loading}
+        hasSupervisorScope={desk.hasSupervisorScope}
         onChanged={async () => {
           await desk.refresh()
         }}
       />
 
+      {desk.hasSupervisorScope ? (
+        <CoordinatorMissionDispatch
+          onDispatched={async () => {
+            await desk.refresh()
+          }}
+        />
+      ) : (
+        <section className="card stack-section coordinator-card" aria-labelledby="coord-dispatch-locked">
+          <h2 id="coord-dispatch-locked" className="coordinator-section-title">
+            Dispatch mission
+          </h2>
+          <p className="subtitle" style={{ margin: 0 }}>
+            Available once you have <strong>volunteer_supervisor_teams</strong> scope — then you can
+            enqueue missions for volunteers on those teams.
+          </p>
+        </section>
+      )}
+
+      <div id="campaign-kpis" aria-hidden="true" />
       <CampaignKpisCard
         kpis={kpis.kpis}
         contributions={kpis.contributions}
@@ -248,18 +438,42 @@ export default function CoordinatorDeskContent({
         <section className="card stack-section coordinator-card">
           <h2 className="coordinator-section-title">Mission definitions (leadership)</h2>
           <p className="subtitle">
-            KPI target editing and mission scaffolding are limited to coordinator / staff /
-            admin roles. Your current role:{' '}
-            <strong>{primaryRole?.trim() || '—'}</strong>.
+            KPI target editing and mission scaffolding are limited to coordinator / staff / admin
+            roles. Your current role: <strong>{primaryRole?.trim() || '—'}</strong>.
           </p>
         </section>
       )}
 
+      <FloatingAgentJones
+        key={`coord-aj-${progressSlice}-${desk.loading}-${coordinatorAgentOps.open_assignments_total}-${kpis.kpis.length}`}
+        open={agentJonesOpen}
+        onOpenChange={setAgentJonesOpen}
+        progressSlice={progressSlice}
+        profile={profile}
+        voterLoading={voterMatch.matchedLoading}
+        voterMatched={voterLinked}
+        matchedVoter={voterMatch.matched}
+        surface="coordinator_desk"
+        coordinatorOps={coordinatorAgentOps}
+        campaignGoals={kpis.agentCampaignGoals}
+        onProfileRefresh={async () => {
+          await onRefreshProfile()
+          await kpis.refetch()
+          await desk.refresh()
+        }}
+      />
+
       <footer className="coordinator-desk-footer">
         <p className="subtitle" style={{ margin: 0 }}>
-          Volunteer workspace: <Link to="/dashboard">Open dashboard</Link>
+          Volunteer workspace: <Link to="/dashboard">Open dashboard</Link> ·{' '}
+          <Link to="/intern">Team desk</Link> · <Link to="/power5">Power of 5</Link>
         </p>
-        <button type="button" className="btn-touch" style={{ marginTop: 10 }} onClick={() => void desk.refresh()}>
+        <button
+          type="button"
+          className="btn-touch"
+          style={{ marginTop: 10 }}
+          onClick={() => void desk.refresh()}
+        >
           Refresh coordination data
         </button>
       </footer>

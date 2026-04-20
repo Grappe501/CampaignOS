@@ -15,6 +15,7 @@ export default function CampaignKpisCard({
   error,
   heading = 'Campaign goals',
   intro = 'Your tasks add measurable progress toward what we are building together.',
+  maxItems = 5,
 }: {
   kpis: CampaignKpiRow[]
   contributions: KpiUserContribution[]
@@ -23,8 +24,11 @@ export default function CampaignKpisCard({
   /** Optional override (e.g. coordinator / leadership surfaces). */
   heading?: string
   intro?: string
+  /** Leadership surfaces may show the full active window (e.g. 12). */
+  maxItems?: number
 }) {
-  const top = kpis.slice(0, 5)
+  const cap = maxItems > 0 ? maxItems : 5
+  const top = kpis.slice(0, cap)
   const contribBySlug = new Map(contributions.map((c) => [c.kpi_slug, c.contributed]))
 
   return (

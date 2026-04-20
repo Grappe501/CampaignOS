@@ -115,7 +115,7 @@ export default function Login() {
       setMessageTone('success')
       setMessage('Signed in. Loading your workspace…')
       // Full navigation so App picks up persisted session reliably (avoids race with React auth state).
-      window.location.replace('/dashboard')
+      window.location.replace('/')
     } finally {
       setBusy(false)
     }
@@ -167,7 +167,7 @@ export default function Login() {
         }
         setMessageTone('success')
         setMessage('Account ready. Loading your workspace…')
-        window.location.replace('/dashboard')
+        window.location.replace('/')
         return
       }
 

@@ -37,7 +37,8 @@ import {
 } from '../lib/dashboardState'
 import {
   getBranchSpecialtyCards,
-  VOLUNTEER_GLOBAL_CARDS,
+  getVolunteerGlobalCards,
+  type VolunteerPathCardsContext,
 } from '../lib/volunteerDashboardCards'
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
@@ -60,7 +61,10 @@ import PublicOfficialsCard from '../components/dashboard/PublicOfficialsCard'
 import type { PublicOfficialEntry } from '../lib/api/publicOfficials'
 import VoterStatusCard from '../components/dashboard/VoterStatusCard'
 import WorkspaceDock from '../components/WorkspaceDock'
-import Power5Workspace from '../components/power5/Power5Workspace'
+import {
+  WORKSPACE_DOCK_ITEMS,
+  type WorkspaceSectionGlyphId,
+} from '../components/workspace/workspaceDockModel'
 import Power5SummaryCard from '../components/dashboard/Power5SummaryCard'
 import TaskListCard from '../components/tasks/TaskListCard'
 import DailyMissionCard from '../components/daily/DailyMissionCard'
@@ -68,7 +72,7 @@ import CampaignKpisCard from '../components/dashboard/CampaignKpisCard'
 import LeadershipKpiScaffold from '../components/dashboard/LeadershipKpiScaffold'
 import InternDeskContent from '../components/intern/InternDeskContent'
 import VolunteerPathCardGrid from '../components/dashboard/VolunteerPathCardGrid'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 const VOTER_WORKSPACE_EXPANDED_KEY = 'campaignos-voter-workspace-expanded'
 
@@ -149,6 +153,18 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     }
   }, [internDesk.isIntern, internDesk.agentInternContext, volunteerTasks.nextBest?.title])
   const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (location.hash !== '#voter-workspace') return
+    const id = window.setTimeout(() => {
+      document.getElementById('voter-workspace')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }, 150)
+    return () => window.clearTimeout(id)
+  }, [location.pathname, location.hash])
 
   useEffect(() => {
     if (location.pathname !== '/intern') return
@@ -205,10 +221,65 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     )
   const voterMatched = voterLinked
   const branchSet = Boolean(normalizeKey(profile?.onboarding_branch))
-  const branchSpecialtyCards = useMemo(
-    () => getBranchSpecialtyCards(profile?.onboarding_branch),
-    [profile?.onboarding_branch],
+  const pathCardsContext: VolunteerPathCardsContext = useMemo(
+    () => ({
+      profile,
+      voterLoading: voterMatch.matchedLoading,
+      voterMatched,
+      hasActiveMissionTasks: volunteerTasks.active.length > 0,
+      missionTasksLoading: volunteerTasks.loading,
+      hasPendingDailyTask: Boolean(dailyMission.nextPending),
+      dailyMissionLoading: dailyMission.loading,
+      power5HasNodes: power5Workspace.nodes.length > 0,
+      power5Loading: power5Workspace.loading,
+    }),
+    [
+      profile,
+      voterMatch.matchedLoading,
+      voterMatched,
+      volunteerTasks.active.length,
+      volunteerTasks.loading,
+      dailyMission.nextPending,
+      dailyMission.loading,
+      power5Workspace.nodes.length,
+      power5Workspace.loading,
+    ],
   )
+
+  const globalPathCards = useMemo(
+    () => getVolunteerGlobalCards(pathCardsContext),
+    [pathCardsContext],
+  )
+
+  const branchSpecialtyCards = useMemo(
+    () => getBranchSpecialtyCards(profile?.onboarding_branch, pathCardsContext),
+    [profile?.onboarding_branch, pathCardsContext],
+  )
+
+  const workspaceDockVisibleIds = useMemo(() => {
+    const ids = new Set<WorkspaceSectionGlyphId>(
+      WORKSPACE_DOCK_ITEMS.map((i) => i.id),
+    )
+    if (!internDesk.isIntern) ids.delete('intern-desk')
+    if (!branchSet || branchSpecialtyCards.length === 0) {
+      ids.delete('branch-specialty')
+    }
+    if (!voterMatch.matched) ids.delete('public-officials-card')
+    if (branchSet) ids.delete('onboarding-branch')
+    const ex = normalizeKey(profile?.exception_request_status)
+    if (!profileId || (voterMatched && (ex === '' || ex === 'none'))) {
+      ids.delete('exception-request')
+    }
+    return ids
+  }, [
+    internDesk.isIntern,
+    branchSet,
+    branchSpecialtyCards.length,
+    voterMatch.matched,
+    profileId,
+    voterMatched,
+    profile?.exception_request_status,
+  ])
 
   useEffect(() => {
     if (isDevAuthBypassEnabled() || !profileId || !voterMatched || branchSet) return
@@ -341,11 +412,12 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           onAgentOpen={() => setAgentJonesOpen(true)}
           hdWorkspace={hdWorkspace}
           onHdWorkspaceChange={setHdWorkspace}
+          visibleSectionIds={workspaceDockVisibleIds}
         />
         <DashboardGrid>
           <DashboardPanelFrame
             storageKey="dash-identity"
-            labelCollapsed="Profile & header"
+            labelCollapsed="Profile"
             sectionGlyph="dash-identity-title"
           >
             <DashboardHeader
@@ -374,14 +446,14 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           <DashboardPanelFrame
             scrollId="volunteer-global"
             storageKey="dash-volunteer-global"
-            labelCollapsed="All volunteers"
+            labelCollapsed="Volunteer guide"
             sectionGlyph="volunteer-global"
           >
             <VolunteerPathCardGrid
               headingId="volunteer-global-heading"
-              heading="For every volunteer"
-              intro="Scaffold — replace card copy in volunteerDashboardCards.ts."
-              cards={VOLUNTEER_GLOBAL_CARDS}
+              heading="Volunteer playbook"
+              intro="Prioritized moves from your roster, orientation, and assignments. Each card can jump to the related section."
+              cards={globalPathCards}
             />
           </DashboardPanelFrame>
 
@@ -463,7 +535,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           <DashboardPanelFrame
             scrollId="campaign-kpis"
             storageKey="dash-campaign-kpis"
-            labelCollapsed="Campaign goals"
+            labelCollapsed="Goals"
             sectionGlyph="campaign-kpis"
           >
             <CampaignKpisCard
@@ -582,13 +654,13 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             <DashboardPanelFrame
               scrollId="branch-specialty"
               storageKey="dash-branch-specialty"
-              labelCollapsed="Your path"
+              labelCollapsed="Path tips"
               sectionGlyph="branch-specialty"
             >
               <VolunteerPathCardGrid
                 headingId="branch-specialty-heading"
-                heading="For your volunteer path"
-                intro="Scaffold — branch rows in volunteerDashboardCards.ts."
+                heading="Your path"
+                intro="Tailored to the branch you chose — use it with the playbook above."
                 cards={branchSpecialtyCards}
               />
             </DashboardPanelFrame>
@@ -611,49 +683,25 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           ) : null}
 
           <DashboardPanelFrame
-            scrollId="power5-summary"
-            storageKey="dash-power5-summary"
-            labelCollapsed="Power of 5 summary"
-            sectionGlyph="power5-summary"
+            scrollId="power5-workspace"
+            storageKey="dash-power5"
+            labelCollapsed="Power of 5"
+            sectionGlyph="power5-workspace"
           >
             <Power5SummaryCard
               loading={power5Workspace.loading}
               impact={power5Workspace.impact}
               nodes={power5Workspace.nodes}
               openRelays={power5Propagation.openRelayCount}
-              onOpenWorkspace={() =>
-                document.getElementById('power5-workspace')?.scrollIntoView({
-                  behavior: 'smooth',
-                  block: 'start',
-                })
-              }
+              onOpenWorkspace={() => navigate('/power5')}
             />
+            <p className="subtitle" style={{ marginTop: 12, marginBottom: 0 }}>
+              Full Power of 5 — relays, invites, and your list — lives on a{' '}
+              <strong>dedicated page</strong> so it can use the full width.
+            </p>
           </DashboardPanelFrame>
 
-          <div className="power5-voter-split">
-            <DashboardPanelFrame
-              scrollId="power5-workspace"
-              storageKey="dash-power5"
-              labelCollapsed="Power of 5"
-              sectionGlyph="power5-workspace"
-            >
-              <Power5Workspace
-                profileId={profileId}
-                homeTeamId={
-                  profile?.power5_home_team_id
-                    ? String(profile.power5_home_team_id)
-                    : undefined
-                }
-                matchedVoterId={
-                  voterMatch.matched?.voter_id != null
-                    ? String(voterMatch.matched.voter_id)
-                    : undefined
-                }
-                workspace={power5Workspace}
-                propagation={power5Propagation}
-              />
-            </DashboardPanelFrame>
-            <DashboardPanelFrame
+          <DashboardPanelFrame
               scrollId="voter-workspace"
               storageKey="dash-voter-workspace"
               labelCollapsed="Voter lookup"
@@ -732,7 +780,6 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             )}
           </section>
             </DashboardPanelFrame>
-          </div>
 
           <ExceptionRequestCard
             profileId={profileId}
@@ -763,8 +810,8 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
               Training, tasks & team
             </h2>
             <p className="subtitle" style={{ marginBottom: 4 }}>
-              First task and training follow your roster state; team and growth
-              stay on deck — same layout on phone and iPad.
+              First task and training follow your roster state. Team and growth
+              cards are placeholders for now.
             </p>
             <div className="dash-placeholder-grid">
               <FirstTaskCard model={firstTaskModel} />
@@ -802,7 +849,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
             dailyMission.totalCount
           }-${internDesk.overdueCount}-${internDesk.pipelines.length}-${
             campaignKpis.kpis[0]?.current_value ?? 0
-          }-${campaignKpis.contributions.length}`}
+          }-${campaignKpis.contributions.length}-${location.pathname}`}
           open={agentJonesOpen}
           onOpenChange={setAgentJonesOpen}
           progressSlice={progressSlice}
@@ -810,6 +857,7 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
           voterLoading={voterMatch.matchedLoading}
           voterMatched={voterMatched}
           matchedVoter={voterMatch.matched}
+          surface={location.pathname === '/intern' ? 'intern_desk' : 'volunteer_dashboard'}
           onProfileRefresh={async () => {
             await refetch()
             await volunteerTasks.refetch()

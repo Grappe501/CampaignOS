@@ -7,6 +7,68 @@ import {
   type SupervisorAssignmentRow,
 } from './supervisorTasks'
 
+export function normalizeAssignmentStatus(s: string | undefined): string {
+  return String(s ?? '').trim().toLowerCase()
+}
+
+/** Disjoint buckets so each open assignment appears in exactly one lane. */
+export type CoordinatorAssignmentBuckets = {
+  blocked: SupervisorAssignmentRow[]
+  overdue: SupervisorAssignmentRow[]
+  inProgress: SupervisorAssignmentRow[]
+  assigned: SupervisorAssignmentRow[]
+}
+
+export function bucketCoordinatorAssignments(
+  rows: SupervisorAssignmentRow[],
+): CoordinatorAssignmentBuckets {
+  const open = rows.filter((a) => {
+    const st = normalizeAssignmentStatus(a.status)
+    return st !== 'completed' && st !== 'skipped'
+  })
+  const blocked = open.filter((a) => normalizeAssignmentStatus(a.status) === 'blocked')
+  const blockedIds = new Set(blocked.map((r) => r.assignment_id))
+  const now = Date.now()
+  const overdue = open.filter((a) => {
+    if (blockedIds.has(a.assignment_id)) return false
+    if (!a.due_at) return false
+    return new Date(a.due_at).getTime() < now
+  })
+  const overdueIds = new Set(overdue.map((r) => r.assignment_id))
+  const inProgress = open.filter((a) => {
+    if (blockedIds.has(a.assignment_id) || overdueIds.has(a.assignment_id)) return false
+    return normalizeAssignmentStatus(a.status) === 'in_progress'
+  })
+  const inProgressIds = new Set(inProgress.map((r) => r.assignment_id))
+  const assigned = open.filter((a) => {
+    if (
+      blockedIds.has(a.assignment_id) ||
+      overdueIds.has(a.assignment_id) ||
+      inProgressIds.has(a.assignment_id)
+    ) {
+      return false
+    }
+    return normalizeAssignmentStatus(a.status) === 'assigned'
+  })
+  return { blocked, overdue, inProgress, assigned }
+}
+
+export function recentCompletedAssignments(
+  rows: SupervisorAssignmentRow[],
+  limit = 12,
+): SupervisorAssignmentRow[] {
+  const done = rows.filter((a) => {
+    const st = normalizeAssignmentStatus(a.status)
+    return st === 'completed' || st === 'skipped'
+  })
+  done.sort((a, b) => {
+    const ta = a.completed_at ? new Date(a.completed_at).getTime() : 0
+    const tb = b.completed_at ? new Date(b.completed_at).getTime() : 0
+    return tb - ta
+  })
+  return done.slice(0, limit)
+}
+
 export type SupervisorTeamLink = {
   team_id: string
   supervisor_profile_id: string

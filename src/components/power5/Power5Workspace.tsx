@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import {
   POWER5_CONTACT_LABELS,
   POWER5_CONTACT_PATHS,
@@ -45,6 +46,7 @@ export default function Power5Workspace({
   matchedVoterId,
   workspace: workspaceInjected,
   propagation: propagationInjected,
+  fullPage = false,
 }: {
   profileId: string | undefined
   homeTeamId: string | undefined
@@ -52,7 +54,11 @@ export default function Power5Workspace({
   /** When provided (e.g. from Dashboard), avoids duplicate workspace fetches. */
   workspace?: Power5WorkspaceApi
   propagation?: Power5PropagationApi
+  /** Full-width dedicated route (`/power5`) — uses wider grid breakpoints. */
+  fullPage?: boolean
 }) {
+  const location = useLocation()
+  const rosterOnDashboard = location.pathname.startsWith('/power5')
   const workspaceInternal = usePower5Workspace(profileId)
   const {
     nodes,
@@ -316,7 +322,7 @@ export default function Power5Workspace({
   return (
     <section
       id="power5-workspace"
-      className="card stack-section power5-workspace"
+      className={`card stack-section power5-workspace${fullPage ? ' power5-workspace--full-page' : ''}`}
       aria-labelledby="power5-workspace-title"
     >
       <h2 id="power5-workspace-title" className="page-title power5-workspace-title">
@@ -360,7 +366,7 @@ export default function Power5Workspace({
           />
         </div>
 
-        <div className="power5-workspace-lower-col power5-workspace-lower-col--outreach">
+        <div className="power5-workspace-lower-col power5-workspace-lower-col--compose">
       <div className="power5-add-form">
         <label className="power5-field">
           <span className="power5-field-label">Who comes to mind?</span>
@@ -440,9 +446,19 @@ export default function Power5Workspace({
       </div>
 
       <div className="power5-side-actions">
-        <button type="button" className="btn-touch power5-secondary-btn" onClick={scrollToVoterWorkspace}>
-          Roster lookup (side panel)
-        </button>
+        {rosterOnDashboard ? (
+          <Link
+            to="/dashboard#voter-workspace"
+            className="btn-touch power5-secondary-btn"
+            style={{ textDecoration: 'none', textAlign: 'center', boxSizing: 'border-box' }}
+          >
+            Voter lookup on dashboard
+          </Link>
+        ) : (
+          <button type="button" className="btn-touch power5-secondary-btn" onClick={scrollToVoterWorkspace}>
+            Roster lookup (side panel)
+          </button>
+        )}
         <button
           type="button"
           className="btn-touch power5-secondary-btn"
@@ -458,7 +474,9 @@ export default function Power5Workspace({
           <code className="power5-token-code">{inviteToken}</code>
         </div>
       ) : null}
+        </div>
 
+        <div className="power5-workspace-lower-col power5-workspace-lower-col--outreach">
       <h3 className="power5-outreach-heading">Personal outreach (your taps only)</h3>
       <p className="subtitle power5-outreach-sub">
         No bulk sends. Buttons open your apps or log what you did — you stay in control.

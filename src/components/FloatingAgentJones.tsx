@@ -8,6 +8,9 @@ import type {
   AgentJonesDailyActivationContext,
   AgentJonesInternLayerContext,
   AgentJonesCampaignGoalsContext,
+  AgentJonesSurface,
+  AgentJonesCoordinatorOpsContext,
+  AgentJonesLeadershipSnapshotContext,
 } from '../lib/agentJonesContextV2'
 import AgentJonesPanel from './AgentJonesPanel'
 
@@ -17,6 +20,9 @@ export type FloatingAgentJonesProps = {
   voterLoading: boolean
   voterMatched: boolean
   matchedVoter?: MatchedVoterDisplayRow | null
+  surface?: AgentJonesSurface
+  coordinatorOps?: AgentJonesCoordinatorOpsContext | null
+  leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onProfileRefresh?: () => void | Promise<void>
@@ -41,6 +47,9 @@ export default function FloatingAgentJones({
   dailyActivation,
   internLayer,
   campaignGoals,
+  surface,
+  coordinatorOps,
+  leadershipSnapshot,
 }: FloatingAgentJonesProps) {
   const panelId = useId()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
@@ -120,6 +129,9 @@ export default function FloatingAgentJones({
                 voterLoading={voterLoading}
                 voterMatched={voterMatched}
                 matchedVoter={matchedVoter}
+                surface={surface}
+                coordinatorOps={coordinatorOps}
+                leadershipSnapshot={leadershipSnapshot}
                 persistSession
                 sectionClassName="agent-jones-floating-surface stack-section"
                 onProfileRefresh={onProfileRefresh}

@@ -151,6 +151,20 @@ function IconTasks({ size = 22 }: SizeProps) {
   )
 }
 
+function IconGoals({ size = 22 }: SizeProps) {
+  return (
+    <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden>
+      <path
+        d="M6 26V14M13 26V8M20 26v-7M27 26V11"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 const GLYPH_RENDERERS: Record<
   WorkspaceSectionGlyphId,
   (p: SizeProps) => ReactElement
@@ -164,7 +178,6 @@ const GLYPH_RENDERERS: Record<
   'voter-status-card': (p) => IconBallot(p),
   'workspace-summary': (p) => IconSnapshot(p),
   'public-officials-card': (p) => IconCapitol(p),
-  'power5-summary': (p) => IconSpark(p),
   'power5-workspace': (p) => IconNetwork(p),
   'voter-workspace': (p) => IconVoterSearch(p),
   'exception-request': (p) => IconDoc(p),
@@ -172,6 +185,7 @@ const GLYPH_RENDERERS: Record<
   'intern-desk': (p) => IconTasks(p),
   'daily-activation': (p) => IconSpark(p),
   'workspace-cards': (p) => IconTasks(p),
+  'campaign-kpis': (p) => IconGoals(p),
 }
 
 export function WorkspaceSectionGlyph({

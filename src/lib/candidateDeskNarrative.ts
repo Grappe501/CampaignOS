@@ -88,3 +88,24 @@ export function pickWeakestActiveKpi(kpis: CampaignKpiRow[]): {
   }
   return worst ? { row: worst, pctOfTarget: Math.min(100, Math.round(worstPct * 10) / 10) } : null
 }
+
+/** KPI closest to or above target (by % of goal) among the provided rows — capped at 100% for display parity with weakest. */
+export function pickStrongestActiveKpi(kpis: CampaignKpiRow[]): {
+  row: CampaignKpiRow
+  pctOfTarget: number
+} | null {
+  if (!kpis.length) return null
+  let best: CampaignKpiRow | null = null
+  let bestPct = -Infinity
+  for (const k of kpis) {
+    const t = Number(k.target_value)
+    const c = Number(k.current_value)
+    if (!Number.isFinite(t) || t <= 0) continue
+    const pct = (100 * (Number.isFinite(c) ? c : 0)) / t
+    if (pct > bestPct) {
+      bestPct = pct
+      best = k
+    }
+  }
+  return best ? { row: best, pctOfTarget: Math.min(100, Math.round(bestPct * 10) / 10) } : null
+}

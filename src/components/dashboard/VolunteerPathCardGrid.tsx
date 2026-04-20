@@ -1,5 +1,12 @@
 import type { VolunteerPathCard } from '../../lib/volunteerDashboardCards'
 
+function scrollToSection(scrollId: string) {
+  document.getElementById(scrollId)?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  })
+}
+
 export default function VolunteerPathCardGrid({
   headingId,
   heading,
@@ -48,16 +55,31 @@ export default function VolunteerPathCardGrid({
             >
               {c.title}
             </h3>
-            <p className="subtitle" style={{ margin: 0 }}>
-              {c.description}
+            <p className="subtitle" style={{ margin: '8px 0 0' }}>
+              {c.whyItMatters}
             </p>
-            {c.detail ? (
+            {c.statusLine ? (
               <p
                 className="subtitle"
                 style={{ margin: '10px 0 0', fontWeight: 600 }}
               >
-                {c.detail}
+                {c.statusLine}
               </p>
+            ) : null}
+            {c.nextMove ? (
+              <p className="subtitle" style={{ margin: '8px 0 0' }}>
+                <strong>Next move:</strong> {c.nextMove}
+              </p>
+            ) : null}
+            {c.action ? (
+              <button
+                type="button"
+                className="btn-touch"
+                style={{ marginTop: 12, alignSelf: 'flex-start' }}
+                onClick={() => scrollToSection(c.action.scrollId)}
+              >
+                {c.action.label}
+              </button>
             ) : null}
           </section>
         ))}

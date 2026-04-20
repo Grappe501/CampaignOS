@@ -214,7 +214,7 @@ export default function DashboardHeader({
             aria-pressed={Boolean(hdWorkspace)}
             onClick={() => onHdWorkspaceChange(!hdWorkspace)}
           >
-            {hdWorkspace ? 'Standard width' : 'Wide workspace (HD)'}
+            {hdWorkspace ? 'Standard width' : 'Widen dashboard (edge-to-edge)'}
           </button>
         </div>
       ) : null}

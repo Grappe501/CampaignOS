@@ -6,7 +6,10 @@
  */
 
 import type { AgentJonesContextV2 } from '../agentJonesContextV2'
-import { isAgentJonesScrollTargetId } from '../agentJonesContext'
+import {
+  isAgentJonesNavigatePath,
+  isAgentJonesScrollTargetId,
+} from '../agentJonesContext'
 import { ONBOARDING_DIRECTION_SLUGS } from '../onboardingEngine'
 
 export type AgentJonesRequest = {
@@ -104,6 +107,7 @@ function sanitizeReply(data: unknown): AgentJonesResponse | null {
       if (type === 'navigate') {
         if (!targetId || targetId.length > 120) continue
         if (!targetId.startsWith('/')) continue
+        if (!isAgentJonesNavigatePath(targetId)) continue
         actions.push({ type: 'navigate', targetId })
         continue
       }

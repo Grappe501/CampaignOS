@@ -18,6 +18,8 @@ import InternDesk from './pages/InternDesk'
 import CandidateDesk from './pages/CandidateDesk'
 import CoordinatorDesk from './pages/CoordinatorDesk'
 import Login from './pages/Login'
+import Power5Desk from './pages/Power5Desk'
+import RoleHomeRedirect from './components/RoleHomeRedirect'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(() =>
@@ -131,9 +133,25 @@ export default function App() {
           }
         />
         <Route
+          path="/power5"
+          element={
+            session ? (
+              <Power5Desk
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
           path="/"
           element={
-            <Navigate to={session ? '/dashboard' : '/login'} replace />
+            session ? <RoleHomeRedirect /> : <Navigate to="/login" replace />
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

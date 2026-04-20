@@ -94,7 +94,37 @@ type AgentJonesCampaignGoalsSafe = {
   user_contribution_summary: { slug: string; contributed: number }[] | null
 }
 
+type AgentJonesCoordinatorOpsSafe = {
+  has_supervisor_scope: boolean
+  supervised_team_count: number
+  open_assignments_total: number
+  blocked_count: number
+  overdue_count: number
+  in_progress_count: number
+  assigned_not_started_count: number
+  intern_pipelines_active: number | null
+  intern_pipelines_escalated: number | null
+  intern_overdue_first_contact: number | null
+  desk_loading: boolean
+}
+
+type AgentJonesLeadershipSnapshotSafe = {
+  active_kpi_count: number
+  kpi_mean_progress_pct: number | null
+  kpis_below_half_target: number
+  weakest_kpi_name: string | null
+  weakest_kpi_pct_of_target: number | null
+  missions_visible_count: number
+}
+
+type AgentJonesSurfaceSafe =
+  | 'volunteer_dashboard'
+  | 'intern_desk'
+  | 'coordinator_desk'
+  | 'candidate_desk'
+
 type AgentJonesSafeContextV2 = {
+  surface: AgentJonesSurfaceSafe
   user: {
     role?: string | null
     onboarding_status?: string | null
@@ -132,6 +162,8 @@ type AgentJonesSafeContextV2 = {
   daily_activation?: AgentJonesDailyActivationSafe
   intern_layer?: AgentJonesInternLayerSafe
   campaign_goals?: AgentJonesCampaignGoalsSafe
+  coordinator_ops?: AgentJonesCoordinatorOpsSafe
+  leadership_snapshot?: AgentJonesLeadershipSnapshotSafe
 }
 
 type AgentJonesSafeContextLegacy = {
@@ -209,6 +241,17 @@ const SCROLL_IDS = new Set([
   'intern-desk',
   'campaign-kpis',
   'agent-jones',
+  'coordinator-mission-ops',
+  'candidate-health-snapshot',
+])
+
+const NAV_PATHS = new Set(['/', '/dashboard', '/intern', '/coordinator', '/candidate'])
+
+const SURFACES = new Set<AgentJonesSurfaceSafe>([
+  'volunteer_dashboard',
+  'intern_desk',
+  'coordinator_desk',
+  'candidate_desk',
 ])
 
 const corsHeaders: Record<string, string> = {
@@ -858,8 +901,127 @@ function validateOperational(
   }
 }
 
+function validateSurfaceRaw(raw: unknown): AgentJonesSurfaceSafe {
+  if (typeof raw !== 'string') return 'volunteer_dashboard'
+  const t = raw.trim()
+  if (SURFACES.has(t as AgentJonesSurfaceSafe)) return t as AgentJonesSurfaceSafe
+  return 'volunteer_dashboard'
+}
+
+function validateCoordinatorOpsRaw(
+  raw: unknown,
+): AgentJonesCoordinatorOpsSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const b = (k: string) => {
+    const v = raw[k]
+    return typeof v === 'boolean' ? v : undefined
+  }
+  const nn = (k: string, max: number) => {
+    const v = raw[k]
+    if (typeof v !== 'number' || !Number.isFinite(v)) return undefined
+    const n = Math.floor(v)
+    if (n < 0 || n > max) return undefined
+    return n
+  }
+  const nullOrNn = (k: string, max: number): number | null | undefined => {
+    const v = raw[k]
+    if (v === null) return null
+    const n = nn(k, max)
+    return n
+  }
+  const hs = b('has_supervisor_scope')
+  const dl = b('desk_loading')
+  const st = nn('supervised_team_count', 50)
+  const ot = nn('open_assignments_total', 50_000)
+  const bc = nn('blocked_count', 50_000)
+  const oc = nn('overdue_count', 50_000)
+  const ip = nn('in_progress_count', 50_000)
+  const as = nn('assigned_not_started_count', 50_000)
+  if (
+    hs === undefined ||
+    dl === undefined ||
+    st === undefined ||
+    ot === undefined ||
+    bc === undefined ||
+    oc === undefined ||
+    ip === undefined ||
+    as === undefined
+  ) {
+    return undefined
+  }
+  const ipa = nullOrNn('intern_pipelines_active', 50_000)
+  const ipe = nullOrNn('intern_pipelines_escalated', 50_000)
+  const iof = nullOrNn('intern_overdue_first_contact', 50_000)
+  if (ipa === undefined || ipe === undefined || iof === undefined) return undefined
+  return {
+    has_supervisor_scope: hs,
+    supervised_team_count: st,
+    open_assignments_total: ot,
+    blocked_count: bc,
+    overdue_count: oc,
+    in_progress_count: ip,
+    assigned_not_started_count: as,
+    intern_pipelines_active: ipa,
+    intern_pipelines_escalated: ipe,
+    intern_overdue_first_contact: iof,
+    desk_loading: dl,
+  }
+}
+
+function validateLeadershipSnapshotRaw(
+  raw: unknown,
+): AgentJonesLeadershipSnapshotSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const ak = raw.active_kpi_count
+  if (typeof ak !== 'number' || !Number.isFinite(ak) || ak < 0 || ak > 500) return undefined
+  let mean: number | null = null
+  const mp = raw.kpi_mean_progress_pct
+  if (mp === null) {
+    mean = null
+  } else if (typeof mp === 'number' && Number.isFinite(mp) && mp >= 0 && mp <= 1000) {
+    mean = Math.round(mp * 10) / 10
+  } else {
+    return undefined
+  }
+  const bh = raw.kpis_below_half_target
+  if (typeof bh !== 'number' || !Number.isFinite(bh) || bh < 0 || bh > 500) return undefined
+  let wname: string | null = null
+  const wn = raw.weakest_kpi_name
+  if (wn === null) {
+    wname = null
+  } else if (typeof wn === 'string') {
+    const t = wn.trim()
+    if (t.length > 120 || /[<>\\]/.test(t)) return undefined
+    wname = t || null
+  } else {
+    return undefined
+  }
+  let wpct: number | null = null
+  const wp = raw.weakest_kpi_pct_of_target
+  if (wp === null) {
+    wpct = null
+  } else if (typeof wp === 'number' && Number.isFinite(wp) && wp >= 0 && wp <= 1000) {
+    wpct = Math.round(wp * 10) / 10
+  } else {
+    return undefined
+  }
+  const mv = raw.missions_visible_count
+  if (typeof mv !== 'number' || !Number.isFinite(mv) || mv < 0 || mv > 500) return undefined
+  return {
+    active_kpi_count: Math.floor(ak),
+    kpi_mean_progress_pct: mean,
+    kpis_below_half_target: Math.floor(bh),
+    weakest_kpi_name: wname,
+    weakest_kpi_pct_of_target: wpct,
+    missions_visible_count: Math.floor(mv),
+  }
+}
+
 function legacyToV2(raw: AgentJonesSafeContextLegacy): AgentJonesSafeContextV2 {
   return {
+    surface: 'volunteer_dashboard',
     user: {
       role: undefined,
       onboarding_status: raw.profileHints?.onboarding_status,
@@ -895,6 +1057,9 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
     const user = validateUser(raw.user)
     const operational = validateOperational(raw.operational)
     if (!user || !operational) return null
+    const surface = validateSurfaceRaw(raw.surface)
+    const coordinator_ops = validateCoordinatorOpsRaw(raw.coordinator_ops)
+    const leadership_snapshot = validateLeadershipSnapshotRaw(raw.leadership_snapshot)
     const campaign = validateCampaign(raw.campaign)
     const relational = validateRelationalPower5(raw.relational_power5)
     const volunteer_mission = validateVolunteerMission(raw.volunteer_mission)
@@ -902,6 +1067,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
     const intern_layer = validateInternLayer(raw.intern_layer)
     const campaign_goals = validateCampaignGoals(raw.campaign_goals)
     return {
+      surface,
       user,
       operational,
       ...(campaign
@@ -922,6 +1088,8 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
       ...(daily_activation ? { daily_activation } : {}),
       ...(intern_layer ? { intern_layer } : {}),
       ...(campaign_goals ? { campaign_goals } : {}),
+      ...(coordinator_ops ? { coordinator_ops } : {}),
+      ...(leadership_snapshot ? { leadership_snapshot } : {}),
     }
   }
 
@@ -941,6 +1109,7 @@ function buildSystemPrompt(context: AgentJonesSafeContextV2): string {
 
 Rules:
 - You ONLY reason about the volunteer using the JSON "dashboardContext" below. Do not claim you queried a database, opened Supabase, or accessed tools beyond this context.
+- dashboardContext.surface is one of: volunteer_dashboard | intern_desk | coordinator_desk | candidate_desk. Match tone: volunteer_dashboard/intern_desk emphasize individual tasks and roster; coordinator_desk emphasizes supervised teams, blocked/overdue mission lanes, and intern pipeline counts (no volunteer PII); candidate_desk emphasizes KPI health, strategic focus, and when to use coordinator vs volunteer surfaces — never invent polling or finance detail.
 - Progress is exactly one of: unmatched, matched_no_branch, exception_pending, matched_ready (dashboardContext.operational.progressSlice).
 - voterLoading means roster/voter linkage is still loading — be cautious/verification-first.
 - Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs) — ground wording and next-steps in it, but do not invent policy details.
@@ -953,6 +1122,8 @@ Rules:
 - If dashboardContext.daily_activation exists, it is today's daily activation (completed_today / total_today, points_today, optional team_tier_label, next_task_title, optional adaptive fields: progression_stage new|active|advanced, top_lane, growth_lane, lane_scores, behavior scores, assignment_hint). Social/communications stay universal; other lanes adapt over time. Explain assignments briefly when assignment_hint or lane fields are present (e.g. strength in outreach, growth in leadership). Encourage specialization without pressure. Suggest scrolling to daily-activation for the checklist. Never imply they must finish all tasks to use the app.
 - If dashboardContext.intern_layer exists, the user is an intern or supervisor with intern-layer data: overdue_contacts, pending_followups, next_best_action (title, volunteer_name, suggested_script), leadership_task_title, pipeline counts. Prioritize overdue first contacts (72h rule), then follow-ups. Give short call openers from suggested_script when present. For placement, name the lane from next_best_action if given. Reinforce one leadership habit per reply (mentor, escalate properly, review progress). Suggest scrolling to intern-desk when on that page.
 - If dashboardContext.campaign_goals exists, it lists top campaign KPIs (name, current, target, unit, pct toward goal) and optional user_contribution_summary (slug + contributed). Tie encouragement to these numbers (e.g. “moves us toward 20,000 volunteers”, “about 60% to fundraising goal” when pct matches). Connect completed mission tasks to moving these metrics. Suggest scrolling to campaign-kpis when pointing at the goal strip.
+- If dashboardContext.coordinator_ops exists, it is a bounded coordinator summary: supervisor scope flag, supervised_team_count, open_assignments_total, lane counts (blocked, overdue, in_progress, assigned_not_started), optional intern pipeline aggregates, desk_loading. Prioritize blocked/overdue assignments, then intern escalations/overdue first contacts. Suggest scroll coordinator-mission-ops when discussing supervised missions. Do not name volunteers.
+- If dashboardContext.leadership_snapshot exists, it summarizes KPI health for a principal/leadership desk: active_kpi_count, kpi_mean_progress_pct, kpis_below_half_target, optional weakest_kpi_name / weakest_kpi_pct_of_target, missions_visible_count. Stay strategic — align narratives with these numbers; suggest scroll candidate-health-snapshot when pointing at the executive snapshot. Do not claim access to polling or ad-buy systems.
 
 dashboardContext:
 ${JSON.stringify(context)}
@@ -962,7 +1133,7 @@ Output a single JSON object with:
 - "suggestedPrompts" (optional): max 4 strings (short, tap-friendly).
 - "recommendedActions" (optional): max 3 of:
   - { "type": "scroll", "targetId": one of: ${[...SCROLL_IDS].join(', ')} }
-  - { "type": "navigate", "targetId": "/dashboard" | "/" }
+  - { "type": "navigate", "targetId": one of: ${[...NAV_PATHS].join(', ')} }
   - { "type": "task", "taskType": string (short label) }
 - "insight" (optional): { "type": "campaign_context" | "user_context" | "strategy", "message": string }
 - "onboardingPrompt" (optional): short slug such as direction_choice | micro_suggestion | reinforcement (max 64 chars)
@@ -1022,7 +1193,7 @@ function sanitizeActions(raw: unknown) {
     if (type === 'navigate') {
       const targetId =
         typeof item.targetId === 'string' ? item.targetId.trim() : ''
-      if (!targetId || (targetId !== '/' && targetId !== '/dashboard')) continue
+      if (!targetId || !NAV_PATHS.has(targetId)) continue
       out.push({ type: 'navigate' as const, targetId })
       continue
     }

@@ -10,6 +10,11 @@ import {
   getMicroCommitmentsForDirection,
   getMomentumGuidancePhase,
 } from './onboardingEngine'
+import type {
+  AgentJonesCoordinatorOpsContext,
+  AgentJonesLeadershipSnapshotContext,
+  AgentJonesSurface,
+} from './agentJonesContextV2'
 
 export type AgentJonesPrompt = {
   id: string
@@ -35,6 +40,140 @@ export type AgentJonesGuidanceInput = {
   slice: DashboardProgressSlice
   profile: CampaignProfile | null
   voterLoading: boolean
+  /** Defaults to volunteer_dashboard when omitted (backward compatible). */
+  surface?: AgentJonesSurface
+  coordinatorOps?: AgentJonesCoordinatorOpsContext | null
+  leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
+}
+
+function buildCoordinatorDeskGuidance(
+  ops: AgentJonesCoordinatorOpsContext,
+): AgentJonesGuidanceBundle {
+  const parts: string[] = []
+  if (ops.desk_loading) {
+    parts.push('Coordinator desk data is still loading — mission counts may appear after refresh.')
+  } else if (!ops.has_supervisor_scope) {
+    parts.push(
+      'No supervisor team scope on this profile — the mission board stays empty until HQ links volunteer_supervisor_teams.',
+    )
+  } else {
+    parts.push(
+      `Supervised teams: ${ops.supervised_team_count}. Open assignments: ${ops.open_assignments_total} (blocked ${ops.blocked_count}, overdue ${ops.overdue_count}, in progress ${ops.in_progress_count}, assigned not started ${ops.assigned_not_started_count}).`,
+    )
+  }
+  if ((ops.intern_overdue_first_contact ?? 0) > 0) {
+    parts.push(
+      `${ops.intern_overdue_first_contact} intern pipeline first-contact row(s) are overdue on this team view.`,
+    )
+  }
+  if ((ops.intern_pipelines_escalated ?? 0) > 0) {
+    parts.push(`${ops.intern_pipelines_escalated} pipeline row(s) are escalated — triage with interns before counts grow.`)
+  }
+  if (
+    (ops.intern_pipelines_active ?? 0) > 0 &&
+    (ops.intern_overdue_first_contact ?? 0) === 0 &&
+    (ops.intern_pipelines_escalated ?? 0) === 0
+  ) {
+    parts.push(`${ops.intern_pipelines_active} active pipeline row(s) — spot-check coverage.`)
+  }
+
+  return {
+    greeting: 'Coordinator oversight mode.',
+    stateExplanation:
+      parts.join(' ') ||
+      'Use mission operations for supervised assignments and the intern summary for pipeline risk.',
+    prompts: [
+      {
+        id: 'coord-mission-board',
+        label: 'Open mission operations',
+        response:
+          'Scrolling to the supervised mission board — clear blocked and overdue lanes before nudging volunteers on optional work.',
+        scrollToId: 'coordinator-mission-ops',
+      },
+      {
+        id: 'coord-pipeline',
+        label: 'Where is intern pipeline detail?',
+        response:
+          'Pipeline aggregates are on this coordinator desk; interns execute contacts on /intern. Pair with them when escalations or overdue first contacts show up in your summary.',
+      },
+      {
+        id: 'coord-kpis',
+        label: 'Align on KPIs',
+        response:
+          'The KPI card here mirrors the active campaign window — use it to keep volunteer messaging aligned with measurable goals.',
+        scrollToId: 'campaign-kpis',
+      },
+      {
+        id: 'coord-volunteer-view',
+        label: 'See volunteer workspace',
+        response:
+          'Open /dashboard from the header when you need the same voter and mission cards volunteers see day to day.',
+      },
+    ],
+  }
+}
+
+function buildCandidateLeadershipGuidance(
+  snap: AgentJonesLeadershipSnapshotContext,
+): AgentJonesGuidanceBundle {
+  const kpiLine =
+    snap.active_kpi_count === 0
+      ? 'No active KPI rows for today’s date window — confirm campaign_kpis in HQ tools before citing goals publicly.'
+      : `${snap.active_kpi_count} active KPI(s). Mean progress vs target: ${snap.kpi_mean_progress_pct ?? 'n/a'}%. ${snap.kpis_below_half_target} below half of target.${
+          snap.weakest_kpi_name
+            ? ` Weakest lane: “${snap.weakest_kpi_name}” at ${snap.weakest_kpi_pct_of_target ?? '—'}%.`
+            : ''
+        } ${snap.missions_visible_count} mission scaffold row(s) visible with your role.`
+
+  return {
+    greeting: 'Leadership / principal mode.',
+    stateExplanation: `${kpiLine} I will stay grounded in this desk’s KPI and health cards — not polling or fundraising systems we do not see.`,
+    prompts: [
+      {
+        id: 'cand-health',
+        label: 'Open campaign health snapshot',
+        response: 'Scrolling to the health snapshot at the top of this desk.',
+        scrollToId: 'candidate-health-snapshot',
+      },
+      {
+        id: 'cand-coordinator',
+        label: 'When to open coordinator desk',
+        response:
+          'Use /coordinator for supervised mission lanes and pipeline signals — keep legal and finance approvals in HQ workflows outside this app.',
+      },
+      {
+        id: 'cand-field',
+        label: 'Field truth',
+        response:
+          'Volunteer-facing execution lives on /dashboard — go there when you need the same tools the field uses.',
+      },
+      {
+        id: 'cand-weakest',
+        label: 'What metric needs air cover?',
+        response:
+          snap.weakest_kpi_name && snap.weakest_kpi_pct_of_target != null
+            ? `On paper, “${snap.weakest_kpi_name}” is lowest at ${snap.weakest_kpi_pct_of_target}% of target — align coordinators and comms there before spinning new programs.`
+            : 'With no clear weakest KPI in this window, lean on the election phase card and HQ before promising new numeric goals.',
+      },
+    ],
+  }
+}
+
+function applyInternDeskOverlay(bundle: AgentJonesGuidanceBundle): AgentJonesGuidanceBundle {
+  return {
+    ...bundle,
+    greeting: `Team desk — ${bundle.greeting}`,
+    stateExplanation: `${bundle.stateExplanation} You are on /intern; the contact queue anchors at #intern-desk.`,
+    prompts: [
+      {
+        id: 'intern-jump-queue',
+        label: 'Jump to contact queue',
+        response: 'Scrolling to the intern desk section on this page.',
+        scrollToId: 'intern-desk',
+      },
+      ...bundle.prompts,
+    ].slice(0, 8),
+  }
 }
 
 function orientationLeft(profile: CampaignProfile | null): boolean {
@@ -155,10 +294,15 @@ export function getAgentJonesGuidanceBundle(
   input: AgentJonesGuidanceInput,
 ): AgentJonesGuidanceBundle {
   const { slice, profile, voterLoading } = input
+  const surface: AgentJonesSurface = input.surface ?? 'volunteer_dashboard'
+  const allowMomentum =
+    surface === 'volunteer_dashboard' || surface === 'intern_desk'
 
   if (voterLoading) {
-    const momentumWhileLoading = buildMomentumOnboardingBundle(profile)
-    if (momentumWhileLoading) return momentumWhileLoading
+    if (allowMomentum) {
+      const momentumWhileLoading = buildMomentumOnboardingBundle(profile)
+      if (momentumWhileLoading) return momentumWhileLoading
+    }
     return {
       greeting: 'Hang tight — I am syncing your roster link.',
       stateExplanation:
@@ -186,8 +330,10 @@ export function getAgentJonesGuidanceBundle(
     }
   }
 
-  const momentumBundle = buildMomentumOnboardingBundle(profile)
-  if (momentumBundle) return momentumBundle
+  if (allowMomentum) {
+    const momentumBundle = buildMomentumOnboardingBundle(profile)
+    if (momentumBundle) return momentumBundle
+  }
 
   if (slice === 'exception_pending') {
     return {
@@ -340,7 +486,15 @@ export function getAgentJonesGuidanceBundle(
     }
   }
 
-  return {
+  if (slice === 'matched_ready' && input.coordinatorOps && surface === 'coordinator_desk') {
+    return buildCoordinatorDeskGuidance(input.coordinatorOps)
+  }
+
+  if (slice === 'matched_ready' && input.leadershipSnapshot && surface === 'candidate_desk') {
+    return buildCandidateLeadershipGuidance(input.leadershipSnapshot)
+  }
+
+  const clearedVolunteerBundle: AgentJonesGuidanceBundle = {
     greeting: 'You are cleared — I will keep the rails visible while work ramps.',
     stateExplanation:
       'Roster checks, branch, and orientation all look good for this slice. Future live routing will drop canvass or phone tasks here; for now I stay deterministic.',
@@ -372,6 +526,12 @@ export function getAgentJonesGuidanceBundle(
       },
     ],
   }
+
+  if (surface === 'intern_desk') {
+    return applyInternDeskOverlay(clearedVolunteerBundle)
+  }
+
+  return clearedVolunteerBundle
 }
 
 export function scrollToDashboardId(id: string) {

@@ -28,11 +28,12 @@ export default function CandidateElectionStrategicCard() {
       aria-labelledby="candidate-election-strategic-title"
     >
       <h2 id="candidate-election-strategic-title" className="candidate-section-title">
-        Election timeline & momentum
+        Election countdown & strategic phase
       </h2>
       <p className="subtitle candidate-section-lede">
-        Clock and phase framing come from the in-repo election configuration (
-        <code>campaignClock</code>) — not polling data.
+        Calendar pressure and phase copy come from the in-repo election configuration (<code>campaignClock</code>),
+        not polls or fundraising dashboards. KPI “momentum” is handled separately using live goal rows — there is no
+        fabricated chronology tying the two.
       </p>
       <div className="candidate-countdown-block">
         <p className="candidate-countdown-meta subtitle" style={{ margin: '0 0 6px' }}>

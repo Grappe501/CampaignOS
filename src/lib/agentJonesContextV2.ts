@@ -85,6 +85,40 @@ export type AgentJonesCampaignGoalsContext = {
   user_contribution_summary: { slug: string; contributed: number }[] | null
 }
 
+/** UI route / desk — drives guidance tone (not a permission model). */
+export const AGENT_JONES_SURFACES = [
+  'volunteer_dashboard',
+  'intern_desk',
+  'coordinator_desk',
+  'candidate_desk',
+] as const
+export type AgentJonesSurface = (typeof AGENT_JONES_SURFACES)[number]
+
+/** Coordinator oversight — counts only, no assignee PII. */
+export type AgentJonesCoordinatorOpsContext = {
+  has_supervisor_scope: boolean
+  supervised_team_count: number
+  open_assignments_total: number
+  blocked_count: number
+  overdue_count: number
+  in_progress_count: number
+  assigned_not_started_count: number
+  intern_pipelines_active: number | null
+  intern_pipelines_escalated: number | null
+  intern_overdue_first_contact: number | null
+  desk_loading: boolean
+}
+
+/** Leadership / principal desk — KPI summary only. */
+export type AgentJonesLeadershipSnapshotContext = {
+  active_kpi_count: number
+  kpi_mean_progress_pct: number | null
+  kpis_below_half_target: number
+  weakest_kpi_name: string | null
+  weakest_kpi_pct_of_target: number | null
+  missions_visible_count: number
+}
+
 export type AgentJonesVolunteerMissionContext = {
   active_summaries: {
     title: string
@@ -101,6 +135,7 @@ export type AgentJonesVolunteerMissionContext = {
 }
 
 export type AgentJonesContextV2 = {
+  surface: AgentJonesSurface
   user: {
     role?: string | null
     onboarding_status?: string | null
@@ -152,6 +187,8 @@ export type AgentJonesContextV2 = {
   daily_activation?: AgentJonesDailyActivationContext
   intern_layer?: AgentJonesInternLayerContext
   campaign_goals?: AgentJonesCampaignGoalsContext
+  coordinator_ops?: AgentJonesCoordinatorOpsContext
+  leadership_snapshot?: AgentJonesLeadershipSnapshotContext
 }
 
 function trunc(s: unknown, max: number): string | null {
@@ -170,12 +207,15 @@ export function buildAgentJonesContextV2(input: {
   voterMatched: boolean
   progressSlice: DashboardProgressSlice
   voterLoading: boolean
+  surface?: AgentJonesSurface
   campaign?: AgentJonesContextV2['campaign'] | null
   relationalPower5?: AgentJonesRelationalPower5Context | null
   volunteerMission?: AgentJonesVolunteerMissionContext | null
   dailyActivation?: AgentJonesDailyActivationContext | null
   internLayer?: AgentJonesInternLayerContext | null
   campaignGoals?: AgentJonesCampaignGoalsContext | null
+  coordinatorOps?: AgentJonesCoordinatorOpsContext | null
+  leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
 }): AgentJonesContextV2 {
   const {
     profile,
@@ -183,15 +223,21 @@ export function buildAgentJonesContextV2(input: {
     voterMatched,
     progressSlice,
     voterLoading,
+    surface: surfaceIn,
     campaign,
     relationalPower5,
     volunteerMission,
     dailyActivation,
     internLayer,
     campaignGoals,
+    coordinatorOps,
+    leadershipSnapshot,
   } = input
 
+  const surface: AgentJonesSurface = surfaceIn ?? 'volunteer_dashboard'
+
   return {
+    surface,
     user: {
       role: trunc(profile?.primary_role, 120),
       onboarding_status: trunc(profile?.onboarding_status, 120),
@@ -225,6 +271,8 @@ export function buildAgentJonesContextV2(input: {
     ...(dailyActivation ? { daily_activation: dailyActivation } : {}),
     ...(internLayer ? { intern_layer: internLayer } : {}),
     ...(campaignGoals ? { campaign_goals: campaignGoals } : {}),
+    ...(coordinatorOps ? { coordinator_ops: coordinatorOps } : {}),
+    ...(leadershipSnapshot ? { leadership_snapshot: leadershipSnapshot } : {}),
   }
 }
 

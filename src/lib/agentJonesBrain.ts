@@ -5,8 +5,11 @@ import type { DashboardProgressSlice } from './dashboardState'
 import { getOnboardingEngineAiExtras } from './onboardingEngine'
 import type {
   AgentJonesCampaignGoalsContext,
+  AgentJonesCoordinatorOpsContext,
   AgentJonesDailyActivationContext,
   AgentJonesInternLayerContext,
+  AgentJonesLeadershipSnapshotContext,
+  AgentJonesSurface,
   AgentJonesVolunteerMissionContext,
 } from './agentJonesContextV2'
 
@@ -129,15 +132,22 @@ export function buildAgentJonesFallbackV2(input: {
   slice: DashboardProgressSlice
   profile: CampaignProfile | null
   voterLoading: boolean
+  surface?: AgentJonesSurface
+  coordinatorOps?: AgentJonesCoordinatorOpsContext | null
+  leadershipSnapshot?: AgentJonesLeadershipSnapshotContext | null
   volunteerMission?: AgentJonesVolunteerMissionContext | null
   dailyActivation?: AgentJonesDailyActivationContext | null
   internLayer?: AgentJonesInternLayerContext | null
   campaignGoals?: AgentJonesCampaignGoalsContext | null
 }): AgentJonesResponse {
+  const surf: AgentJonesSurface = input.surface ?? 'volunteer_dashboard'
   const bundle = getAgentJonesGuidanceBundle({
     slice: input.slice,
     profile: input.profile,
     voterLoading: input.voterLoading,
+    surface: surf,
+    coordinatorOps: input.coordinatorOps ?? null,
+    leadershipSnapshot: input.leadershipSnapshot ?? null,
   })
 
   const suggestedPrompts = bundle.prompts
@@ -151,40 +161,51 @@ export function buildAgentJonesFallbackV2(input: {
     : undefined
 
   const onboarding = getOnboardingEngineAiExtras(input.profile)
+  const showVolunteerQueues =
+    surf === 'volunteer_dashboard' || surf === 'intern_desk'
   const mission = input.volunteerMission
   const daily = input.dailyActivation
   const intern = input.internLayer
   const goals = input.campaignGoals
   const missionExtra =
-    mission && (mission.active_summaries.length || mission.next_best_title)
+    showVolunteerQueues &&
+    mission &&
+    (mission.active_summaries.length || mission.next_best_title)
       ? `\n\n${missionFallbackLines(mission).join('\n')}`
       : ''
   const dailyExtra =
+    showVolunteerQueues &&
     daily &&
     (daily.total_today > 0 ||
       Boolean(daily.assignment_hint) ||
       Boolean(daily.progression_stage))
       ? `\n\n${dailyFallbackLines(daily).join('\n')}`
       : ''
-  const internExtra = intern ? `\n\n${internFallbackLines(intern).join('\n')}` : ''
+  const internExtra =
+    showVolunteerQueues && intern ? `\n\n${internFallbackLines(intern).join('\n')}` : ''
   const goalsExtra =
     goals && goals.kpis.length ? `\n\n${campaignGoalsFallbackLines(goals).join('\n')}` : ''
 
   const missionScroll =
-    mission?.next_best_title != null && mission.next_best_title !== ''
+    showVolunteerQueues &&
+    mission?.next_best_title != null &&
+    mission.next_best_title !== ''
       ? ([{ type: 'scroll' as const, targetId: 'mission-tasks' as const }] as NonNullable<
           AgentJonesResponse['recommendedActions']
         >)
       : undefined
 
   const dailyScroll =
-    daily && (daily.total_today > 0 || Boolean(daily.assignment_hint))
+    showVolunteerQueues &&
+    daily &&
+    (daily.total_today > 0 || Boolean(daily.assignment_hint))
       ? ([{ type: 'scroll' as const, targetId: 'daily-activation' as const }] as NonNullable<
           AgentJonesResponse['recommendedActions']
         >)
       : undefined
 
   const internScroll =
+    showVolunteerQueues &&
     intern &&
     (intern.assigned_pipeline_count > 0 ||
       intern.overdue_first_contact_count > 0 ||
@@ -201,7 +222,29 @@ export function buildAgentJonesFallbackV2(input: {
         >)
       : undefined
 
+  const ops = input.coordinatorOps
+  const coordScroll =
+    surf === 'coordinator_desk' &&
+    ops &&
+    !ops.desk_loading &&
+    ops.has_supervisor_scope &&
+    ops.open_assignments_total > 0
+      ? ([{ type: 'scroll' as const, targetId: 'coordinator-mission-ops' as const }] as NonNullable<
+          AgentJonesResponse['recommendedActions']
+        >)
+      : undefined
+
+  const snap = input.leadershipSnapshot
+  const candScroll =
+    surf === 'candidate_desk' && snap && snap.active_kpi_count > 0
+      ? ([{ type: 'scroll' as const, targetId: 'candidate-health-snapshot' as const }] as NonNullable<
+          AgentJonesResponse['recommendedActions']
+        >)
+      : undefined
+
   const mergedScrolls = [
+    ...(coordScroll ?? []),
+    ...(candScroll ?? []),
     ...(missionScroll ?? []),
     ...(dailyScroll ?? []),
     ...(internScroll ?? []),
