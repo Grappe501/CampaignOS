@@ -30,6 +30,8 @@ export const AGENT_JONES_SCROLL_TARGET_IDS = [
   'event-calendar-filters',
   'event-record-detail',
   'event-record-command',
+  'event-record-field',
+  'event-record-communications',
   'event-detail-health',
   'event-overview',
   'event-stage-tracker',

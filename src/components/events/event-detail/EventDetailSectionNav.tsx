@@ -10,6 +10,8 @@ const LINKS: { section: EventRecordDetailSectionSlug; label: string }[] = [
   { section: 'overview', label: 'Overview' },
   { section: 'stages', label: 'Stages' },
   { section: 'tasks', label: 'Tasks' },
+  { section: 'field', label: 'Field' },
+  { section: 'communications', label: 'Comms' },
   { section: 'staffing', label: 'Staffing' },
   { section: 'logistics', label: 'Logistics' },
   { section: 'calendar', label: 'Calendar' },

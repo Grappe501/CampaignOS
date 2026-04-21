@@ -5,6 +5,8 @@
 import type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture'
 import { collectOperationsGapsForEvent } from './campaignEventCoordinatorOperations'
 import type { StaffingAssignmentLike } from './eventStaffingMatrix'
+import { summarizeCommsBacklog } from './eventCommsGaps'
+import { summarizeDayOfFieldGaps } from './eventDayOfGaps'
 import { collectOperationsGapsWithOperationalLayer } from './operationalCommandGaps'
 import {
   computeEventHealthScore,
@@ -57,6 +59,15 @@ export type CommandPanelDigest = {
   eventsNext72hCount: number
   criticalIssuesCount: number
   pendingApprovalsCount: number
+  /** Browser localStorage workspace rollup (v1); zeros when storage unavailable. */
+  commsEventsMissingWorkspace: number
+  commsOpenSteps: number
+  commsRecapIncomplete: number
+  commsDraftsPendingReview: number
+  /** Browser day-of workspace rollup (v1). */
+  dayOfEventsMissingWorkspace: number
+  dayOfOpenFieldIssues: number
+  dayOfClosureIncompleteEvents: number
   topRiskEvents: Array<{ eventId: string; title: string; score: number; reason: string }>
   fastestWins: Array<{ eventId: string; title: string; action: string }>
   /** Brief operator briefing (1–2 sentences). */
@@ -136,6 +147,8 @@ function buildDigest(
   critical: TodayCommandEventItem[],
   pending: CampaignCalendarEventRecord[],
   nowMs: number,
+  comms: ReturnType<typeof summarizeCommsBacklog>,
+  dayOf: ReturnType<typeof summarizeDayOfFieldGaps>,
 ): CommandPanelDigest {
   const topRisk = [...critical]
     .sort((a, b) => a.healthScore - b.healthScore)
@@ -161,11 +174,25 @@ function buildDigest(
       }
     })
 
+  const commsLine =
+    comms.openSteps + comms.recapIncomplete + comms.draftsPendingReview + comms.eventsMissingWorkspace > 0
+      ? `Communications (local workspaces): ${comms.openSteps} open step(s), ${comms.recapIncomplete} recap(s) not published, ${comms.draftsPendingReview} AI draft(s) pending review, ${comms.eventsMissingWorkspace} event(s) without a saved comms workspace.`
+      : null
+
+  const dayOfLine =
+    dayOf.openFieldIssues + dayOf.closureIncompleteEvents + dayOf.eventsMissingWorkspace > 0
+      ? `Field execution (local): ${dayOf.openFieldIssues} open day-of issue(s), ${dayOf.closureIncompleteEvents} event(s) with incomplete closure, ${dayOf.eventsMissingWorkspace} without a saved day-of workspace.`
+      : null
+
   const brief1 = [
     `${itemsToday.length} event(s) today`,
     `${items72.length} with attention signals in 72h`,
     `${pending.length} approval(s) pending`,
-  ].join(' · ')
+    commsLine,
+    dayOfLine,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   const briefFull = [
     `Operational scan at ${new Date(nowMs).toLocaleString()}: ${brief1}.`,
@@ -175,13 +202,24 @@ function buildDigest(
     pending.length
       ? 'Governance: work the approval queue before promoting request-only events live.'
       : 'No outstanding intake queue items.',
-  ].join(' ')
+    commsLine ?? '',
+    dayOfLine ?? '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return {
     eventsTodayCount: itemsToday.length,
     eventsNext72hCount: items72.length,
     criticalIssuesCount: critical.length,
     pendingApprovalsCount: pending.length,
+    commsEventsMissingWorkspace: comms.eventsMissingWorkspace,
+    commsOpenSteps: comms.openSteps,
+    commsRecapIncomplete: comms.recapIncomplete,
+    commsDraftsPendingReview: comms.draftsPendingReview,
+    dayOfEventsMissingWorkspace: dayOf.eventsMissingWorkspace,
+    dayOfOpenFieldIssues: dayOf.openFieldIssues,
+    dayOfClosureIncompleteEvents: dayOf.closureIncompleteEvents,
     topRiskEvents: topRisk,
     fastestWins: wins,
     briefingConcise: brief1 + '.',
@@ -409,7 +447,9 @@ export function buildTodayCommandSnapshot(
     })
   }
 
-  const digest = buildDigest(today, next72, dedup, approvals, nowMs)
+  const commsSummary = summarizeCommsBacklog(list)
+  const dayOfSummary = summarizeDayOfFieldGaps(list, nowMs)
+  const digest = buildDigest(today, next72, dedup, approvals, nowMs, commsSummary, dayOfSummary)
 
   return {
     generatedAtMs: nowMs,

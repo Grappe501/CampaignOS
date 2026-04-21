@@ -261,6 +261,34 @@ export default function TodayCommandPanel({ events, assignmentMap }: TodayComman
               <dt className="subtitle">Approvals</dt>
               <dd style={{ margin: 0 }}>{snap.digest.pendingApprovalsCount}</dd>
             </div>
+            <div>
+              <dt className="subtitle">Comms — open steps (local)</dt>
+              <dd style={{ margin: 0 }}>{snap.digest.commsOpenSteps}</dd>
+            </div>
+            <div>
+              <dt className="subtitle">Comms — missing workspace</dt>
+              <dd style={{ margin: 0 }}>{snap.digest.commsEventsMissingWorkspace}</dd>
+            </div>
+            <div>
+              <dt className="subtitle">Comms — recap not published</dt>
+              <dd style={{ margin: 0 }}>{snap.digest.commsRecapIncomplete}</dd>
+            </div>
+            <div>
+              <dt className="subtitle">Comms — AI drafts to review</dt>
+              <dd style={{ margin: 0 }}>{snap.digest.commsDraftsPendingReview}</dd>
+            </div>
+            <div>
+              <dt className="subtitle">Field — open issues (local)</dt>
+              <dd style={{ margin: 0 }}>{snap.digest.dayOfOpenFieldIssues}</dd>
+            </div>
+            <div>
+              <dt className="subtitle">Field — closure incomplete</dt>
+              <dd style={{ margin: 0 }}>{snap.digest.dayOfClosureIncompleteEvents}</dd>
+            </div>
+            <div>
+              <dt className="subtitle">Field — missing workspace</dt>
+              <dd style={{ margin: 0 }}>{snap.digest.dayOfEventsMissingWorkspace}</dd>
+            </div>
           </dl>
           {snap.digest.topRiskEvents.length ? (
             <>
@@ -322,6 +350,15 @@ export default function TodayCommandPanel({ events, assignmentMap }: TodayComman
             </span>
             <span className="subtitle">
               Approvals <strong>{snap.digest.pendingApprovalsCount}</strong>
+            </span>
+            <span className="subtitle" title="From browser-stored event communications workspaces">
+              Comms backlog <strong>{snap.digest.commsOpenSteps}</strong>
+            </span>
+            <span className="subtitle" title="Completed events whose recap is not marked published in comms workspace">
+              Recap gaps <strong>{snap.digest.commsRecapIncomplete}</strong>
+            </span>
+            <span className="subtitle" title="Browser-stored day-of field issues">
+              Field issues <strong>{snap.digest.dayOfOpenFieldIssues}</strong>
             </span>
           </div>
           <div

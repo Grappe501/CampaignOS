@@ -441,6 +441,32 @@ type AgentJonesDeskRoutingSummarySafe = {
   route_headline?: string | null
 }
 
+/** Browser day-of workspace — counts + deterministic briefing lines (localStorage v1). */
+type AgentJonesFieldExecutionSafe = {
+  phase_label: string
+  briefing_lines: string[]
+  open_field_issues: number
+  pending_closure_items: number
+  signup_handoff_ack: boolean
+  source: 'browser_workspace_v1'
+}
+
+/** Event command — client-built briefing / similarity / after-action snapshot (bounded). */
+type AgentJonesEventIntelligenceSafe = {
+  event_id: string
+  event_title: string
+  briefing_one_liner?: string
+  briefing_quick: string
+  briefing_full: string
+  top_risks: string[]
+  next_actions: string[]
+  similar_lessons: string[]
+  delta_lines?: string[]
+  after_action_line?: string | null
+  data_gap_warnings?: string[]
+  field_execution?: AgentJonesFieldExecutionSafe
+}
+
 const GEO_SCOPE_TYPES = new Set([
   'campaign',
   'district',
@@ -521,6 +547,7 @@ type AgentJonesSafeContextV2 = {
   intervention_sequence?: AgentJonesInterventionSequenceSafe
   gotv_summary?: AgentJonesGotvSummarySafe
   desk_routing?: AgentJonesDeskRoutingSummarySafe
+  event_intelligence?: AgentJonesEventIntelligenceSafe
 }
 
 type AgentJonesSafeContextLegacy = {
@@ -614,6 +641,8 @@ const SCROLL_IDS = new Set([
   'event-calendar-filters',
   'event-record-detail',
   'event-record-command',
+  'event-record-field',
+  'event-record-communications',
   'event-detail-health',
   'event-overview',
   'event-stage-tracker',
@@ -2882,6 +2911,127 @@ function validateDeskRoutingSummaryRaw(
   return out
 }
 
+function validateFieldExecutionRaw(
+  raw: unknown,
+): AgentJonesFieldExecutionSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'browser_workspace_v1') return undefined
+  const phase_label =
+    typeof raw.phase_label === 'string' ? raw.phase_label.trim().slice(0, 120) : ''
+  if (!phase_label || /[<>\\]/.test(phase_label)) return undefined
+  const briefing_lines: string[] = []
+  if (Array.isArray(raw.briefing_lines)) {
+    for (const item of raw.briefing_lines.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 420)
+      if (!t || /[<>\\]/.test(t)) continue
+      briefing_lines.push(t)
+    }
+  }
+  const open_field_issues =
+    typeof raw.open_field_issues === 'number' && Number.isFinite(raw.open_field_issues)
+      ? Math.max(0, Math.min(500, Math.floor(raw.open_field_issues)))
+      : 0
+  const pending_closure_items =
+    typeof raw.pending_closure_items === 'number' && Number.isFinite(raw.pending_closure_items)
+      ? Math.max(0, Math.min(500, Math.floor(raw.pending_closure_items)))
+      : 0
+  const signup_handoff_ack = Boolean(raw.signup_handoff_ack)
+  return {
+    phase_label,
+    briefing_lines,
+    open_field_issues,
+    pending_closure_items,
+    signup_handoff_ack,
+    source: 'browser_workspace_v1',
+  }
+}
+
+function validateEventIntelligenceRaw(
+  raw: unknown,
+): AgentJonesEventIntelligenceSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (typeof raw.event_id !== 'string' || !raw.event_id.trim()) return undefined
+  if (typeof raw.event_title !== 'string' || !raw.event_title.trim()) return undefined
+  const bq =
+    typeof raw.briefing_quick === 'string' ? raw.briefing_quick.trim().slice(0, 1200) : ''
+  const bf =
+    typeof raw.briefing_full === 'string' ? raw.briefing_full.trim().slice(0, 2500) : ''
+  if (!bq || !bf) return undefined
+  const one =
+    typeof raw.briefing_one_liner === 'string' ? raw.briefing_one_liner.trim().slice(0, 400) : ''
+  const top_risks: string[] = []
+  if (Array.isArray(raw.top_risks)) {
+    for (const item of raw.top_risks.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 400)
+      if (!t || /[<>\\]/.test(t)) continue
+      top_risks.push(t)
+    }
+  }
+  const next_actions: string[] = []
+  if (Array.isArray(raw.next_actions)) {
+    for (const item of raw.next_actions.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 400)
+      if (!t || /[<>\\]/.test(t)) continue
+      next_actions.push(t)
+    }
+  }
+  const similar_lessons: string[] = []
+  if (Array.isArray(raw.similar_lessons)) {
+    for (const item of raw.similar_lessons.slice(0, 10)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 400)
+      if (!t || /[<>\\]/.test(t)) continue
+      similar_lessons.push(t)
+    }
+  }
+  const delta_lines: string[] = []
+  if (Array.isArray(raw.delta_lines)) {
+    for (const item of raw.delta_lines.slice(0, 12)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 400)
+      if (!t || /[<>\\]/.test(t)) continue
+      delta_lines.push(t)
+    }
+  }
+  const data_gap_warnings: string[] = []
+  if (Array.isArray(raw.data_gap_warnings)) {
+    for (const item of raw.data_gap_warnings.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 400)
+      if (!t || /[<>\\]/.test(t)) continue
+      data_gap_warnings.push(t)
+    }
+  }
+  let after_action_line: string | null | undefined
+  if (raw.after_action_line === null) after_action_line = null
+  else if (typeof raw.after_action_line === 'string') {
+    const t = raw.after_action_line.trim().slice(0, 420)
+    after_action_line = t || undefined
+  }
+  const field_execution = validateFieldExecutionRaw(raw.field_execution)
+
+  const out: AgentJonesEventIntelligenceSafe = {
+    event_id: raw.event_id.trim().slice(0, 64),
+    event_title: raw.event_title.trim().slice(0, 200),
+    briefing_quick: bq,
+    briefing_full: bf,
+    top_risks,
+    next_actions,
+    similar_lessons,
+    ...(one ? { briefing_one_liner: one } : {}),
+    ...(delta_lines.length ? { delta_lines } : {}),
+    ...(after_action_line !== undefined ? { after_action_line } : {}),
+    ...(data_gap_warnings.length ? { data_gap_warnings } : {}),
+    ...(field_execution ? { field_execution } : {}),
+  }
+  return out
+}
+
 function validateReadinessCoverageRaw(
   raw: unknown,
 ): AgentJonesReadinessCoverageSafe | undefined {
@@ -2988,6 +3138,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
     const intervention_sequence = validateInterventionSequenceRaw(raw.intervention_sequence)
     const gotv_summary = validateGotvSummaryRaw(raw.gotv_summary)
     const desk_routing = validateDeskRoutingSummaryRaw(raw.desk_routing)
+    const event_intelligence = validateEventIntelligenceRaw(raw.event_intelligence)
     return {
       surface,
       user,
@@ -3042,6 +3193,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
       ...(intervention_sequence ? { intervention_sequence } : {}),
       ...(gotv_summary ? { gotv_summary } : {}),
       ...(desk_routing ? { desk_routing } : {}),
+      ...(event_intelligence ? { event_intelligence } : {}),
     }
   }
 
@@ -3067,6 +3219,7 @@ Rules:
 - Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs) — ground wording and next-steps in it, but do not invent policy details.
 - If dashboardContext.campaign.retrievedKnowledge exists, it is a **small set of excerpt chunks** from the campaign knowledge base chosen for this user message (keyword match on chunk text). Prefer these excerpts when answering factual or policy questions; if they conflict with other campaign fields, prefer retrievedKnowledge for specifics. If the list is empty or off-topic, say so honestly — do not pretend you ran a live search.
 - If dashboardContext.campaign.onboardingBrief exists, it is the structured Volunteer Welcome Kit + Organization Outline (culture, lane options, first actions, messaging, escalation). Use it for how we work, lane fit, first tasks, and when to escalate — still do not invent policy beyond what is written there.
+- If dashboardContext.event_intelligence exists, it is a **client-built event-command snapshot** (similar past events, deterministic briefing lines, optional after-action documentation warnings, delta since last briefing snapshot). When **event_intelligence.field_execution** is present, it mirrors the same **browser-only** day-of workspace as the Field surface (phase label, bounded briefing lines, open field-issue count, pending closure items, signup handoff ack — source tag browser_workspace_v1). Treat it as live tactical context, not Supabase truth; never claim it mutates server rows. Use it for tactical event operations tone on /events routes; staff actions only.
 - Stay practical, supportive, and brief (mobile screens). No legal/medical advice. Do not ask for passwords, SSNs, or full document uploads.
 - Never reveal sensitive voter history. You may reference precinct/county/district if present.
 - If dashboardContext.user includes onboarding_momentum_state / onboarding_direction_key / onboarding_micro_commitment_key (and optional onboarding_last_prompt / onboarding_last_action_at), the volunteer is in optional guided momentum (not a wizard). Honor their direction and micro-commitment when suggesting next steps; never imply they are blocked from the dashboard.

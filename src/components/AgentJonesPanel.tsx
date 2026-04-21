@@ -44,6 +44,7 @@ import {
   type AgentJonesCoordinatorOpsContext,
   type AgentJonesLeadershipSnapshotContext,
 } from '../lib/agentJonesContextV2'
+import type { AgentJonesEventIntelligenceLayer } from '../lib/agentJonesEventIntelligenceBridge'
 import {
   AgentJonesApiError,
   callAgentJones,
@@ -255,6 +256,7 @@ export type AgentJonesPanelProps = {
    * “Deeper understanding”. `standard` — full dashboard panel (legacy).
    */
   uiMode?: 'standard' | 'floating'
+  eventIntelligenceLayer?: AgentJonesEventIntelligenceLayer | null
 }
 
 export default function AgentJonesPanel({
@@ -276,6 +278,7 @@ export default function AgentJonesPanel({
   leadershipSnapshot,
   coordinatorHasSupervisorScope = false,
   uiMode = 'standard',
+  eventIntelligenceLayer = null,
 }: AgentJonesPanelProps) {
   const location = useLocation()
   const headingId = useId()
@@ -919,6 +922,7 @@ export default function AgentJonesPanel({
         leadershipSnapshot: leadershipSnapshot ?? null,
         policy: policyPayload,
         operating,
+        eventIntelligence: eventIntelligenceLayer ?? null,
       })
       try {
         const campaign = await getRelevantCampaignContext({
@@ -969,6 +973,7 @@ export default function AgentJonesPanel({
     policyPayload,
     operating,
     location.pathname,
+    eventIntelligenceLayer,
   ])
 
   const handleSelect = async (prompt: AgentJonesPrompt) => {

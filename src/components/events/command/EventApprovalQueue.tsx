@@ -14,6 +14,7 @@ import { runApprovalPrecheck } from '../../../lib/approvalPrecheckEngine'
 import { fetchApprovalAuditLog, insertCampaignEventApprovalAudit } from '../../../lib/eventApprovalAuditDb'
 import type { CampaignProfile } from '../../../hooks/useProfile'
 import { buildRapidActionContextFromEvent } from '../../../lib/rapidActionContextSelectors'
+import { rankSimilarEvents } from '../../../lib/similarEventIntelligenceService'
 import RapidActionsBar from './RapidActionsBar'
 
 type EventApprovalQueueProps = {
@@ -118,6 +119,7 @@ export default function EventApprovalQueue({ events, profile, onRefetch }: Event
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {pending.map((e) => {
           const adv = buildDeterministicEventSummary(e)
+          const similarRows = rankSimilarEvents(e, events, 2)
           const pre = runApprovalPrecheck(e, { peerEvents: events, assignmentMap: approvalAssignmentMap })
           const failedPrecheck = pre.checks.filter((c) => !c.ok)
           const note = notes[e.event_id] ?? ''
@@ -146,6 +148,12 @@ export default function EventApprovalQueue({ events, profile, onRefetch }: Event
               <p className="subtitle" style={{ margin: '0.35rem 0' }}>
                 {e.address_or_virtual?.trim() ? e.address_or_virtual : e.venue_name ?? 'Location TBD'}
               </p>
+              {similarRows.length ? (
+                <p className="subtitle" style={{ margin: '0.2rem 0' }} role="status">
+                  Similar events:{' '}
+                  {similarRows.map((s) => `${s.title} (${s.tier.replace(/_/g, ' ')})`).join(' · ')}
+                </p>
+              ) : null}
               <p className="subtitle" style={{ margin: '0.25rem 0' }}>
                 Pending <strong>{ageHours.toFixed(1)}h</strong>
                 {e.approval_risk_level ? (

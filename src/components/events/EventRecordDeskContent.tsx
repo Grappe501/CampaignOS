@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import type { CampaignProfile } from '../../hooks/useProfile'
 import { useEventById } from '../../hooks/useCampaignEvents'
 import { useEventOperationalTasks } from '../../hooks/useEventOperationalTasks'
 import { useCampaignStaffingBulk } from '../../hooks/useCampaignStaffingBulk'
 import { useCampaignEventsContext } from '../../context/CampaignEventsContext'
+import { useEventIntelligenceRegistry } from '../../context/EventIntelligenceLayerContext'
+import type { AgentJonesEventIntelligenceLayer } from '../../lib/agentJonesEventIntelligenceBridge'
 import type { CampaignCalendarEventRecord } from '../../lib/campaignCalendarArchitecture'
 import { collectOperationsGapsForEvent } from '../../lib/campaignEventCoordinatorOperations'
 import { buildRapidActionContextFromEvent } from '../../lib/rapidActionContextSelectors'
@@ -63,6 +65,12 @@ import EventStaffingCard from './event-detail/EventStaffingCard'
 import EventStageTrackerCard from './event-detail/EventStageTrackerCard'
 import EventTaskChecklistCard from './event-detail/EventTaskChecklistCard'
 import RapidActionsBar from './command/RapidActionsBar'
+import EventIntelligenceLayerPanel from './command/EventIntelligenceLayerPanel'
+import EventCommunicationsCenterPanel from './command/EventCommunicationsCenterPanel'
+import EventDayOfMode from './command/EventDayOfMode'
+import { computeEventHealthScoreV2 } from '../../lib/eventHealthScoreV2'
+import { overlayFieldExecutionOnHealth } from '../../lib/eventDayOfHealthOverlay'
+import { loadEventDayWorkspace, EVENT_DAY_OF_WORKSPACE_SAVED } from '../../lib/eventDayOfLocalStorage'
 
 const TYPE_KEYS = CAMPAIGN_EVENT_TYPE_MATRIX.map((t) => t.key)
 
@@ -109,6 +117,13 @@ export default function EventRecordDeskContent({
   const [staffingRefresh, setStaffingRefresh] = useState(0)
   const [volunteerLoadAsOfMs] = useState(() => Date.now())
   const { events: campaignEvents } = useCampaignEventsContext()
+  const { setLayer: setAgentJonesIntelLayer } = useEventIntelligenceRegistry()
+  const onIntelLayer = useCallback(
+    (layer: AgentJonesEventIntelligenceLayer | null) => {
+      setAgentJonesIntelLayer(layer)
+    },
+    [setAgentJonesIntelLayer],
+  )
   const campaignEventIds = useMemo(() => campaignEvents.map((e) => e.event_id), [campaignEvents])
   const { assignmentMap: campaignAssignmentMap } = useCampaignStaffingBulk(campaignEventIds, staffingRefresh)
   const staffingAssignments = useMemo(() => {
@@ -233,6 +248,40 @@ export default function EventRecordDeskContent({
     [operationsGaps],
   )
 
+  const [healthAsOfMs, setHealthAsOfMs] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setHealthAsOfMs(Date.now()), 60000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const [fieldHealthTick, setFieldHealthTick] = useState(0)
+  useEffect(() => {
+    if (!displayRecord?.event_id) return
+    const id = displayRecord.event_id
+    const onSaved = (ev: Event) => {
+      const ce = ev as CustomEvent<{ eventId?: string }>
+      if (ce.detail?.eventId === id) setFieldHealthTick((n) => n + 1)
+    }
+    window.addEventListener(EVENT_DAY_OF_WORKSPACE_SAVED, onSaved)
+    return () => window.removeEventListener(EVENT_DAY_OF_WORKSPACE_SAVED, onSaved)
+  }, [displayRecord?.event_id])
+
+  const healthV2 = useMemo(() => {
+    if (!displayRecord) return null
+    return computeEventHealthScoreV2({ record: displayRecord, gaps: operationsGaps, nowMs: healthAsOfMs })
+  }, [displayRecord, operationsGaps, healthAsOfMs])
+
+  const dayOfWorkspace = useMemo(() => {
+    if (!displayRecord || typeof localStorage === 'undefined') return null
+    void fieldHealthTick
+    return loadEventDayWorkspace(displayRecord.event_id)
+  }, [displayRecord, fieldHealthTick])
+
+  const healthWithField = useMemo(() => {
+    if (!healthV2 || !displayRecord) return null
+    return overlayFieldExecutionOnHealth(healthV2, displayRecord, dayOfWorkspace, healthAsOfMs)
+  }, [healthV2, displayRecord, dayOfWorkspace, healthAsOfMs])
+
   const rapidContext = useMemo(
     () => buildRapidActionContextFromEvent('event_command', displayRecord),
     [displayRecord],
@@ -346,6 +395,17 @@ export default function EventRecordDeskContent({
       <EventReadinessTimelineStrip record={displayRecord} />
 
       {isUuid && displayRecord ? (
+        <EventIntelligenceLayerPanel
+          record={displayRecord}
+          effectiveType={effectiveType}
+          staffingAssignments={staffingAssignments}
+          campaignEvents={campaignEvents}
+          assignmentMap={campaignAssignmentMap}
+          onAgentJonesLayer={onIntelLayer}
+        />
+      ) : null}
+
+      {isUuid && displayRecord ? (
         <>
           <RapidActionsBar
             context={rapidContext}
@@ -423,6 +483,21 @@ export default function EventRecordDeskContent({
 
           <EventReadinessCommandCard record={displayRecord} effectiveType={effectiveType} />
 
+          {isUuid && displayRecord ? (
+            <EventDayOfMode
+              record={displayRecord}
+              effectiveType={effectiveType}
+              profile={profile}
+              staffingAssignments={staffingAssignments}
+              healthScore={healthWithField?.adjusted_score ?? healthV2?.current_score ?? 0}
+              healthStatus={healthWithField?.adjusted_status ?? healthV2?.health_status ?? 'READY'}
+              gapMessages={[
+                ...operationsGaps.slice(0, 5).map((g) => g.message),
+                ...(healthWithField?.field_reasons.slice(0, 4) ?? []),
+              ]}
+            />
+          ) : null}
+
           <EventRunOfShowCard />
 
           <EventTargetingAudienceCard record={displayRecord} effectiveType={effectiveType} />
@@ -471,6 +546,14 @@ export default function EventRecordDeskContent({
             tasksLoading={tasksLoading}
             tasksError={tasksError}
           />
+
+          {isUuid && displayRecord ? (
+            <EventCommunicationsCenterPanel
+              record={displayRecord}
+              effectiveType={effectiveType}
+              profile={profile}
+            />
+          ) : null}
 
           <EventStaffingCard
             record={displayRecord}

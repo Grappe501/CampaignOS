@@ -32,6 +32,7 @@ import EventReviewRequestsPage from './pages/EventReviewRequestsPage'
 import RoleHomeRedirect from './components/RoleHomeRedirect'
 import GlobalFloatingAgentJones from './components/GlobalFloatingAgentJones'
 import { CampaignEventsProvider } from './context/CampaignEventsContext'
+import { EventIntelligenceLayerProvider } from './context/EventIntelligenceLayerContext'
 import VolunteerCommandCoordinatorPage from './pages/VolunteerCommandCoordinatorPage'
 import VolunteerCommandTeamLeadPage from './pages/VolunteerCommandTeamLeadPage'
 import VolunteerSelfServicePage from './pages/VolunteerSelfServicePage'
@@ -80,6 +81,7 @@ export default function App() {
       <div className="app-viewport">
         {isDevAuthBypassEnabled() ? <DevModeBanner /> : null}
       <CampaignEventsProvider>
+      <EventIntelligenceLayerProvider>
       <Routes>
         <Route
           path="/login"
@@ -448,6 +450,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {session ? <GlobalFloatingAgentJones /> : null}
+      </EventIntelligenceLayerProvider>
       </CampaignEventsProvider>
       </div>
       </DevMockDashboardProvider>

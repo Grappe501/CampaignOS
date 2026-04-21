@@ -26,6 +26,7 @@ import {
   normalizeKey,
 } from '../lib/dashboardState'
 import FloatingAgentJones from './FloatingAgentJones'
+import { useEventIntelligenceRegistry } from '../context/EventIntelligenceLayerContext'
 
 /**
  * Single campaign assistant entry point for all authenticated routes (mounted from `App`).
@@ -61,6 +62,7 @@ export default function GlobalFloatingAgentJones() {
   const internDesk = useInternLayer(profileId, primaryRole)
   const campaignKpis = useCampaignKpis(profileId, primaryRole)
   const coordinatorDesk = useCoordinatorDesk(profile?.power5_home_team_id)
+  const { layer: eventIntelligenceLayer } = useEventIntelligenceRegistry()
 
   const agentJonesRelationalPower5 = useMemo(
     () =>
@@ -178,6 +180,7 @@ export default function GlobalFloatingAgentJones() {
       dailyActivation={dailyMission.agentDailyContext}
       internLayer={agentJonesInternLayer}
       campaignGoals={campaignKpis.agentCampaignGoals}
+      eventIntelligenceLayer={eventIntelligenceLayer}
     />
   )
 }

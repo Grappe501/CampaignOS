@@ -105,6 +105,12 @@ export default function EventCoordinatorDeskContent({
                   Critical: <strong>{deskSnapshot.digest.criticalIssuesCount}</strong>
                   {' · '}
                   Approvals: <strong>{deskSnapshot.digest.pendingApprovalsCount}</strong>
+                  {' · '}
+                  Comms (local): <strong>{deskSnapshot.digest.commsOpenSteps}</strong> open steps ·{' '}
+                  <strong>{deskSnapshot.digest.commsEventsMissingWorkspace}</strong> without workspace ·{' '}
+                  <strong>{deskSnapshot.digest.commsRecapIncomplete}</strong> recap gaps · Field:{' '}
+                  <strong>{deskSnapshot.digest.dayOfOpenFieldIssues}</strong> open issues ·{' '}
+                  <strong>{deskSnapshot.digest.dayOfClosureIncompleteEvents}</strong> closure incomplete
                 </>
               )}
             </p>
