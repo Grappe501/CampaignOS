@@ -152,7 +152,7 @@ flowchart TB
 
 ## Versioning and release
 
-- **Semantic-ish versions:** `package.json` `version` field; git tags optional (`v0.6.0`).  
+- **Semantic-ish versions:** `package.json` `version` field; **tag:** `v0.6.0` (annotated tag pushed with this handoff on branch `feat/campaign-manager-cockpitgit`).  
 - **Before tagging:** run `npm run verify`; apply migrations to target Supabase project; smoke-test login, `/events`, one event record, Agent Jones panel.  
 - **Netlify:** ensure env vars mirror `check:env` expectations for functions.
 
