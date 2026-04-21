@@ -125,6 +125,7 @@ type AgentJonesSurfaceSafe =
   | 'coordinator_desk'
   | 'candidate_desk'
   | 'admin_desk'
+  | 'campaign_manager_cockpit'
 
 type AgentJonesOperatingSafe = {
   normalized_role: string
@@ -550,6 +551,50 @@ type AgentJonesSafeContextV2 = {
   event_intelligence?: AgentJonesEventIntelligenceSafe
   /** Leadership briefing page — client-built executive event-ops digest (advisory). */
   event_operations_executive?: AgentJonesEventOperationsExecutiveSafe
+  /** Campaign Manager cockpit — which modules occupy center / fullscreen (bounded). */
+  cockpit_focus?: AgentJonesCockpitFocusSafe
+  /** Campaign Manager cockpit — mission-control / cross-system digest (bounded). */
+  cockpit_mission_digest?: AgentJonesCockpitMissionDigestSafe
+  /** Event AI orchestration mesh — structured cross-domain intelligence (bounded; advisory). */
+  event_ai_orchestration?: AgentJonesEventAiOrchestrationSafe
+}
+
+type AgentJonesCockpitFocusSafe = {
+  center_primary_module_id: string
+  center_secondary_module_id: string | null
+  center_mode: 'single' | 'split_h' | 'split_v' | 'quad'
+  fullscreen_module_id: string | null
+  module_hint: string | null
+}
+
+type AgentJonesCockpitMissionDigestSafe = {
+  strip_mode: 'calm' | 'high_volume' | 'crisis' | 'fundraising' | 'candidate_heavy' | 'staffing_strain'
+  top_consequences: string[]
+  recommended_center_module_id: string
+  recommended_compare_template_id: string | null
+  strain_headline: string | null
+  cross_system_pressure_line: string | null
+  active_layout_hint: string | null
+}
+
+type AgentJonesEventAiOrchestrationSafe = {
+  packet_version: number
+  context_version: number
+  scope: 'cockpit_campaign' | 'event_desk' | 'leadership_wide'
+  active_mode: string
+  completeness_pct: number
+  data_gap_warnings: string[]
+  mesh_headline: string
+  connected_systems_in_play: string[]
+  top_cross_system_risks: string[]
+  retrieval_matches: { label: string; match_kind: string; why_matched: string }[]
+  retrieval_fallback_note?: string | null
+  relationship_edges_summary: string[]
+  simulation_ready_scenarios: string[]
+  alignment_gap_lines: string[]
+  growth_expansion_lines: string[]
+  recommendation_digest_lines: string[]
+  audit_note: string
 }
 
 type AgentJonesEventOperationsExecutiveSafe = {
@@ -689,6 +734,7 @@ const NAV_PATHS = new Set([
   '/events/calendar',
   '/events/review-requests',
   '/events/promotion',
+  '/cockpit/campaign-manager',
 ])
 
 const SURFACES = new Set<AgentJonesSurfaceSafe>([
@@ -697,6 +743,7 @@ const SURFACES = new Set<AgentJonesSurfaceSafe>([
   'coordinator_desk',
   'candidate_desk',
   'admin_desk',
+  'campaign_manager_cockpit',
 ])
 
 const OPERATING_ROLES = new Set([
@@ -719,6 +766,7 @@ const OPERATING_DESKS = new Set([
   '/candidate',
   '/admin',
   '/events',
+  '/cockpit/campaign-manager',
 ])
 
 const OPERATING_LEVELS = new Set([
@@ -3170,6 +3218,234 @@ function legacyToV2(raw: AgentJonesSafeContextLegacy): AgentJonesSafeContextV2 {
   }
 }
 
+const COCKPIT_MODULE_ID_RE = /^[a-z0-9_]{1,48}$/
+
+function truncCockpitHint(s: unknown, max: number): string | null {
+  if (s == null) return null
+  if (typeof s !== 'string') return null
+  const t = s.trim()
+  if (!t) return null
+  return t.length > max ? t.slice(0, max) : t
+}
+
+function validateCockpitModuleIdField(raw: unknown): string | null {
+  if (raw == null) return null
+  if (typeof raw !== 'string') return null
+  const t = raw.trim()
+  if (!COCKPIT_MODULE_ID_RE.test(t)) return null
+  return t
+}
+
+function validateCockpitFocusRaw(
+  raw: unknown,
+): AgentJonesCockpitFocusSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const primary = validateCockpitModuleIdField(raw.center_primary_module_id)
+  if (!primary) return undefined
+  const secondary = validateCockpitModuleIdField(raw.center_secondary_module_id)
+  const full = validateCockpitModuleIdField(raw.fullscreen_module_id)
+  const modeRaw = raw.center_mode
+  const modes = new Set(['single', 'split_h', 'split_v', 'quad'])
+  const center_mode =
+    typeof modeRaw === 'string' && modes.has(modeRaw)
+      ? (modeRaw as AgentJonesCockpitFocusSafe['center_mode'])
+      : 'single'
+  return {
+    center_primary_module_id: primary,
+    center_secondary_module_id: secondary,
+    center_mode,
+    fullscreen_module_id: full,
+    module_hint: truncCockpitHint(raw.module_hint, 480),
+  }
+}
+
+const COCKPIT_COMPARE_TEMPLATE_IDS = new Set([
+  'event_comms_prep',
+  'event_staffing_rescue',
+  'calendar_candidate_conflicts',
+  'warroom_approvals',
+  'volunteer_event_load',
+  'finance_event_pressure',
+  'leadership_war_room',
+])
+
+function validateCockpitMissionDigestRaw(
+  raw: unknown,
+): AgentJonesCockpitMissionDigestSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const modes = new Set<string>([
+    'calm',
+    'high_volume',
+    'crisis',
+    'fundraising',
+    'candidate_heavy',
+    'staffing_strain',
+  ])
+  const sm = raw.strip_mode
+  const strip_mode =
+    typeof sm === 'string' && modes.has(sm)
+      ? (sm as AgentJonesCockpitMissionDigestSafe['strip_mode'])
+      : 'calm'
+  const primary = validateCockpitModuleIdField(raw.recommended_center_module_id)
+  if (!primary) return undefined
+  const cmp = raw.recommended_compare_template_id
+  const recommended_compare_template_id =
+    cmp == null || cmp === ''
+      ? null
+      : typeof cmp === 'string' && COCKPIT_COMPARE_TEMPLATE_IDS.has(cmp)
+        ? cmp
+        : null
+  const tc = raw.top_consequences
+  const top_consequences = Array.isArray(tc)
+    ? tc
+        .filter((x) => typeof x === 'string')
+        .map((s) => String(s).trim().slice(0, 400))
+        .filter(Boolean)
+        .slice(0, 6)
+    : []
+  return {
+    strip_mode,
+    top_consequences,
+    recommended_center_module_id: primary,
+    recommended_compare_template_id,
+    strain_headline: truncCockpitHint(raw.strain_headline, 420),
+    cross_system_pressure_line: truncCockpitHint(raw.cross_system_pressure_line, 420),
+    active_layout_hint: truncCockpitHint(raw.active_layout_hint, 220),
+  }
+}
+
+function validateEventAiOrchestrationRaw(
+  raw: unknown,
+): AgentJonesEventAiOrchestrationSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const scope: AgentJonesEventAiOrchestrationSafe['scope'] | null =
+    raw.scope === 'cockpit_campaign' || raw.scope === 'event_desk' || raw.scope === 'leadership_wide'
+      ? raw.scope
+      : null
+  if (!scope) return undefined
+  const packet_version =
+    typeof raw.packet_version === 'number'
+      ? Math.max(1, Math.min(99, Math.floor(raw.packet_version)))
+      : 3
+  const context_version =
+    typeof raw.context_version === 'number'
+      ? Math.max(1, Math.min(99, Math.floor(raw.context_version)))
+      : 1
+  const active_mode =
+    typeof raw.active_mode === 'string'
+      ? String(raw.active_mode).trim().slice(0, 96)
+      : 'event_mission_brief'
+  const completeness_pct =
+    typeof raw.completeness_pct === 'number'
+      ? Math.max(0, Math.min(100, Math.round(raw.completeness_pct)))
+      : 0
+  const dg = raw.data_gap_warnings
+  const data_gap_warnings = Array.isArray(dg)
+    ? dg
+        .filter((x): x is string => typeof x === 'string')
+        .map((s) => truncCockpitHint(s, 220))
+        .filter(Boolean)
+        .slice(0, 8)
+    : []
+  const mesh_headline = truncCockpitHint(raw.mesh_headline, 420) ?? ''
+  const connected = raw.connected_systems_in_play
+  const connected_systems_in_play = Array.isArray(connected)
+    ? connected
+        .filter((x): x is string => typeof x === 'string')
+        .map((s) => String(s).trim().slice(0, 64))
+        .filter(Boolean)
+        .slice(0, 14)
+    : []
+  const risks = raw.top_cross_system_risks
+  const top_cross_system_risks = Array.isArray(risks)
+    ? risks
+        .filter((x): x is string => typeof x === 'string')
+        .map((s) => truncCockpitHint(s, 400))
+        .filter(Boolean)
+        .slice(0, 6)
+    : []
+  const rm = raw.retrieval_matches
+  const retrieval_matches: AgentJonesEventAiOrchestrationSafe['retrieval_matches'] = Array.isArray(rm)
+    ? rm
+        .filter((x): x is Record<string, unknown> => x != null && typeof x === 'object')
+        .map((o) => ({
+          label: truncCockpitHint(o.label, 200) ?? '',
+          match_kind: typeof o.match_kind === 'string' ? String(o.match_kind).slice(0, 48) : 'analog',
+          why_matched: truncCockpitHint(o.why_matched, 280) ?? '',
+        }))
+        .filter((x) => x.label.length > 0)
+        .slice(0, 8)
+    : []
+  const edges = raw.relationship_edges_summary
+  const relationship_edges_summary = Array.isArray(edges)
+    ? edges
+        .filter((x): x is string => typeof x === 'string')
+        .map((s) => truncCockpitHint(s, 320))
+        .filter(Boolean)
+        .slice(0, 10)
+    : []
+  const sims = raw.simulation_ready_scenarios
+  const simulation_ready_scenarios = Array.isArray(sims)
+    ? sims
+        .filter((x): x is string => typeof x === 'string')
+        .map((s) => String(s).trim().slice(0, 80))
+        .filter(Boolean)
+        .slice(0, 10)
+    : []
+  const align = raw.alignment_gap_lines
+  const alignment_gap_lines = Array.isArray(align)
+    ? align
+        .filter((x): x is string => typeof x === 'string')
+        .map((s) => truncCockpitHint(s, 320))
+        .filter(Boolean)
+        .slice(0, 6)
+    : []
+  const growth = raw.growth_expansion_lines
+  const growth_expansion_lines = Array.isArray(growth)
+    ? growth
+        .filter((x): x is string => typeof x === 'string')
+        .map((s) => truncCockpitHint(s, 320))
+        .filter(Boolean)
+        .slice(0, 5)
+    : []
+  const recs = raw.recommendation_digest_lines
+  const recommendation_digest_lines = Array.isArray(recs)
+    ? recs
+        .filter((x): x is string => typeof x === 'string')
+        .map((s) => truncCockpitHint(s, 360))
+        .filter(Boolean)
+        .slice(0, 6)
+    : []
+  const audit_note = truncCockpitHint(raw.audit_note, 420) ?? ''
+  const rfn = raw.retrieval_fallback_note
+  const retrieval_fallback_note =
+    rfn == null || rfn === ''
+      ? undefined
+      : truncCockpitHint(rfn, 280) ?? undefined
+  return {
+    packet_version,
+    context_version,
+    scope,
+    active_mode,
+    completeness_pct,
+    data_gap_warnings,
+    mesh_headline,
+    connected_systems_in_play,
+    top_cross_system_risks,
+    retrieval_matches,
+    ...(retrieval_fallback_note ? { retrieval_fallback_note } : {}),
+    relationship_edges_summary,
+    simulation_ready_scenarios,
+    alignment_gap_lines,
+    growth_expansion_lines,
+    recommendation_digest_lines,
+    audit_note,
+  }
+}
+
 function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
   if (!isRecord(raw)) return null
 
@@ -3218,6 +3494,9 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
     const desk_routing = validateDeskRoutingSummaryRaw(raw.desk_routing)
     const event_intelligence = validateEventIntelligenceRaw(raw.event_intelligence)
     const event_operations_executive = validateEventOperationsExecutiveRaw(raw.event_operations_executive)
+    const cockpit_focus = validateCockpitFocusRaw(raw.cockpit_focus)
+    const cockpit_mission_digest = validateCockpitMissionDigestRaw(raw.cockpit_mission_digest)
+    const event_ai_orchestration = validateEventAiOrchestrationRaw(raw.event_ai_orchestration)
     return {
       surface,
       user,
@@ -3274,6 +3553,9 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
       ...(desk_routing ? { desk_routing } : {}),
       ...(event_intelligence ? { event_intelligence } : {}),
       ...(event_operations_executive ? { event_operations_executive } : {}),
+      ...(cockpit_focus ? { cockpit_focus } : {}),
+      ...(cockpit_mission_digest ? { cockpit_mission_digest } : {}),
+      ...(event_ai_orchestration ? { event_ai_orchestration } : {}),
     }
   }
 
@@ -3293,7 +3575,7 @@ function buildSystemPrompt(context: AgentJonesSafeContextV2): string {
 
 Rules:
 - You ONLY reason about the volunteer using the JSON "dashboardContext" below. Do not claim you queried a database, opened Supabase, or accessed tools beyond this context.
-- dashboardContext.surface is one of: volunteer_dashboard | intern_desk | coordinator_desk | candidate_desk | admin_desk. The client may map /events to coordinator_desk for tone while dashboardContext.operating.desk_route is /events — treat as event-operations calendar and pipeline context (intake, staffing, Mobilize) when desk_route is /events; do not invent event rows not in context. Match tone: volunteer_dashboard/intern_desk emphasize individual tasks and roster; coordinator_desk emphasizes supervised teams, blocked/overdue mission lanes, and intern pipeline counts (no volunteer PII); candidate_desk emphasizes KPI health, strategic focus, and when to use coordinator vs volunteer surfaces — never invent polling or finance detail; admin_desk emphasizes honest governance: desk health visible with this session, exceptions, KPI telemetry, integration readiness — never imply org-wide queues or privileged writes you cannot see in context.
+- dashboardContext.surface is one of: volunteer_dashboard | intern_desk | coordinator_desk | candidate_desk | admin_desk | campaign_manager_cockpit. The client may map /events to coordinator_desk for tone while dashboardContext.operating.desk_route is /events — treat as event-operations calendar and pipeline context (intake, staffing, Mobilize) when desk_route is /events; do not invent event rows not in context. Match tone: volunteer_dashboard/intern_desk emphasize individual tasks and roster; coordinator_desk emphasizes supervised teams, blocked/overdue mission lanes, and intern pipeline counts (no volunteer PII); candidate_desk emphasizes KPI health, strategic focus, and when to use coordinator vs volunteer surfaces — never invent polling or finance detail; admin_desk emphasizes honest governance: desk health visible with this session, exceptions, KPI telemetry, integration readiness — never imply org-wide queues or privileged writes you cannot see in context; campaign_manager_cockpit is dense multi-panel command mode — prioritize cockpit_focus and leadership/command blocks when present, stay terse and operational.
 - Progress is exactly one of: unmatched, matched_no_branch, exception_pending, matched_ready (dashboardContext.operational.progressSlice).
 - voterLoading means roster/voter linkage is still loading — be cautious/verification-first.
 - Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs) — ground wording and next-steps in it, but do not invent policy details.
@@ -3301,6 +3583,9 @@ Rules:
 - If dashboardContext.campaign.onboardingBrief exists, it is the structured Volunteer Welcome Kit + Organization Outline (culture, lane options, first actions, messaging, escalation). Use it for how we work, lane fit, first tasks, and when to escalate — still do not invent policy beyond what is written there.
 - If dashboardContext.event_intelligence exists, it is a **client-built event-command snapshot** (similar past events, deterministic briefing lines, optional after-action documentation warnings, delta since last briefing snapshot). When **event_intelligence.field_execution** is present, it mirrors the same **browser-only** day-of workspace as the Field surface (phase label, bounded briefing lines, open field-issue count, pending closure items, signup handoff ack — source tag browser_workspace_v1). Treat it as live tactical context, not Supabase truth; never claim it mutates server rows. Use it for tactical event operations tone on /events routes; staff actions only.
 - If dashboardContext.event_operations_executive exists (source leadership_briefing_v1), it is a **client-built executive event-operations digest** from the leadership briefing page: approvals, war-room priority, staffing/comms rollups, trends vs prior browser visit — advisory only, not authority for approvals or edits. Use for leadership tone: top risks, decisions, what can stay with coordinators.
+- If dashboardContext.cockpit_focus exists, the Campaign Manager command cockpit session is summarized: center_primary_module_id / center_secondary_module_id name the active workspace modules; center_mode is single | split_h | split_v | quad; fullscreen_module_id names a fullscreen-expanded module when present; module_hint is a short layout summary. Treat as UI routing hints only — do not invent module data or URLs beyond what appears elsewhere in context.
+- If dashboardContext.cockpit_mission_digest exists, it is a **bounded cross-system mission summary** for the Campaign Manager cockpit: strip_mode classifies operational tempo (calm | high_volume | crisis | fundraising | candidate_heavy | staffing_strain); top_consequences lists short consequence lines derived from visible leadership snapshots; recommended_center_module_id and optional recommended_compare_template_id are UI prioritization hints — not orders; cross_system_pressure_line is advisory; stay consistent with cockpit_focus when both are present. Do not claim automated simulations or hidden data stores.
+- If dashboardContext.event_ai_orchestration exists, it is a **bounded Event AI orchestration mesh** synthesized client-side from leadership snapshots, cockpit digest, event desk intelligence, deterministic similar-event retrieval, and cross-module graph summaries: scope is cockpit_campaign | event_desk | leadership_wide; completeness_pct and data_gap_warnings describe honest sparsity; mesh_headline and connected_systems_in_play are operational routing/attention hints — not authority; top_cross_system_risks and alignment_gap_lines may echo consequences; retrieval_matches lists **filtered** deterministic peers above a quality threshold — if retrieval_fallback_note is present, retrieval is empty or weak and you must say so honestly instead of inventing peers; simulation_ready_scenarios names **available** scenario ids for what-if framing — still no automatic simulation execution; recommendation_digest_lines are typed stubs. Honor audit_note: the app remains source of truth; AI does not mutate approvals, staffing, sends, finance, or assignments.
 - Stay practical, supportive, and brief (mobile screens). No legal/medical advice. Do not ask for passwords, SSNs, or full document uploads.
 - Never reveal sensitive voter history. You may reference precinct/county/district if present.
 - If dashboardContext.user includes onboarding_momentum_state / onboarding_direction_key / onboarding_micro_commitment_key (and optional onboarding_last_prompt / onboarding_last_action_at), the volunteer is in optional guided momentum (not a wizard). Honor their direction and micro-commitment when suggesting next steps; never imply they are blocked from the dashboard.

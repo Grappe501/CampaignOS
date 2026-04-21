@@ -46,6 +46,8 @@ import {
 } from '../lib/agentJonesContextV2'
 import type { AgentJonesEventIntelligenceLayer } from '../lib/agentJonesEventIntelligenceBridge'
 import type { AgentJonesEventOperationsExecutive } from '../lib/leadershipBriefingAgentBridge'
+import { useCockpitTelemetry } from '../context/CockpitTelemetryContext'
+import { useEventAiOrchestration } from '../context/EventAiOrchestrationContext'
 import {
   AgentJonesApiError,
   callAgentJones,
@@ -284,6 +286,9 @@ export default function AgentJonesPanel({
   eventOperationsExecutive = null,
 }: AgentJonesPanelProps) {
   const location = useLocation()
+  const { focus: cockpitTelemetryFocus, missionDigest: cockpitMissionDigest } =
+    useCockpitTelemetry()
+  const { effectiveOrchestration: eventAiOrchestrationWire } = useEventAiOrchestration()
   const headingId = useId()
   const composeId = useId()
   const persisted = useMemo(() => loadAgentJonesPersisted(), [])
@@ -614,7 +619,12 @@ export default function AgentJonesPanel({
 
   const leadershipPanelIntel = useMemo(() => {
     const s = surface ?? 'volunteer_dashboard'
-    return s === 'admin_desk' || s === 'candidate_desk' || s === 'coordinator_desk'
+    return (
+      s === 'admin_desk' ||
+      s === 'candidate_desk' ||
+      s === 'coordinator_desk' ||
+      s === 'campaign_manager_cockpit'
+    )
   }, [surface])
 
   const chiefPriorityForNextActions = useMemo(() => {
@@ -927,6 +937,9 @@ export default function AgentJonesPanel({
         operating,
         eventIntelligence: eventIntelligenceLayer ?? null,
         eventOperationsExecutive: eventOperationsExecutive ?? null,
+        cockpitFocus: cockpitTelemetryFocus ?? undefined,
+        cockpitMissionDigest: cockpitMissionDigest ?? undefined,
+        eventAiOrchestration: eventAiOrchestrationWire ?? undefined,
       })
       try {
         const campaign = await getRelevantCampaignContext({
@@ -979,6 +992,9 @@ export default function AgentJonesPanel({
     location.pathname,
     eventIntelligenceLayer,
     eventOperationsExecutive,
+    cockpitTelemetryFocus,
+    cockpitMissionDigest,
+    eventAiOrchestrationWire,
   ])
 
   const handleSelect = async (prompt: AgentJonesPrompt) => {
@@ -1147,6 +1163,12 @@ export default function AgentJonesPanel({
         return {
           eyebrow: 'Governance',
           lede: 'Exceptions, desk health, and honest limits of what this client session can see.',
+        }
+      case 'campaign_manager_cockpit':
+        return {
+          eyebrow: 'Campaign command cockpit',
+          lede:
+            'Multi-panel operational shell — prioritize cross-system truth from context; delegate execution to specialized desks.',
         }
       default:
         return {

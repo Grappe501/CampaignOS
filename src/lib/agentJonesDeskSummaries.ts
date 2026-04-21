@@ -9,6 +9,7 @@ const DESK_KEYS: Record<AgentJonesSurface, AgentJonesDeskSummaryDesk> = {
   volunteer_dashboard: 'volunteer',
   intern_desk: 'intern',
   coordinator_desk: 'coordinator',
+  campaign_manager_cockpit: 'coordinator',
   candidate_desk: 'candidate',
   admin_desk: 'admin',
 }
@@ -41,6 +42,9 @@ function deskHeadline(
         return 'Coordinator desk — supervised board has blocked or overdue lanes to clear.'
       }
       return 'Coordinator desk — team load, reassignment focus, and intern aggregates in view.'
+    }
+    case 'campaign_manager_cockpit': {
+      return 'Campaign command cockpit — multi-module operations shell; follow panel-grounded context and delegate execution to desks.'
     }
     case 'candidate_desk': {
       if ((op.kpi_telemetry.below_half ?? 0) >= 2) {

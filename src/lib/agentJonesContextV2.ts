@@ -117,6 +117,7 @@ export const AGENT_JONES_SURFACES = [
   'coordinator_desk',
   'candidate_desk',
   'admin_desk',
+  'campaign_manager_cockpit',
 ] as const
 export type AgentJonesSurface = (typeof AGENT_JONES_SURFACES)[number]
 
@@ -124,6 +125,7 @@ export function agentJonesSurfaceFromPathname(pathname: string): AgentJonesSurfa
   const p = (pathname.split('?')[0] ?? '/').trim() || '/'
   if (p.startsWith('/admin')) return 'admin_desk'
   if (p.startsWith('/intern')) return 'intern_desk'
+  if (p.startsWith('/cockpit')) return 'campaign_manager_cockpit'
   if (p.startsWith('/events')) return 'coordinator_desk'
   if (p.startsWith('/coordinator')) return 'coordinator_desk'
   if (p.startsWith('/candidate')) return 'candidate_desk'
@@ -555,6 +557,48 @@ export type AgentJonesVolunteerMissionContext = {
   streaks?: { active_days: number; completion_days: number }
 }
 
+/** Bounded cockpit UI focus for Agent Jones (no PII). */
+export type AgentJonesCockpitFocus = {
+  center_primary_module_id: string
+  center_secondary_module_id: string | null
+  center_mode: 'single' | 'split_h' | 'split_v' | 'quad'
+  fullscreen_module_id: string | null
+  module_hint: string | null
+}
+
+/** Phase 3 — cross-system mission digest for Campaign Manager cockpit (bounded; server-validated). */
+export type AgentJonesCockpitMissionDigest = {
+  strip_mode: 'calm' | 'high_volume' | 'crisis' | 'fundraising' | 'candidate_heavy' | 'staffing_strain'
+  top_consequences: string[]
+  recommended_center_module_id: string
+  recommended_compare_template_id: string | null
+  strain_headline: string | null
+  cross_system_pressure_line: string | null
+  active_layout_hint: string | null
+}
+
+/** Event AI orchestration mesh — cross-domain structured packet (bounded; server-validated). */
+export type AgentJonesEventAiOrchestration = {
+  packet_version: number
+  context_version: number
+  scope: 'cockpit_campaign' | 'event_desk' | 'leadership_wide'
+  active_mode: string
+  completeness_pct: number
+  data_gap_warnings: string[]
+  mesh_headline: string
+  connected_systems_in_play: string[]
+  top_cross_system_risks: string[]
+  retrieval_matches: { label: string; match_kind: string; why_matched: string }[]
+  /** When peer ranking is empty or suppressed — honest degradation, not “no history.” */
+  retrieval_fallback_note?: string | null
+  relationship_edges_summary: string[]
+  simulation_ready_scenarios: string[]
+  alignment_gap_lines: string[]
+  growth_expansion_lines: string[]
+  recommendation_digest_lines: string[]
+  audit_note: string
+}
+
 export type AgentJonesContextV2 = {
   surface: AgentJonesSurface
   /** Policy flags for server / future tool use (no open-web browsing in current release). */
@@ -659,6 +703,12 @@ export type AgentJonesContextV2 = {
   event_intelligence?: AgentJonesEventIntelligenceLayer
   /** Leadership /executive briefing — aggregated ops snapshot (client-built; advisory). */
   event_operations_executive?: AgentJonesEventOperationsExecutive
+  /** Campaign Manager cockpit — active center layout + fullscreen (bounded; server-validated). */
+  cockpit_focus?: AgentJonesCockpitFocus
+  /** Campaign Manager cockpit — mission control / cross-system digest (bounded). */
+  cockpit_mission_digest?: AgentJonesCockpitMissionDigest
+  /** Event AI orchestration layer — mesh summary, retrieval stubs, scenarios (bounded). */
+  event_ai_orchestration?: AgentJonesEventAiOrchestration
 }
 
 function trunc(s: unknown, max: number): string | null {
@@ -693,6 +743,9 @@ export function buildAgentJonesContextV2(input: {
   /** Optional event desk intelligence (same source of truth as event command UI). */
   eventIntelligence?: AgentJonesEventIntelligenceLayer | null
   eventOperationsExecutive?: AgentJonesEventOperationsExecutive | null
+  cockpitFocus?: AgentJonesCockpitFocus | null
+  cockpitMissionDigest?: AgentJonesCockpitMissionDigest | null
+  eventAiOrchestration?: AgentJonesEventAiOrchestration | null
 }): AgentJonesContextV2 {
   const {
     profile,
@@ -714,6 +767,9 @@ export function buildAgentJonesContextV2(input: {
     pathname: pathnameIn = '/',
     eventIntelligence,
     eventOperationsExecutive,
+    cockpitFocus,
+    cockpitMissionDigest,
+    eventAiOrchestration,
   } = input
 
   const surface: AgentJonesSurface = surfaceIn ?? 'volunteer_dashboard'
@@ -967,6 +1023,9 @@ export function buildAgentJonesContextV2(input: {
     ...(v34Brain?.desk_routing ? { desk_routing: v34Brain.desk_routing } : {}),
     ...(eventIntelligence ? { event_intelligence: eventIntelligence } : {}),
     ...(eventOperationsExecutive ? { event_operations_executive: eventOperationsExecutive } : {}),
+    ...(cockpitFocus ? { cockpit_focus: cockpitFocus } : {}),
+    ...(cockpitMissionDigest ? { cockpit_mission_digest: cockpitMissionDigest } : {}),
+    ...(eventAiOrchestration ? { event_ai_orchestration: eventAiOrchestration } : {}),
   }
 }
 

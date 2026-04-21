@@ -42,6 +42,10 @@ import SignupSheetIngestionPage from './pages/SignupSheetIngestionPage'
 import SignupSheetBatchPage from './pages/SignupSheetBatchPage'
 import MultiEventWarRoomPage from './pages/MultiEventWarRoomPage'
 import LeadershipBriefingPage from './pages/LeadershipBriefingPage'
+import { CampaignManagerCockpitProvider } from './context/CampaignManagerCockpitContext'
+import { CockpitTelemetryProvider } from './context/CockpitTelemetryContext'
+import { EventAiOrchestrationProvider } from './context/EventAiOrchestrationContext'
+import CampaignManagerCockpitPage from './pages/CampaignManagerCockpitPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(() =>
@@ -80,6 +84,8 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <CockpitTelemetryProvider>
+      <EventAiOrchestrationProvider>
       <DevMockDashboardProvider>
       <div className="app-viewport">
         {isDevAuthBypassEnabled() ? <DevModeBanner /> : null}
@@ -104,6 +110,24 @@ export default function App() {
                     : undefined
                 }
               />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/cockpit/campaign-manager"
+          element={
+            session ? (
+              <CampaignManagerCockpitProvider>
+                <CampaignManagerCockpitPage
+                  onDevSessionClear={
+                    isDevAuthBypassEnabled()
+                      ? () => setSession(null)
+                      : undefined
+                  }
+                />
+              </CampaignManagerCockpitProvider>
             ) : (
               <Navigate to="/login" replace />
             )
@@ -495,6 +519,8 @@ export default function App() {
       </CampaignEventsProvider>
       </div>
       </DevMockDashboardProvider>
+      </EventAiOrchestrationProvider>
+      </CockpitTelemetryProvider>
     </BrowserRouter>
   )
 }

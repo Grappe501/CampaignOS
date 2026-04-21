@@ -6,6 +6,7 @@ import { useEventOperationalTasks } from '../../hooks/useEventOperationalTasks'
 import { useCampaignStaffingBulk } from '../../hooks/useCampaignStaffingBulk'
 import { useCampaignEventsContext } from '../../context/CampaignEventsContext'
 import { useEventIntelligenceRegistry } from '../../context/EventIntelligenceLayerContext'
+import { useClearEventDeskOrchestrationOnUnmount, useEventAiOrchestration } from '../../context/EventAiOrchestrationContext'
 import type { AgentJonesEventIntelligenceLayer } from '../../lib/agentJonesEventIntelligenceBridge'
 import type { CampaignCalendarEventRecord } from '../../lib/campaignCalendarArchitecture'
 import { collectOperationsGapsForEvent } from '../../lib/campaignEventCoordinatorOperations'
@@ -71,6 +72,13 @@ import EventDayOfMode from './command/EventDayOfMode'
 import { computeEventHealthScoreV2 } from '../../lib/eventHealthScoreV2'
 import { overlayFieldExecutionOnHealth } from '../../lib/eventDayOfHealthOverlay'
 import { loadEventDayWorkspace, EVENT_DAY_OF_WORKSPACE_SAVED } from '../../lib/eventDayOfLocalStorage'
+import { buildLeadershipBriefing } from '../../lib/leadershipBriefingService'
+import { emphasisFromRole } from '../../lib/leadershipBriefingAccess'
+import { loadLeadershipKpiPrior } from '../../lib/leadershipBriefingKpiStorage'
+import { buildEventAiOrchestrationBundle } from '../../lib/eventAi/eventAiOrchestrationEngine'
+import { compileAgentJonesEventAiOrchestration } from '../../lib/eventAi/eventAiContextCompiler'
+import { filterProgramEventsForOrchestration } from '../../lib/eventAi/eventAiProgramEvents'
+import { resolveEventAiCampaignScope } from '../../lib/eventAi/eventAiCorrelationScope'
 
 const TYPE_KEYS = CAMPAIGN_EVENT_TYPE_MATRIX.map((t) => t.key)
 
@@ -99,6 +107,7 @@ export default function EventRecordDeskContent({
 }: {
   profile: CampaignProfile | null
 }) {
+  useClearEventDeskOrchestrationOnUnmount()
   const { eventId = '' } = useParams<{ eventId: string }>()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -117,7 +126,8 @@ export default function EventRecordDeskContent({
   const [staffingRefresh, setStaffingRefresh] = useState(0)
   const [volunteerLoadAsOfMs] = useState(() => Date.now())
   const { events: campaignEvents } = useCampaignEventsContext()
-  const { setLayer: setAgentJonesIntelLayer } = useEventIntelligenceRegistry()
+  const { setLayer: setAgentJonesIntelLayer, layer: intelLayerFromRegistry } = useEventIntelligenceRegistry()
+  const { setEventDeskEventAiOrchestration } = useEventAiOrchestration()
   const onIntelLayer = useCallback(
     (layer: AgentJonesEventIntelligenceLayer | null) => {
       setAgentJonesIntelLayer(layer)
@@ -148,6 +158,59 @@ export default function EventRecordDeskContent({
     if (!recordPatch || recordPatch.eventId !== loadedRow.event_id) return loadedRow
     return { ...loadedRow, ...recordPatch.patch }
   }, [loadedRow, recordPatch])
+
+  const programEventsForAi = useMemo(
+    () => filterProgramEventsForOrchestration(campaignEvents),
+    [campaignEvents],
+  )
+
+  const [leadershipBriefingAsOfMs, setLeadershipBriefingAsOfMs] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setLeadershipBriefingAsOfMs(Date.now()), 120000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const leadershipSnapshotForAi = useMemo(
+    () =>
+      buildLeadershipBriefing(programEventsForAi, leadershipBriefingAsOfMs, {
+        emphasis: emphasisFromRole(profile?.primary_role),
+        assignmentMap: campaignAssignmentMap,
+        priorKpi: loadLeadershipKpiPrior(),
+      }),
+    [programEventsForAi, leadershipBriefingAsOfMs, profile?.primary_role, campaignAssignmentMap],
+  )
+
+  const eventDeskCampaignScope = useMemo(
+    () => resolveEventAiCampaignScope(programEventsForAi, profile?.id),
+    [programEventsForAi, profile?.id],
+  )
+
+  const eventDeskOrchestrationWire = useMemo(() => {
+    if (!displayRecord) return null
+    const bundle = buildEventAiOrchestrationBundle({
+      campaign_id: eventDeskCampaignScope,
+      leadership_snapshot: leadershipSnapshotForAi,
+      event_desk_layer: intelLayerFromRegistry,
+      calendar_pool: programEventsForAi,
+      focused_event_record: displayRecord,
+    })
+    return compileAgentJonesEventAiOrchestration(bundle, {
+      scope: 'event_desk',
+      completeness_pct: Math.min(92, 55 + (intelLayerFromRegistry ? 22 : 0)),
+      data_gap_warnings: intelLayerFromRegistry ? [] : ['Event intelligence layer still initializing.'],
+    })
+  }, [
+    displayRecord,
+    eventDeskCampaignScope,
+    leadershipSnapshotForAi,
+    intelLayerFromRegistry,
+    programEventsForAi,
+  ])
+
+  useEffect(() => {
+    setEventDeskEventAiOrchestration(eventDeskOrchestrationWire)
+    return () => setEventDeskEventAiOrchestration(null)
+  }, [eventDeskOrchestrationWire, setEventDeskEventAiOrchestration])
 
   const effectiveType: CampaignEventTypeKey = useMemo(() => {
     if (displayRecord && (TYPE_KEYS as readonly string[]).includes(displayRecord.event_type)) {

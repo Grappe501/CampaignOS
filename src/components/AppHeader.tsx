@@ -12,6 +12,7 @@ import {
 import { canAccessAdminDesk } from '../lib/adminDeskAccess'
 import { canAccessEventCoordinatorDesk } from '../lib/eventCoordinatorDeskAccess'
 import { canAccessLeadershipBriefing } from '../lib/leadershipBriefingAccess'
+import { canAccessCampaignManagerCockpit } from '../lib/cockpit/cockpitCampaignManagerAccess'
 
 const DRAWER_ID = 'campaignos-nav-drawer'
 const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
@@ -48,6 +49,13 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
   const isEventsDesk = location.pathname.startsWith('/events')
   const isWarRoom = location.pathname === '/events/war-room'
   const isLeadershipBriefing = location.pathname === '/events/leadership'
+  const isCampaignManagerCockpit =
+    location.pathname === '/cockpit/campaign-manager'
+
+  const showCockpitNav =
+    Boolean(onSignOut) &&
+    !useLegacyWorkspaceNav &&
+    canAccessCampaignManagerCockpit(profile?.primary_role)
 
   const showLeadershipBriefingNav =
     Boolean(onSignOut) &&
@@ -168,6 +176,14 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                     aria-current={isLeadershipBriefing ? 'page' : undefined}
                   >
                     Executive briefing
+                  </Link>
+                ) : null}
+                {showCockpitNav ? (
+                  <Link
+                    to="/cockpit/campaign-manager"
+                    aria-current={isCampaignManagerCockpit ? 'page' : undefined}
+                  >
+                    Command cockpit
                   </Link>
                 ) : null}
               </>
@@ -313,6 +329,16 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                         onClick={closeDrawer}
                       >
                         Executive briefing
+                      </Link>
+                    ) : null}
+                    {showCockpitNav ? (
+                      <Link
+                        to="/cockpit/campaign-manager"
+                        className="drawer-nav-link"
+                        aria-current={isCampaignManagerCockpit ? 'page' : undefined}
+                        onClick={closeDrawer}
+                      >
+                        Command cockpit
                       </Link>
                     ) : null}
                   </>

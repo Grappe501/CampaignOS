@@ -26,6 +26,7 @@ export const AGENT_JONES_SCROLL_TARGET_IDS = [
   'event-coordinator-desk',
   'war-room-root',
   'leadership-briefing-root',
+  'cm-cockpit-root',
   'event-coordinator-postevent-queue',
   'event-calendar-page',
   'event-calendar-command',
@@ -60,6 +61,7 @@ export const AGENT_JONES_NAVIGATE_PATHS = [
   '/events/calendar',
   '/events/review-requests',
   '/events/promotion',
+  '/cockpit/campaign-manager',
 ] as const
 
 export type AgentJonesNavigatePath = (typeof AGENT_JONES_NAVIGATE_PATHS)[number]
