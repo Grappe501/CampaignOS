@@ -26,6 +26,7 @@ import MobilizeQueueSummaryCard from './widgets/MobilizeQueueSummaryCard'
 import UpcomingCampaignStrip from './widgets/UpcomingCampaignStrip'
 import EventApprovalQueue from './command/EventApprovalQueue'
 import TodayCommandPanel from './command/TodayCommandPanel'
+import { canAccessLeadershipBriefing } from '../../lib/leadershipBriefingAccess'
 import { buildTodayCommandSnapshot } from '../../lib/todayCommandService'
 import { buildRapidActionContextFromEvent } from '../../lib/rapidActionContextSelectors'
 import RapidActionsBar from './command/RapidActionsBar'
@@ -117,6 +118,14 @@ export default function EventCoordinatorDeskContent({
           </div>
         </div>
         <div className="event-coordinator-desk__quick-actions" aria-label="Quick actions">
+          <Link to="/events/war-room" className="btn-touch">
+            War room (multi-event)
+          </Link>
+          {canAccessLeadershipBriefing(profile?.primary_role) ? (
+            <Link to="/events/leadership" className="btn-touch">
+              Executive briefing
+            </Link>
+          ) : null}
           <Link to="/events/county-ops" className="btn-touch">
             County command center
           </Link>

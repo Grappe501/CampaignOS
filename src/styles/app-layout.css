@@ -5039,6 +5039,654 @@
   font-size: 0.86rem;
 }
 
+/* Multi-event war room */
+.war-room-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.war-room-page__hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.war-room-page__hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.war-room-page__stat-k {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.war-room-page__stat-v {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.war-room-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.war-room-page__nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.war-room-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 10px;
+}
+
+.war-room-page__filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.war-room-page__filter-grow {
+  flex: 1 1 180px;
+}
+
+.war-room-page__search {
+  font: inherit;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  min-width: 140px;
+}
+
+.war-room-page__view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.war-room-page__tab {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.war-room-page__tab--active {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(37, 99, 235, 0.35);
+  font-weight: 700;
+}
+
+.war-room-page__section {
+  margin-top: 1.25rem;
+}
+
+.war-room-page__grid-two {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 900px) {
+  .war-room-page__grid-two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.war-room-page__priority-strip {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 0.86rem;
+}
+
+.war-room-page__priority-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.04);
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 6px;
+}
+
+.war-room-page__cascade {
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.84rem;
+}
+
+.war-room-page__mono {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.war-room-page__priority-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.war-room-page__quiet {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #475569;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+}
+
+.war-room-page__subsection-h {
+  margin-top: 12px;
+}
+
+.war-room-page__issues-grouped {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.war-room-page__issue-group .war-room-page__issue-list {
+  margin-top: 4px;
+}
+
+.war-room-card__hint {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+.war-room-page__card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 700px) {
+  .war-room-page__card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .war-room-page__card-grid:not(.war-room-page__card-grid--compact) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.war-room-card {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.war-room-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.war-room-card__title {
+  font-weight: 800;
+  font-size: 0.92rem;
+  text-decoration: none;
+  color: #0f172a;
+}
+
+.war-room-card__urgency {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.war-room-card__urgency--now {
+  background: rgba(239, 68, 68, 0.18);
+  color: #991b1b;
+}
+.war-room-card__urgency--soon {
+  background: rgba(251, 191, 36, 0.25);
+  color: #92400e;
+}
+.war-room-card__urgency--watch {
+  background: rgba(14, 165, 233, 0.15);
+  color: #0369a1;
+}
+.war-room-card__urgency--steady {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+}
+
+.war-room-card__meta {
+  margin: 4px 0 6px;
+  font-size: 0.78rem;
+  color: #475569;
+}
+
+.war-room-card__dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.war-room-card__dl dt {
+  color: #64748b;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+.war-room-card__dl dd {
+  margin: 0;
+}
+
+.war-room-card__ros {
+  margin: 6px 0;
+  font-size: 0.78rem;
+}
+
+.war-room-card__next {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  color: #334155;
+}
+
+.war-room-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.war-room-page__issue-list,
+.war-room-page__closure,
+.war-room-page__geo {
+  margin: 8px 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.war-room-page__brief {
+  white-space: pre-wrap;
+  font-size: 0.82rem;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.05);
+  max-height: 260px;
+  overflow: auto;
+}
+
+/* Leadership / executive event briefing */
+.leadership-briefing-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2.5rem;
+}
+
+.leadership-briefing-page__hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.leadership-briefing-page__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.leadership-briefing-page__confidence {
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 0.5rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.leadership-briefing-page__confidence--high {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.leadership-briefing-page__confidence--medium {
+  background: rgba(251, 191, 36, 0.08);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+.leadership-briefing-page__confidence--low {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.22);
+}
+
+.leadership-briefing-page__confidence-line {
+  margin: 0 0 6px;
+}
+
+.leadership-briefing-page__confidence-line--muted {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.leadership-briefing-page__confidence-notes {
+  margin: 6px 0 0;
+  padding-left: 1.15rem;
+}
+
+.leadership-briefing-page__section {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.leadership-briefing-page__pulse-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 800px) {
+  .leadership-briefing-page__pulse-grid {
+    grid-template-columns: minmax(200px, 260px) 1fr;
+  }
+}
+
+.leadership-briefing-page__pulse {
+  border-radius: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.leadership-briefing-page__pulse--strong {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+.leadership-briefing-page__pulse--watch {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.leadership-briefing-page__pulse--concern {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.leadership-briefing-page__pulse--no_data {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.leadership-briefing-page__pulse-k {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin: 0;
+}
+
+.leadership-briefing-page__pulse-v {
+  margin: 4px 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.leadership-briefing-page__pulse-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.leadership-briefing-page__stat-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.leadership-briefing-page__stat-grid li {
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.04);
+  font-size: 0.78rem;
+}
+
+.leadership-briefing-page__sk {
+  display: block;
+  color: #64748b;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.leadership-briefing-page__sv {
+  display: block;
+  font-weight: 800;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.leadership-briefing-page__note {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.leadership-briefing-page__note--breakdown {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.leadership-briefing-page__calm {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  font-size: 0.8rem;
+  color: #0f766e;
+}
+
+.leadership-briefing-page__delta-note {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+}
+
+.leadership-briefing-page__dl-executive {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 12px 0 0;
+  font-size: 0.86rem;
+}
+
+@media (min-width: 700px) {
+  .leadership-briefing-page__dl-executive {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.leadership-briefing-page__dl-executive dt {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0 0 2px;
+}
+
+.leadership-briefing-page__dl-executive dd {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.leadership-briefing-page__trend-cards {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.leadership-briefing-page__trend-cards li {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.8rem;
+}
+
+.leadership-briefing-page__trend {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.leadership-briefing-page__trend--improving {
+  color: #047857;
+}
+.leadership-briefing-page__trend--stable {
+  color: #64748b;
+}
+.leadership-briefing-page__trend--declining {
+  color: #b91c1c;
+}
+.leadership-briefing-page__trend--unknown {
+  color: #94a3b8;
+}
+
+.leadership-briefing-page__mono {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.leadership-briefing-page__board,
+.leadership-briefing-page__decisions {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.leadership-briefing-page__board > li,
+.leadership-briefing-page__decisions > li {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.leadership-briefing-page__board-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+  font-weight: 700;
+}
+
+.leadership-briefing-page__flag {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #991b1b;
+}
+
+.leadership-briefing-page__grid-two {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .leadership-briefing-page__grid-two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.leadership-briefing-page__inline-stats {
+  margin: 8px 0;
+  padding-left: 1.1rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.leadership-briefing-page__recommendations {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.leadership-briefing-page__recommendations li {
+  margin-bottom: 10px;
+  line-height: 1.45;
+  font-size: 0.88rem;
+}
+
+.leadership-briefing-page__pre {
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.05);
+  max-height: 320px;
+  overflow: auto;
+}
+
+.leadership-briefing-page__details {
+  margin-top: 10px;
+}
+
+.leadership-briefing-page__footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(15, 23, 42, 0.12);
+}
+
 .event-coordinator-desk__h2 {
   margin: 0 0 10px;
   font-size: 1.05rem;

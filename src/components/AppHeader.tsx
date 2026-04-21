@@ -11,6 +11,7 @@ import {
 } from '../lib/roleHomeRouting'
 import { canAccessAdminDesk } from '../lib/adminDeskAccess'
 import { canAccessEventCoordinatorDesk } from '../lib/eventCoordinatorDeskAccess'
+import { canAccessLeadershipBriefing } from '../lib/leadershipBriefingAccess'
 
 const DRAWER_ID = 'campaignos-nav-drawer'
 const brand = CHRIS_JONES_FOR_CONGRESS_PUBLIC
@@ -45,6 +46,13 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
   const isCoordinatorDesk = location.pathname.startsWith('/coordinator')
   const isAdminDesk = location.pathname.startsWith('/admin')
   const isEventsDesk = location.pathname.startsWith('/events')
+  const isWarRoom = location.pathname === '/events/war-room'
+  const isLeadershipBriefing = location.pathname === '/events/leadership'
+
+  const showLeadershipBriefingNav =
+    Boolean(onSignOut) &&
+    !useLegacyWorkspaceNav &&
+    canAccessLeadershipBriefing(profile?.primary_role)
 
   const useLegacyWorkspaceNav = Boolean(onSignOut && profileLoading)
   const primaryPath = useLegacyWorkspaceNav
@@ -147,9 +155,22 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
               {primaryLabel}
             </Link>
             {showEventsDeskNav ? (
-              <Link to="/events" aria-current={isEventsDesk ? 'page' : undefined}>
-                Events
-              </Link>
+              <>
+                <Link to="/events" aria-current={isEventsDesk && !isWarRoom ? 'page' : undefined}>
+                  Events
+                </Link>
+                <Link to="/events/war-room" aria-current={isWarRoom ? 'page' : undefined}>
+                  War room
+                </Link>
+                {showLeadershipBriefingNav ? (
+                  <Link
+                    to="/events/leadership"
+                    aria-current={isLeadershipBriefing ? 'page' : undefined}
+                  >
+                    Executive briefing
+                  </Link>
+                ) : null}
+              </>
             ) : null}
             {showCommandCenterNav ? (
               <Link to="/admin" aria-current={isAdminDesk ? 'page' : undefined}>
@@ -267,14 +288,34 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                   {primaryLabel}
                 </Link>
                 {showEventsDeskNav ? (
-                  <Link
-                    to="/events"
-                    className="drawer-nav-link"
-                    aria-current={isEventsDesk ? 'page' : undefined}
-                    onClick={closeDrawer}
-                  >
-                    Events
-                  </Link>
+                  <>
+                    <Link
+                      to="/events"
+                      className="drawer-nav-link"
+                      aria-current={isEventsDesk && !isWarRoom ? 'page' : undefined}
+                      onClick={closeDrawer}
+                    >
+                      Events
+                    </Link>
+                    <Link
+                      to="/events/war-room"
+                      className="drawer-nav-link"
+                      aria-current={isWarRoom ? 'page' : undefined}
+                      onClick={closeDrawer}
+                    >
+                      War room
+                    </Link>
+                    {showLeadershipBriefingNav ? (
+                      <Link
+                        to="/events/leadership"
+                        className="drawer-nav-link"
+                        aria-current={isLeadershipBriefing ? 'page' : undefined}
+                        onClick={closeDrawer}
+                      >
+                        Executive briefing
+                      </Link>
+                    ) : null}
+                  </>
                 ) : null}
                 {showCommandCenterNav ? (
                   <Link

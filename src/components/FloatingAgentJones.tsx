@@ -14,6 +14,7 @@ import type {
   AgentJonesLeadershipSnapshotContext,
 } from '../lib/agentJonesContextV2'
 import type { AgentJonesEventIntelligenceLayer } from '../lib/agentJonesEventIntelligenceBridge'
+import type { AgentJonesEventOperationsExecutive } from '../lib/leadershipBriefingAgentBridge'
 import AgentJonesPanel, { AGENT_JONES_CLEAR_EVENT } from './AgentJonesPanel'
 import AgentJonesLauncher from './agentJones/AgentJonesLauncher'
 import AgentJonesFloatingPanel from './agentJones/AgentJonesFloatingPanel'
@@ -41,6 +42,8 @@ export type FloatingAgentJonesProps = {
   campaignGoals?: AgentJonesCampaignGoalsContext | null
   /** Event command desk — optional grounded briefing payload for Agent Jones API. */
   eventIntelligenceLayer?: AgentJonesEventIntelligenceLayer | null
+  /** Leadership briefing page — executive event-ops digest for Agent Jones API. */
+  eventOperationsExecutive?: AgentJonesEventOperationsExecutive | null
 }
 
 export default function FloatingAgentJones({
@@ -59,6 +62,7 @@ export default function FloatingAgentJones({
   internLayer,
   campaignGoals,
   eventIntelligenceLayer,
+  eventOperationsExecutive,
   surface,
   coordinatorOps,
   leadershipSnapshot,
@@ -165,6 +169,7 @@ export default function FloatingAgentJones({
               internLayer={internLayer}
               campaignGoals={campaignGoals}
               eventIntelligenceLayer={eventIntelligenceLayer ?? undefined}
+              eventOperationsExecutive={eventOperationsExecutive ?? null}
             />
           </AgentJonesFloatingPanel>
         </>

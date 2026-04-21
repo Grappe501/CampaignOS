@@ -548,6 +548,25 @@ type AgentJonesSafeContextV2 = {
   gotv_summary?: AgentJonesGotvSummarySafe
   desk_routing?: AgentJonesDeskRoutingSummarySafe
   event_intelligence?: AgentJonesEventIntelligenceSafe
+  /** Leadership briefing page — client-built executive event-ops digest (advisory). */
+  event_operations_executive?: AgentJonesEventOperationsExecutiveSafe
+}
+
+type AgentJonesEventOperationsExecutiveSafe = {
+  source: 'leadership_briefing_v1'
+  generated_at_ms: number
+  emphasis: string
+  briefing_mode: 'executive_event_briefing' | 'daily_leadership_digest'
+  overall_operational_status: string
+  digest_compact: string
+  digest_expanded: string
+  top_risks: string[]
+  top_decisions: string[]
+  top_opportunities: string[]
+  improved_since_prior: string[]
+  worsened_since_prior: string[]
+  leadership_attention: string[]
+  coordinator_level_ok: string[]
 }
 
 type AgentJonesSafeContextLegacy = {
@@ -635,6 +654,8 @@ const SCROLL_IDS = new Set([
   'admin-tasks',
   'admin-config',
   'event-coordinator-desk',
+  'war-room-root',
+  'leadership-briefing-root',
   'event-coordinator-postevent-queue',
   'event-calendar-page',
   'event-calendar-command',
@@ -663,6 +684,8 @@ const NAV_PATHS = new Set([
   '/candidate',
   '/admin',
   '/events',
+  '/events/war-room',
+  '/events/leadership',
   '/events/calendar',
   '/events/review-requests',
   '/events/promotion',
@@ -3032,6 +3055,61 @@ function validateEventIntelligenceRaw(
   return out
 }
 
+function validateEventOperationsExecutiveRaw(
+  raw: unknown,
+): AgentJonesEventOperationsExecutiveSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'leadership_briefing_v1') return undefined
+  const gen =
+    typeof raw.generated_at_ms === 'number' && Number.isFinite(raw.generated_at_ms)
+      ? raw.generated_at_ms
+      : Date.now()
+  const emphasis =
+    typeof raw.emphasis === 'string' ? raw.emphasis.trim().slice(0, 32) : 'executive'
+  const briefing_mode =
+    raw.briefing_mode === 'daily_leadership_digest' ? 'daily_leadership_digest' : 'executive_event_briefing'
+  const overall =
+    typeof raw.overall_operational_status === 'string'
+      ? raw.overall_operational_status.trim().slice(0, 48)
+      : 'unknown'
+  const digest_compact =
+    typeof raw.digest_compact === 'string' ? raw.digest_compact.trim().slice(0, 1200) : ''
+  const digest_expanded =
+    typeof raw.digest_expanded === 'string' ? raw.digest_expanded.trim().slice(0, 3500) : ''
+  if (!digest_compact && !digest_expanded) return undefined
+
+  const strArr = (k: string, max: number, maxLen: number): string[] => {
+    const arr: string[] = []
+    const v = raw[k]
+    if (!Array.isArray(v)) return arr
+    for (const item of v.slice(0, max)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, maxLen)
+      if (!t || /[<>\\]/.test(t)) continue
+      arr.push(t)
+    }
+    return arr
+  }
+
+  return {
+    source: 'leadership_briefing_v1',
+    generated_at_ms: gen,
+    emphasis: emphasis || 'executive',
+    briefing_mode,
+    overall_operational_status: overall,
+    digest_compact: digest_compact || '—',
+    digest_expanded: digest_expanded || '—',
+    top_risks: strArr('top_risks', 8, 420),
+    top_decisions: strArr('top_decisions', 8, 420),
+    top_opportunities: strArr('top_opportunities', 10, 320),
+    improved_since_prior: strArr('improved_since_prior', 6, 400),
+    worsened_since_prior: strArr('worsened_since_prior', 6, 400),
+    leadership_attention: strArr('leadership_attention', 12, 420),
+    coordinator_level_ok: strArr('coordinator_level_ok', 8, 360),
+  }
+}
+
 function validateReadinessCoverageRaw(
   raw: unknown,
 ): AgentJonesReadinessCoverageSafe | undefined {
@@ -3139,6 +3217,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
     const gotv_summary = validateGotvSummaryRaw(raw.gotv_summary)
     const desk_routing = validateDeskRoutingSummaryRaw(raw.desk_routing)
     const event_intelligence = validateEventIntelligenceRaw(raw.event_intelligence)
+    const event_operations_executive = validateEventOperationsExecutiveRaw(raw.event_operations_executive)
     return {
       surface,
       user,
@@ -3194,6 +3273,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
       ...(gotv_summary ? { gotv_summary } : {}),
       ...(desk_routing ? { desk_routing } : {}),
       ...(event_intelligence ? { event_intelligence } : {}),
+      ...(event_operations_executive ? { event_operations_executive } : {}),
     }
   }
 
@@ -3220,6 +3300,7 @@ Rules:
 - If dashboardContext.campaign.retrievedKnowledge exists, it is a **small set of excerpt chunks** from the campaign knowledge base chosen for this user message (keyword match on chunk text). Prefer these excerpts when answering factual or policy questions; if they conflict with other campaign fields, prefer retrievedKnowledge for specifics. If the list is empty or off-topic, say so honestly — do not pretend you ran a live search.
 - If dashboardContext.campaign.onboardingBrief exists, it is the structured Volunteer Welcome Kit + Organization Outline (culture, lane options, first actions, messaging, escalation). Use it for how we work, lane fit, first tasks, and when to escalate — still do not invent policy beyond what is written there.
 - If dashboardContext.event_intelligence exists, it is a **client-built event-command snapshot** (similar past events, deterministic briefing lines, optional after-action documentation warnings, delta since last briefing snapshot). When **event_intelligence.field_execution** is present, it mirrors the same **browser-only** day-of workspace as the Field surface (phase label, bounded briefing lines, open field-issue count, pending closure items, signup handoff ack — source tag browser_workspace_v1). Treat it as live tactical context, not Supabase truth; never claim it mutates server rows. Use it for tactical event operations tone on /events routes; staff actions only.
+- If dashboardContext.event_operations_executive exists (source leadership_briefing_v1), it is a **client-built executive event-operations digest** from the leadership briefing page: approvals, war-room priority, staffing/comms rollups, trends vs prior browser visit — advisory only, not authority for approvals or edits. Use for leadership tone: top risks, decisions, what can stay with coordinators.
 - Stay practical, supportive, and brief (mobile screens). No legal/medical advice. Do not ask for passwords, SSNs, or full document uploads.
 - Never reveal sensitive voter history. You may reference precinct/county/district if present.
 - If dashboardContext.user includes onboarding_momentum_state / onboarding_direction_key / onboarding_micro_commitment_key (and optional onboarding_last_prompt / onboarding_last_action_at), the volunteer is in optional guided momentum (not a wizard). Honor their direction and micro-commitment when suggesting next steps; never imply they are blocked from the dashboard.

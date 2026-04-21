@@ -33,12 +33,15 @@ import RoleHomeRedirect from './components/RoleHomeRedirect'
 import GlobalFloatingAgentJones from './components/GlobalFloatingAgentJones'
 import { CampaignEventsProvider } from './context/CampaignEventsContext'
 import { EventIntelligenceLayerProvider } from './context/EventIntelligenceLayerContext'
+import { LeadershipExecutiveBriefingProvider } from './context/LeadershipExecutiveBriefingContext'
 import VolunteerCommandCoordinatorPage from './pages/VolunteerCommandCoordinatorPage'
 import VolunteerCommandTeamLeadPage from './pages/VolunteerCommandTeamLeadPage'
 import VolunteerSelfServicePage from './pages/VolunteerSelfServicePage'
 import OpportunityMarketplacePage from './pages/OpportunityMarketplacePage'
 import SignupSheetIngestionPage from './pages/SignupSheetIngestionPage'
 import SignupSheetBatchPage from './pages/SignupSheetBatchPage'
+import MultiEventWarRoomPage from './pages/MultiEventWarRoomPage'
+import LeadershipBriefingPage from './pages/LeadershipBriefingPage'
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(() =>
@@ -81,6 +84,7 @@ export default function App() {
       <div className="app-viewport">
         {isDevAuthBypassEnabled() ? <DevModeBanner /> : null}
       <CampaignEventsProvider>
+      <LeadershipExecutiveBriefingProvider>
       <EventIntelligenceLayerProvider>
       <Routes>
         <Route
@@ -282,6 +286,42 @@ export default function App() {
           }
         />
         <Route
+          path="/events/war-room"
+          element={
+            session ? (
+              <MultiEventWarRoomPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/executive-briefing"
+          element={<Navigate to="/events/leadership" replace />}
+        />
+        <Route
+          path="/events/leadership"
+          element={
+            session ? (
+              <LeadershipBriefingPage
+                onDevSessionClear={
+                  isDevAuthBypassEnabled()
+                    ? () => setSession(null)
+                    : undefined
+                }
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
           path="/events/:eventId/checkin"
           element={
             session ? (
@@ -451,6 +491,7 @@ export default function App() {
       </Routes>
       {session ? <GlobalFloatingAgentJones /> : null}
       </EventIntelligenceLayerProvider>
+      </LeadershipExecutiveBriefingProvider>
       </CampaignEventsProvider>
       </div>
       </DevMockDashboardProvider>

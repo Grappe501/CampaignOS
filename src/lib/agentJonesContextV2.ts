@@ -26,6 +26,7 @@ import { buildAgentJonesV3Brain } from './agentJonesV3Brain'
 import { buildAgentJonesV33Pack } from './agentJonesV33Pack'
 import { buildAgentJonesV34Pack } from './agentJonesV34Pack'
 import type { AgentJonesEventIntelligenceLayer } from './agentJonesEventIntelligenceBridge'
+import type { AgentJonesEventOperationsExecutive } from './leadershipBriefingAgentBridge'
 
 /** Bounded relational organizing summary — no PII beyond counts and stage hints. */
 export type AgentJonesRelationalPower5Context = {
@@ -656,6 +657,8 @@ export type AgentJonesContextV2 = {
   desk_routing?: AgentJonesDeskRoutingSummary
   /** Event command desk — grounded briefing, similar-event lessons, after-action hints (client-built). */
   event_intelligence?: AgentJonesEventIntelligenceLayer
+  /** Leadership /executive briefing — aggregated ops snapshot (client-built; advisory). */
+  event_operations_executive?: AgentJonesEventOperationsExecutive
 }
 
 function trunc(s: unknown, max: number): string | null {
@@ -689,6 +692,7 @@ export function buildAgentJonesContextV2(input: {
   pathname?: string
   /** Optional event desk intelligence (same source of truth as event command UI). */
   eventIntelligence?: AgentJonesEventIntelligenceLayer | null
+  eventOperationsExecutive?: AgentJonesEventOperationsExecutive | null
 }): AgentJonesContextV2 {
   const {
     profile,
@@ -709,6 +713,7 @@ export function buildAgentJonesContextV2(input: {
     operating,
     pathname: pathnameIn = '/',
     eventIntelligence,
+    eventOperationsExecutive,
   } = input
 
   const surface: AgentJonesSurface = surfaceIn ?? 'volunteer_dashboard'
@@ -961,6 +966,7 @@ export function buildAgentJonesContextV2(input: {
     ...(v34Brain?.gotv_summary ? { gotv_summary: v34Brain.gotv_summary } : {}),
     ...(v34Brain?.desk_routing ? { desk_routing: v34Brain.desk_routing } : {}),
     ...(eventIntelligence ? { event_intelligence: eventIntelligence } : {}),
+    ...(eventOperationsExecutive ? { event_operations_executive: eventOperationsExecutive } : {}),
   }
 }
 

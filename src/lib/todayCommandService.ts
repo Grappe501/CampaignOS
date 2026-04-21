@@ -227,13 +227,19 @@ function buildDigest(
   }
 }
 
-function toItem(
+/** Build one command desk row — shared by Today Command and War Room. */
+export function buildTodayCommandEventItem(
   record: CampaignCalendarEventRecord,
   nowMs: number,
-  priorScores?: ReadonlyMap<string, number>,
-  assignmentMap?: Map<string, StaffingAssignmentLike[]>,
-  allEvents?: readonly CampaignCalendarEventRecord[],
+  options?: {
+    priorScores?: ReadonlyMap<string, number>
+    assignmentMap?: Map<string, StaffingAssignmentLike[]>
+    allEvents?: readonly CampaignCalendarEventRecord[]
+  },
 ): TodayCommandEventItem {
+  const priorScores = options?.priorScores
+  const assignmentMap = options?.assignmentMap
+  const allEvents = options?.allEvents
   const gaps =
     assignmentMap && allEvents
       ? collectOperationsGapsWithOperationalLayer(record, allEvents, assignmentMap, nowMs)
@@ -251,6 +257,16 @@ function toItem(
     trend: health.trend,
     priorScore: prior,
   }
+}
+
+function toItem(
+  record: CampaignCalendarEventRecord,
+  nowMs: number,
+  priorScores?: ReadonlyMap<string, number>,
+  assignmentMap?: Map<string, StaffingAssignmentLike[]>,
+  allEvents?: readonly CampaignCalendarEventRecord[],
+): TodayCommandEventItem {
+  return buildTodayCommandEventItem(record, nowMs, { priorScores, assignmentMap, allEvents })
 }
 
 function buildIssues(items: TodayCommandEventItem[], nowMs: number): CommandPanelIssue[] {
