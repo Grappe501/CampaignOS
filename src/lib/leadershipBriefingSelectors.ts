@@ -3,6 +3,7 @@
  */
 
 import type { CampaignCalendarEventRecord } from './campaignCalendarArchitecture'
+import { normalizeFollowupPhase } from './eventPostEventWorkflow'
 import { hoursToEventStart } from './multiEventWarRoomTime'
 
 export function safeEventTitle(title: string | null | undefined): string {
@@ -51,6 +52,17 @@ export function completedNeedsFollowup(record: CampaignCalendarEventRecord): boo
   return fu === '' || fu === 'pending' || fu === 'needed'
 }
 
+/** Completed events whose follow-up phase is not closed (calendar row only; pair with outcome rollups for DB truth). */
+export function completedEventsWithOpenFollowupPhase(
+  events: readonly CampaignCalendarEventRecord[],
+): CampaignCalendarEventRecord[] {
+  return events.filter((e) => {
+    const st = String(e.stage_status ?? '').toLowerCase()
+    if (st !== 'completed') return false
+    return normalizeFollowupPhase(e.followup_state) !== 'complete'
+  })
+}
+
 /** Counties with at least one program in a staffing-gap state (unstaffed / partial / at_risk). */
 export function countyWeakBenchRollup(
   events: readonly CampaignCalendarEventRecord[],
@@ -63,3 +75,8 @@ export function countyWeakBenchRollup(
   }
   return m
 }
+
+export {
+  buildVolunteerThroughputLeadershipRollup as volunteerThroughputLeadershipRollup,
+  type VolunteerThroughputLeadershipRollup,
+} from './volunteerThroughputMetrics'

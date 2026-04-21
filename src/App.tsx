@@ -19,6 +19,7 @@ import CandidateDesk from './pages/CandidateDesk'
 import CoordinatorDesk from './pages/CoordinatorDesk'
 import Login from './pages/Login'
 import Power5Desk from './pages/Power5Desk'
+import FieldNarrativePage from './pages/FieldNarrativePage'
 import AdminDesk from './pages/AdminDesk'
 import CountyEventOperationsPage from './pages/CountyEventOperationsPage'
 import EventAnalyticsPage from './pages/EventAnalyticsPage'
@@ -33,6 +34,7 @@ import RoleHomeRedirect from './components/RoleHomeRedirect'
 import GlobalFloatingAgentJones from './components/GlobalFloatingAgentJones'
 import { CampaignEventsProvider } from './context/CampaignEventsContext'
 import { EventIntelligenceLayerProvider } from './context/EventIntelligenceLayerContext'
+import VolunteerCommandDeskProvider from './context/VolunteerCommandDeskProvider'
 import { LeadershipExecutiveBriefingProvider } from './context/LeadershipExecutiveBriefingContext'
 import VolunteerCommandCoordinatorPage from './pages/VolunteerCommandCoordinatorPage'
 import VolunteerCommandTeamLeadPage from './pages/VolunteerCommandTeamLeadPage'
@@ -42,6 +44,8 @@ import SignupSheetIngestionPage from './pages/SignupSheetIngestionPage'
 import SignupSheetBatchPage from './pages/SignupSheetBatchPage'
 import MultiEventWarRoomPage from './pages/MultiEventWarRoomPage'
 import LeadershipBriefingPage from './pages/LeadershipBriefingPage'
+import FinanceCommandPage from './pages/FinanceCommandPage'
+import SimulationCommandPage from './pages/SimulationCommandPage'
 import { CampaignManagerCockpitProvider } from './context/CampaignManagerCockpitContext'
 import { CockpitTelemetryProvider } from './context/CockpitTelemetryContext'
 import { EventAiOrchestrationProvider } from './context/EventAiOrchestrationContext'
@@ -51,6 +55,10 @@ export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(() =>
     isDevAuthBypassEnabled() ? createDevBypassSession() : undefined,
   )
+
+  const onDevSessionClear = isDevAuthBypassEnabled()
+    ? () => setSession(null)
+    : undefined
 
   useEffect(() => {
     if (isDevAuthBypassEnabled()) {
@@ -92,6 +100,7 @@ export default function App() {
       <CampaignEventsProvider>
       <LeadershipExecutiveBriefingProvider>
       <EventIntelligenceLayerProvider>
+      <VolunteerCommandDeskProvider>
       <Routes>
         <Route
           path="/login"
@@ -104,11 +113,7 @@ export default function App() {
           element={
             session ? (
               <Dashboard
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -121,11 +126,7 @@ export default function App() {
             session ? (
               <CampaignManagerCockpitProvider>
                 <CampaignManagerCockpitPage
-                  onDevSessionClear={
-                    isDevAuthBypassEnabled()
-                      ? () => setSession(null)
-                      : undefined
-                  }
+                  onDevSessionClear={onDevSessionClear}
                 />
               </CampaignManagerCockpitProvider>
             ) : (
@@ -138,11 +139,7 @@ export default function App() {
           element={
             session ? (
               <InternDesk
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -154,11 +151,7 @@ export default function App() {
           element={
             session ? (
               <CandidateDesk
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -170,11 +163,7 @@ export default function App() {
           element={
             session ? (
               <CoordinatorDesk
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -186,12 +175,18 @@ export default function App() {
           element={
             session ? (
               <Power5Desk
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/field-narrative"
+          element={
+            session ? (
+              <FieldNarrativePage onDevSessionClear={onDevSessionClear} />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -202,11 +197,7 @@ export default function App() {
           element={
             session ? (
               <AdminDesk
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -218,11 +209,7 @@ export default function App() {
           element={
             session ? (
               <CountyEventOperationsPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -234,11 +221,7 @@ export default function App() {
           element={
             session ? (
               <NeighborhoodEventHubPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -250,11 +233,7 @@ export default function App() {
           element={
             session ? (
               <EventAnalyticsPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -266,11 +245,7 @@ export default function App() {
           element={
             session ? (
               <CampaignEventCalendarPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -282,11 +257,7 @@ export default function App() {
           element={
             session ? (
               <EventReviewRequestsPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -298,11 +269,7 @@ export default function App() {
           element={
             session ? (
               <EventPromotionDeskPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -314,11 +281,7 @@ export default function App() {
           element={
             session ? (
               <MultiEventWarRoomPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -334,12 +297,28 @@ export default function App() {
           element={
             session ? (
               <LeadershipBriefingPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/finance-command"
+          element={
+            session ? (
+              <FinanceCommandPage onDevSessionClear={onDevSessionClear} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/events/simulation-command"
+          element={
+            session ? (
+              <SimulationCommandPage onDevSessionClear={onDevSessionClear} />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -350,11 +329,7 @@ export default function App() {
           element={
             session ? (
               <EventCheckInPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -366,11 +341,7 @@ export default function App() {
           element={
             session ? (
               <CampaignEventRecordPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -382,11 +353,7 @@ export default function App() {
           element={
             session ? (
               <CampaignEventRecordPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -398,11 +365,7 @@ export default function App() {
           element={
             session ? (
               <EventCoordinatorDesk
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -414,11 +377,7 @@ export default function App() {
           element={
             session ? (
               <VolunteerCommandCoordinatorPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -430,11 +389,7 @@ export default function App() {
           element={
             session ? (
               <VolunteerCommandTeamLeadPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -446,11 +401,7 @@ export default function App() {
           element={
             session ? (
               <VolunteerSelfServicePage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -462,11 +413,7 @@ export default function App() {
           element={
             session ? (
               <OpportunityMarketplacePage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -478,11 +425,7 @@ export default function App() {
           element={
             session ? (
               <SignupSheetBatchPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -494,11 +437,7 @@ export default function App() {
           element={
             session ? (
               <SignupSheetIngestionPage
-                onDevSessionClear={
-                  isDevAuthBypassEnabled()
-                    ? () => setSession(null)
-                    : undefined
-                }
+                onDevSessionClear={onDevSessionClear}
               />
             ) : (
               <Navigate to="/login" replace />
@@ -514,6 +453,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {session ? <GlobalFloatingAgentJones /> : null}
+      </VolunteerCommandDeskProvider>
       </EventIntelligenceLayerProvider>
       </LeadershipExecutiveBriefingProvider>
       </CampaignEventsProvider>

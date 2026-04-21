@@ -1,5 +1,6 @@
 import type { AgentJonesCalendarSummary, AgentJonesCountdownSummary } from './agentJonesContextV2'
 import { getCountdownParts } from './campaignClock'
+import { resolveGotvTurnoutPhase } from './gotvCountdownEngine'
 
 const MS_HOUR = 3_600_000
 
@@ -10,6 +11,7 @@ export function buildAgentJonesCountdownSummary(input: {
   const now = input.nowMs ?? Date.now()
   const parts = getCountdownParts(now)
   const daysRemaining = parts.isPast ? 0 : parts.days
+  const gotvPhase = resolveGotvTurnoutPhase(now)
 
   let countdown_window: AgentJonesCountdownSummary['countdown_window'] = null
   if (!parts.isPast) {
@@ -85,6 +87,8 @@ export function buildAgentJonesCountdownSummary(input: {
     days_remaining: daysRemaining,
     countdown_window,
     countdown_pressure_headline,
+    turnout_phase: gotvPhase.phase,
+    turnout_phase_priorities: gotvPhase.phase_priorities.slice(0, 4),
     ...(countdown_scope_note ? { countdown_scope_note } : {}),
     ...(notes.length ? { action_window_notes: notes.slice(0, 4) } : {}),
   }

@@ -13,6 +13,19 @@ import {
 } from '../../../lib/leadershipBriefingKpiStorage'
 import StaffingCoverageHeatmap from '../command/StaffingCoverageHeatmap'
 import VolunteerLoadBalancerPanel from '../command/VolunteerLoadBalancerPanel'
+import { buildCampaignOperatingPicture } from '../../../lib/cop/copAggregationService'
+import { leadershipScope } from '../../../lib/cop/copScopes'
+import CampaignOperatingPictureHealthStrip from '../../cop/CampaignOperatingPictureHealthStrip'
+import { useGotvCommandLayer } from '../../../hooks/useGotvCommandLayer'
+import { useVoterConversionLeadership } from '../../../hooks/useVoterConversionLeadership'
+import VoterConversionFunnel from '../../voter-conversion/VoterConversionFunnel'
+import ChasePriorityCard from '../../voter-conversion/ChasePriorityCard'
+import BallotPlanRiskCard from '../../voter-conversion/BallotPlanRiskCard'
+import { voterConversionLeadershipHeadline } from '../../../lib/voterConversionAnalytics'
+import { buildCampaignMessageFramework } from '../../../lib/messageFramework'
+import { useFinanceCommandLayer } from '../../../hooks/useFinanceCommandLayer'
+import { useSimulationCommandLayer } from '../../../hooks/useSimulationCommandLayer'
+import { financeHealthHeadline } from '../../../lib/financeAnalytics'
 
 type Props = {
   profile: CampaignProfile | null
@@ -51,6 +64,11 @@ export default function LeadershipBriefingContent({ profile }: Props) {
   const [asOfMs, setAsOfMs] = useState(() => Date.now())
   const priorKpiLoaded = useMemo(() => loadLeadershipKpiPrior(), [])
   const emphasis = emphasisFromRole(profile?.primary_role)
+  const gotv = useGotvCommandLayer('default')
+  const voterConv = useVoterConversionLeadership(profile?.primary_role)
+  const financeCmd = useFinanceCommandLayer(profile?.primary_role)
+  const simCmd = useSimulationCommandLayer(profile?.primary_role)
+  const messageFramework = useMemo(() => buildCampaignMessageFramework(), [])
 
   const snapshot = useMemo(
     () =>
@@ -60,6 +78,17 @@ export default function LeadershipBriefingContent({ profile }: Props) {
         priorKpi: priorKpiLoaded,
       }),
     [programEvents, asOfMs, assignmentMap, emphasis, priorKpiLoaded],
+  )
+
+  const campaignOperatingPicture = useMemo(
+    () =>
+      buildCampaignOperatingPicture({
+        snapshot,
+        scope: leadershipScope(),
+        assignmentMapLoaded: true,
+        kpiRows: null,
+      }),
+    [snapshot],
   )
 
   const snapshotRef = useRef(snapshot)
@@ -139,8 +168,151 @@ export default function LeadershipBriefingContent({ profile }: Props) {
           <Link to="/events" className="btn-touch">
             Coordinator desk
           </Link>
+          <Link to="/events/finance-command" className="btn-touch">
+            Finance command
+          </Link>
+          <Link to="/events/simulation-command" className="btn-touch">
+            Simulation
+          </Link>
         </div>
       </header>
+
+      <CampaignOperatingPictureHealthStrip cop={campaignOperatingPicture} ready />
+
+      {financeCmd.enabled ? (
+        <section className="leadership-briefing-page__section" aria-labelledby="finance-command-heading">
+          <h2 id="finance-command-heading" className="event-coordinator-desk__h2">
+            Finance &amp; resource command
+          </h2>
+          {financeCmd.loading || financeCmd.voterConvLoading ? (
+            <p className="event-coordinator-desk__meta" role="status">
+              Loading finance snapshot…
+            </p>
+          ) : financeCmd.error ? (
+            <p className="event-coordinator-desk__placeholder" role="alert">
+              {financeCmd.error}
+            </p>
+          ) : (
+            <>
+              <p className="event-coordinator-desk__lede">
+                {financeHealthHeadline(financeCmd.summary, financeCmd.roi)}
+              </p>
+              <Link to="/events/finance-command" className="btn-touch">
+                Open finance command
+              </Link>
+            </>
+          )}
+        </section>
+      ) : null}
+
+      {financeCmd.enabled ? (
+        <section className="leadership-briefing-page__section" aria-labelledby="simulation-command-heading">
+          <h2 id="simulation-command-heading" className="event-coordinator-desk__h2">
+            Strategy simulation
+          </h2>
+          {simCmd.dataLoading ? (
+            <p className="event-coordinator-desk__meta" role="status">
+              Loading simulation baseline…
+            </p>
+          ) : simCmd.error ? (
+            <p className="event-coordinator-desk__placeholder" role="alert">
+              {simCmd.error}
+            </p>
+          ) : (
+            <>
+              <p className="event-coordinator-desk__lede">
+                Baseline readiness index <strong>{simCmd.builtInCompare.baseline_readiness}</strong> —{' '}
+                {simCmd.builtInCompare.recommendation_line}
+              </p>
+              <Link to="/events/simulation-command" className="btn-touch">
+                Open simulation command
+              </Link>
+            </>
+          )}
+        </section>
+      ) : null}
+
+      <section className="leadership-briefing-page__section" aria-labelledby="gotv-leadership-heading">
+        <h2 id="gotv-leadership-heading" className="event-coordinator-desk__h2">
+          Turnout command (polling &amp; early vote)
+        </h2>
+        <p className="event-coordinator-desk__lede">
+          {gotv.analytics.headline} Phase: <strong>{gotv.phaseResolution.phase.replace(/_/g, ' ')}</strong>.
+        </p>
+        <p className="event-coordinator-desk__meta">
+          Sites <strong>{gotv.analytics.total_sites}</strong> · red <strong>{gotv.analytics.red_site_count}</strong> ·
+          orange <strong>{gotv.analytics.orange_site_count}</strong> · mean coverage{' '}
+          <strong>{gotv.analytics.mean_coverage_pct}%</strong>
+          {gotv.analytics.weakest_county_labels.length ? (
+            <>
+              {' '}
+              · watch: {gotv.analytics.weakest_county_labels.join(', ')}
+            </>
+          ) : null}
+        </p>
+        <Link to="/events/county-ops#gotv-command" className="btn-touch">
+          Open county turnout board
+        </Link>
+      </section>
+
+      {voterConv.enabled ? (
+        <section className="leadership-briefing-page__section" aria-labelledby="voter-conv-leadership-heading">
+          <h2 id="voter-conv-leadership-heading" className="event-coordinator-desk__h2">
+            Voter conversion (DB-backed)
+          </h2>
+          <p className="event-coordinator-desk__lede">{voterConversionLeadershipHeadline(voterConv.rollups)}</p>
+          {voterConv.loading ? (
+            <p className="event-coordinator-desk__meta">Loading conversion rollups…</p>
+          ) : voterConv.error ? (
+            <p className="event-coordinator-desk__placeholder" role="alert">
+              {voterConv.error}
+            </p>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '1rem',
+              }}
+            >
+              <VoterConversionFunnel rollups={voterConv.rollups} />
+              <ChasePriorityCard rollups={voterConv.rollups} phaseResolution={gotv.phaseResolution} />
+              <BallotPlanRiskCard rollups={voterConv.rollups} />
+            </div>
+          )}
+          <p className="event-coordinator-desk__meta" style={{ marginTop: '0.75rem' }}>
+            <Link to="/events/county-ops#voter-conversion-command" className="btn-touch btn-touch--ghost">
+              County conversion command
+            </Link>{' '}
+            <Link to="/power5" className="btn-touch btn-touch--ghost">
+              Power5 capture
+            </Link>
+          </p>
+        </section>
+      ) : null}
+
+      <section className="leadership-briefing-page__section" aria-labelledby="message-discipline-heading">
+        <h2 id="message-discipline-heading" className="event-coordinator-desk__h2">
+          Field narrative &amp; message discipline
+        </h2>
+        <p className="event-coordinator-desk__lede">
+          Canonical framework <strong>{messageFramework.version}</strong> — {messageFramework.narrative.slogan} Pillars
+          stay encoded in-app; volunteers use the workbench for scripts, objections, and bounded AI drafts.
+        </p>
+        <ul className="event-coordinator-desk__meta" style={{ marginTop: '0.5rem' }}>
+          {messageFramework.pillars.map((p) => (
+            <li key={p.key}>
+              <strong>{p.title}</strong> — {p.summary.slice(0, 120)}
+              {p.summary.length > 120 ? '…' : ''}
+            </li>
+          ))}
+        </ul>
+        <p className="event-coordinator-desk__meta" style={{ marginTop: '0.75rem' }}>
+          <Link to="/field-narrative" className="btn-touch">
+            Open field narrative workbench
+          </Link>
+        </p>
+      </section>
 
       <aside
         className={`leadership-briefing-page__confidence ${metaConfidenceClass(snapshot.meta.summary_confidence)}`}

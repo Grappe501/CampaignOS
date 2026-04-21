@@ -7,6 +7,7 @@ import {
   getCountdownUrgency,
   pollsCloseIsoInstant,
 } from '../lib/campaignClock'
+import { resolveGotvTurnoutPhase } from '../lib/gotvCountdownEngine'
 
 /**
  * Slim live countdown; internal 1s tick so the rest of AppHeader does not re-render.
@@ -22,6 +23,7 @@ export default function ElectionCountdownBar() {
   const parts = getCountdownParts(nowMs)
   const urgency = getCountdownUrgency(parts)
   const targetIso = pollsCloseIsoInstant()
+  const gotvPhase = resolveGotvTurnoutPhase(nowMs)
 
   return (
     <div
@@ -44,6 +46,12 @@ export default function ElectionCountdownBar() {
           </span>
           <span className="election-countdown-meta__close">
             Polls close {CAMPAIGN_ELECTION_CLOCK.pollsCloseDisplay}
+          </span>
+          <span className="election-countdown-meta__sep" aria-hidden="true">
+            ·
+          </span>
+          <span className="election-countdown-meta__close" title="Deterministic GOTV phase (in-app calendar)">
+            Turnout: {gotvPhase.phase.replace(/_/g, ' ')}
           </span>
         </p>
         <p className="election-countdown-time-wrapper">

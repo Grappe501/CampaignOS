@@ -23,3 +23,9 @@ export function getPower5SuggestedNextLine(nodes: Power5RelationshipNodeRow[]): 
 export function countEarlyStagePower5Nodes(nodes: Power5RelationshipNodeRow[]): number {
   return nodes.filter((n) => EARLY.has(n.progress_state_key)).length
 }
+
+/** When a node is roster-linked, remind operators to log turnout conversion dispositions. */
+export function power5ConversionCaptureHint(node: Power5RelationshipNodeRow | null): string | null {
+  if (!node?.linked_voter_id) return null
+  return `Roster-linked: record a turnout disposition for ${node.display_label} so chase stays DB-backed.`
+}

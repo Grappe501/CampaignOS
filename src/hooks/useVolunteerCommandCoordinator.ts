@@ -24,9 +24,11 @@ import {
   recommendVolunteersForRole,
   type RecommendationContext,
 } from '../lib/volunteerCommandRecommendations'
+import { buildAgentJonesVolunteerThroughputContext } from '../lib/volunteerThroughputMetrics'
 
-export function useVolunteerCommandCoordinator(campaignId = 'default') {
-  const [loading, setLoading] = useState(true)
+/** When `enabled` is false, no network load (use on non-coordinator routes sharing Agent Jones). */
+export function useVolunteerCommandCoordinator(campaignId = 'default', enabled = true) {
+  const [loading, setLoading] = useState(() => enabled)
   const [error, setError] = useState<Error | null>(null)
   const [volunteers, setVolunteers] = useState<VolunteerProfile[]>([])
   const [assignments, setAssignments] = useState<Awaited<ReturnType<typeof fetchAssignmentsForCampaign>>>([])
@@ -39,6 +41,7 @@ export function useVolunteerCommandCoordinator(campaignId = 'default') {
   const [skillsByVolunteerId, setSkillsByVolunteerId] = useState<Map<string, VolunteerSkill[]>>(new Map())
 
   const load = useCallback(async () => {
+    if (!enabled) return
     setLoading(true)
     setError(null)
     try {
@@ -77,15 +80,19 @@ export function useVolunteerCommandCoordinator(campaignId = 'default') {
     } finally {
       setLoading(false)
     }
-  }, [campaignId])
+  }, [campaignId, enabled])
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false)
+      return
+    }
     void load()
-  }, [load])
+  }, [load, enabled])
 
   const coverageRows = useMemo(
-    () => computeShiftCoverage(shifts, slotsByShift, assignments),
-    [shifts, slotsByShift, assignments],
+    () => (enabled ? computeShiftCoverage(shifts, slotsByShift, assignments) : []),
+    [enabled, shifts, slotsByShift, assignments],
   )
 
   const funnel = useMemo(() => {
@@ -133,6 +140,31 @@ export function useVolunteerCommandCoordinator(campaignId = 'default') {
 
   const reminderSummary = useMemo(() => summarizeReminderBacklog(reminders), [reminders])
 
+  const agentJonesVolunteerThroughput = useMemo(
+    () =>
+      !enabled
+        ? null
+        : buildAgentJonesVolunteerThroughputContext({
+            campaignId,
+            volunteers,
+            assignments,
+            reliability,
+            reminders,
+            assignmentReminders,
+            coverageRows,
+          }),
+    [
+      enabled,
+      campaignId,
+      volunteers,
+      assignments,
+      reliability,
+      reminders,
+      assignmentReminders,
+      coverageRows,
+    ],
+  )
+
   return {
     loading,
     error,
@@ -156,5 +188,6 @@ export function useVolunteerCommandCoordinator(campaignId = 'default') {
         : [],
     reliabilityPreview,
     reminderSummary,
+    agentJonesVolunteerThroughput,
   }
 }

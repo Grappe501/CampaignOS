@@ -14,6 +14,11 @@ import { isCampaignEventTypeKey } from './eventStaffingMatrix'
 import { seedEventTasksIfEmpty } from './campaignEventTasksDb'
 import { recomputeAndPersistEventReadiness } from './campaignEventReadinessPersistence'
 import { CAMPAIGN_EVENT_LIST_SELECT } from './campaignEventsColumns'
+import {
+  parseOutcomeStage,
+  type CampaignEventOutcomeRow,
+  type EventOutcomeStage,
+} from './eventOutcomeDomain'
 
 export { CAMPAIGN_EVENT_LIST_SELECT }
 
@@ -345,5 +350,152 @@ export async function markEventCompletedAndFollowUps(eventId: string, endAtIso: 
     .eq('id', eventId)
 
   if (error) throw error
+
+  await upsertCampaignEventOutcomePartial(eventId, {
+    outcome_stage: 'executed',
+  })
   await seedDefaultFollowUpsIfEmpty(eventId, endAtIso)
+  await upsertCampaignEventOutcomePartial(eventId, {
+    outcome_stage: 'followup_generated',
+    first_followup_at: new Date().toISOString(),
+  })
+}
+
+function numOrNull(v: unknown): number | null {
+  if (v == null || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null
+}
+
+function mapCampaignEventOutcomeRow(row: Record<string, unknown> | null): CampaignEventOutcomeRow | null {
+  if (!row) return null
+  const eid = row.event_id != null ? String(row.event_id) : ''
+  if (!eid) return null
+  const stageRaw = row.outcome_stage != null ? String(row.outcome_stage) : null
+  return {
+    event_id: eid,
+    attendance_count: numOrNull(row.attendance_count),
+    lead_count: numOrNull(row.lead_count),
+    volunteer_signup_count: numOrNull(row.volunteer_signup_count),
+    donor_followup_count: numOrNull(row.donor_followup_count),
+    supporter_followup_count: numOrNull(row.supporter_followup_count),
+    media_handoff_needed:
+      row.media_handoff_needed === true || row.media_handoff_needed === false
+        ? Boolean(row.media_handoff_needed)
+        : null,
+    debrief_notes: row.debrief_notes != null ? String(row.debrief_notes) : null,
+    completed_at: row.completed_at != null ? String(row.completed_at) : null,
+    conversation_count: numOrNull(row.conversation_count),
+    volunteer_assignments_created: numOrNull(row.volunteer_assignments_created),
+    contacts_influenced_count: numOrNull(row.contacts_influenced_count),
+    pledges_or_donations_count: numOrNull(row.pledges_or_donations_count),
+    conversation_summary: row.conversation_summary != null ? String(row.conversation_summary) : null,
+    outcome_stage: parseOutcomeStage(stageRaw),
+    closure_recovery_notes:
+      row.closure_recovery_notes != null ? String(row.closure_recovery_notes) : null,
+    first_followup_at: row.first_followup_at != null ? String(row.first_followup_at) : null,
+  }
+}
+
+export async function fetchCampaignEventOutcome(eventId: string): Promise<CampaignEventOutcomeRow | null> {
+  const { data, error } = await supabase
+    .from('campaign_event_outcomes')
+    .select(
+      [
+        'event_id',
+        'attendance_count',
+        'lead_count',
+        'volunteer_signup_count',
+        'donor_followup_count',
+        'supporter_followup_count',
+        'media_handoff_needed',
+        'debrief_notes',
+        'completed_at',
+        'conversation_count',
+        'volunteer_assignments_created',
+        'contacts_influenced_count',
+        'pledges_or_donations_count',
+        'conversation_summary',
+        'outcome_stage',
+        'closure_recovery_notes',
+        'first_followup_at',
+      ].join(','),
+    )
+    .eq('event_id', eventId)
+    .maybeSingle()
+
+  if (error) return null
+  return mapCampaignEventOutcomeRow(data as unknown as Record<string, unknown> | null)
+}
+
+export type CampaignEventOutcomePatch = Partial<{
+  attendance_count: number | null
+  lead_count: number | null
+  volunteer_signup_count: number | null
+  donor_followup_count: number | null
+  supporter_followup_count: number | null
+  media_handoff_needed: boolean | null
+  debrief_notes: string | null
+  completed_at: string | null
+  conversation_count: number | null
+  volunteer_assignments_created: number | null
+  contacts_influenced_count: number | null
+  pledges_or_donations_count: number | null
+  conversation_summary: string | null
+  outcome_stage: EventOutcomeStage | null
+  closure_recovery_notes: string | null
+  first_followup_at: string | null
+}>
+
+export async function upsertCampaignEventOutcomePartial(
+  eventId: string,
+  patch: CampaignEventOutcomePatch,
+): Promise<{ error: Error | null }> {
+  const row: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(patch)) {
+    if (v !== undefined) row[k] = v
+  }
+  const { data: existing, error: selErr } = await supabase
+    .from('campaign_event_outcomes')
+    .select('event_id')
+    .eq('event_id', eventId)
+    .maybeSingle()
+  if (selErr) return { error: new Error(selErr.message) }
+  if (!existing) {
+    const { error } = await supabase.from('campaign_event_outcomes').insert({ event_id: eventId, ...row })
+    if (error) return { error: new Error(error.message) }
+    return { error: null }
+  }
+  if (Object.keys(row).length === 0) return { error: null }
+  const { error } = await supabase.from('campaign_event_outcomes').update(row).eq('event_id', eventId)
+  if (error) return { error: new Error(error.message) }
+  return { error: null }
+}
+
+export async function fetchEventLearningCaptureFromDb(eventId: string): Promise<{
+  payload: Record<string, unknown>
+  updated_at: string
+} | null> {
+  const { data, error } = await supabase
+    .from('campaign_event_learning_capture')
+    .select('payload,updated_at')
+    .eq('event_id', eventId)
+    .maybeSingle()
+
+  if (error || !data) return null
+  const payload = data.payload as Record<string, unknown> | null
+  if (!payload || typeof payload !== 'object') return null
+  return { payload, updated_at: String((data as { updated_at?: string }).updated_at ?? '') }
+}
+
+export async function upsertEventLearningCaptureDb(
+  eventId: string,
+  payload: Record<string, unknown>,
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase.from('campaign_event_learning_capture').upsert(
+    { event_id: eventId, payload },
+    { onConflict: 'event_id' },
+  )
+  if (error) return { error: new Error(error.message) }
+  return { error: null }
 }

@@ -18,11 +18,26 @@ import {
   selectStaffingGapRows,
 } from '../../../lib/eventOperationsSelectors'
 import { buildEventAnalyticsSnapshot, deriveCoverageGaps } from '../../../lib/eventAnalyticsSelectors'
+import { pressureBandFromScore } from '../../../lib/geographicCommandDomain'
+import { heatIntensity01, rankGeographicInterventionCandidates } from '../../../lib/geographicCommandMetrics'
+import { buildCountyCommandRollups } from '../../../lib/geographicCommandSelectors'
 import { EXTERNAL_PUBLISH_STATES } from '../../../lib/eventExternalPublishing'
 import { EVENT_OBJECTIVES, EVENT_OPERATIONAL_STATUSES } from '../../../lib/campaignEventDomain'
+import { useGotvCommandLayer } from '../../../hooks/useGotvCommandLayer'
+import { useProfile } from '../../../hooks/useProfile'
+import { useVoterConversionLeadership } from '../../../hooks/useVoterConversionLeadership'
+import GotvCountyReadinessPanel from '../../gotv/GotvCountyReadinessPanel'
+import VoterConversionFunnel from '../../voter-conversion/VoterConversionFunnel'
+import RelationalFollowupQueue from '../../voter-conversion/RelationalFollowupQueue'
+import CommitmentBacklogPanel from '../../voter-conversion/CommitmentBacklogPanel'
+import BallotPlanRiskCard from '../../voter-conversion/BallotPlanRiskCard'
+import ChasePriorityCard from '../../voter-conversion/ChasePriorityCard'
 
 export default function CountyEventOperationsContent() {
+  const { profile } = useProfile()
+  const voterConv = useVoterConversionLeadership(profile?.primary_role)
   const { events: source, loading: eventsLoading, error: eventsError } = useCampaignEventsContext()
+  const gotv = useGotvCommandLayer('default')
   const rows = useMemo(() => buildCountyOperationsRows(source), [source])
   const analytics = useMemo(() => buildEventAnalyticsSnapshot(source), [source])
   const gaps = useMemo(() => deriveCoverageGaps(source), [source])
@@ -81,6 +96,11 @@ export default function CountyEventOperationsContent() {
   }, [source])
 
   const [opsListAsOfMs] = useState(() => Date.now())
+  const geoRollups = useMemo(() => buildCountyCommandRollups(source, opsListAsOfMs, 14), [source, opsListAsOfMs])
+  const geoInterventions = useMemo(
+    () => rankGeographicInterventionCandidates(geoRollups, 6),
+    [geoRollups],
+  )
   const staffingGaps = useMemo(() => selectStaffingGapRows(filtered), [filtered])
   const followupAttention = useMemo(() => selectFollowupAttentionRows(filtered, opsListAsOfMs), [filtered, opsListAsOfMs])
   const followupOverdue = useMemo(() => selectFollowupOverdueRows(filtered, opsListAsOfMs), [filtered, opsListAsOfMs])
@@ -150,6 +170,144 @@ export default function CountyEventOperationsContent() {
           </Link>
         </div>
       </header>
+
+      <GotvCountyReadinessPanel
+        campaignId="default"
+        countyId={countyId}
+        rollups={gotv.rollups}
+        phaseResolution={gotv.phaseResolution}
+        analytics={gotv.analytics}
+        interventionHints={gotv.interventionHints}
+        sites={gotv.sites}
+        loading={gotv.loading}
+        error={gotv.error}
+        onRefresh={() => void gotv.refresh()}
+      />
+
+      {voterConv.enabled ? (
+        <section
+          className="event-coordinator-desk__section"
+          aria-labelledby="voter-conversion-command-heading"
+          id="voter-conversion-command"
+        >
+          <h2 id="voter-conversion-command-heading" className="event-coordinator-desk__h2">
+            Voter conversion &amp; relational turnout
+          </h2>
+          {voterConv.loading ? (
+            <p className="event-coordinator-desk__meta" aria-live="polite">
+              Loading conversion rollups…
+            </p>
+          ) : voterConv.error ? (
+            <p className="event-coordinator-desk__placeholder" role="alert">
+              {voterConv.error}
+            </p>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '1rem',
+              }}
+            >
+              <VoterConversionFunnel rollups={voterConv.rollups} />
+              <ChasePriorityCard rollups={voterConv.rollups} phaseResolution={gotv.phaseResolution} />
+              <CommitmentBacklogPanel rollups={voterConv.rollups} />
+              <BallotPlanRiskCard rollups={voterConv.rollups} />
+              <RelationalFollowupQueue rollups={voterConv.rollups} />
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      <section
+        className="event-coordinator-desk__section"
+        aria-labelledby="geo-command-heading"
+        id="geographic-command"
+      >
+        <h2 id="geo-command-heading" className="event-coordinator-desk__h2">
+          Geographic command (14d window)
+        </h2>
+        <p className="event-coordinator-desk__placeholder">
+          Forward event density, staffing gaps, low readiness, Mobilize risk in the next week, and completed events still
+          in follow-up — deterministic from the program queue (not a map layer).
+        </p>
+        {geoInterventions.length === 0 ? (
+          <p className="event-coordinator-desk__meta">No geographic rollups yet — add counties to events.</p>
+        ) : (
+          <ul className="event-panel__list" style={{ listStyle: 'none', padding: 0 }}>
+            {geoInterventions.map((g) => {
+              const band = pressureBandFromScore(g.pressure_score_0_100)
+              const heat = heatIntensity01(g.pressure_score_0_100)
+              return (
+                <li
+                  key={g.area_key}
+                  className="county-ops-geo-row"
+                  style={{
+                    border: '1px solid var(--border-subtle, #3333)',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    marginBottom: 10,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <strong>{g.label}</strong>
+                      <span className="event-coordinator-desk__meta" style={{ marginLeft: 8 }}>
+                        {band.toUpperCase()} · pressure {g.pressure_score_0_100}
+                      </span>
+                      <div className="event-coordinator-desk__meta">
+                        Upcoming {g.upcoming_event_count} · gaps {g.staffing_gap_count} · low readiness{' '}
+                        {g.low_readiness_count} · comms risk {g.mobilize_risk_count} · follow-up debt{' '}
+                        {g.followup_debt_on_completed}
+                      </div>
+                      {g.reasons.length ? (
+                        <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                          {g.reasons.map((r) => (
+                            <li key={r}>{r}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                    <div style={{ minWidth: 120, flex: '1 1 140px' }}>
+                      <div
+                        aria-hidden
+                        style={{
+                          height: 8,
+                          borderRadius: 4,
+                          background: 'var(--surface-muted, #eee)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${Math.round(heat * 100)}%`,
+                            height: '100%',
+                            background:
+                              band === 'critical'
+                                ? 'var(--danger, #c0392b)'
+                                : band === 'watch'
+                                  ? 'var(--warn, #d68910)'
+                                  : 'var(--ok, #1e8449)',
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-touch btn-touch--ghost"
+                        style={{ marginTop: 8, width: '100%' }}
+                        disabled={g.county_id == null}
+                        onClick={() => setCountyId(g.county_id)}
+                      >
+                        Filter this county
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
 
       <section className="event-coordinator-desk__section" aria-labelledby="co-kpi-heading">
         <h2 id="co-kpi-heading" className="event-coordinator-desk__h2">

@@ -2,82 +2,14 @@ import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from './dashboardState'
 import { CHRIS_JONES_FOR_CONGRESS_PUBLIC } from '../brand/chrisJonesForCongress'
 
-/** Dashboard sections the model may suggest scrolling to — keep in sync with `netlify/functions/agent-jones.ts` SCROLL_IDS. */
-export const AGENT_JONES_SCROLL_TARGET_IDS = [
-  'voter-workspace',
-  'power5-workspace',
-  'exception-request',
-  'onboarding-branch',
-  'onboarding-activation',
-  'workspace-cards',
-  'mission-tasks',
-  'daily-activation',
-  'intern-desk',
-  'campaign-kpis',
-  'agent-jones',
-  'dash-profile-photo',
-  'coordinator-mission-ops',
-  'candidate-health-snapshot',
-  'admin-overview',
-  'admin-exceptions',
-  'admin-desks',
-  'admin-tasks',
-  'admin-config',
-  'event-coordinator-desk',
-  'war-room-root',
-  'leadership-briefing-root',
-  'cm-cockpit-root',
-  'event-coordinator-postevent-queue',
-  'event-calendar-page',
-  'event-calendar-command',
-  'event-calendar-filters',
-  'event-record-detail',
-  'event-record-command',
-  'event-record-field',
-  'event-record-communications',
-  'event-detail-health',
-  'event-overview',
-  'event-stage-tracker',
-  'event-task-checklist',
-  'event-staffing',
-  'event-logistics',
-  'event-calendar-visibility',
-  'event-mobilize',
-  'event-outcomes',
-  'event-followup',
-] as const
-
-/** Paths the model may suggest via navigate actions (client + Netlify must stay aligned). */
-export const AGENT_JONES_NAVIGATE_PATHS = [
-  '/',
-  '/dashboard',
-  '/intern',
-  '/coordinator',
-  '/candidate',
-  '/admin',
-  '/events',
-  '/events/war-room',
-  '/events/leadership',
-  '/events/calendar',
-  '/events/review-requests',
-  '/events/promotion',
-  '/cockpit/campaign-manager',
-] as const
-
-export type AgentJonesNavigatePath = (typeof AGENT_JONES_NAVIGATE_PATHS)[number]
-
-export function isAgentJonesNavigatePath(id: string): id is AgentJonesNavigatePath {
-  return (AGENT_JONES_NAVIGATE_PATHS as readonly string[]).includes(id)
-}
-
-export type AgentJonesScrollTargetId =
-  (typeof AGENT_JONES_SCROLL_TARGET_IDS)[number]
-
-export function isAgentJonesScrollTargetId(
-  id: string,
-): id is AgentJonesScrollTargetId {
-  return (AGENT_JONES_SCROLL_TARGET_IDS as readonly string[]).includes(id)
-}
+export {
+  AGENT_JONES_SCROLL_TARGET_IDS,
+  AGENT_JONES_NAVIGATE_PATHS,
+  type AgentJonesNavigatePath,
+  type AgentJonesScrollTargetId,
+  isAgentJonesNavigatePath,
+  isAgentJonesScrollTargetId,
+} from './agentJonesAllowlists'
 
 export type AgentJonesSafeProfileHints = {
   onboarding_branch?: string | null

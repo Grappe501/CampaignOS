@@ -15,6 +15,11 @@ import {
   insertCampaignEventFromTemplate,
   insertVolunteerEventSubmission,
 } from '../../../lib/campaignEventsFromSupabase'
+import { useGotvCommandLayer } from '../../../hooks/useGotvCommandLayer'
+import { useVoterConversionLeadership } from '../../../hooks/useVoterConversionLeadership'
+import GotvCountdownPriorities from '../../gotv/GotvCountdownPriorities'
+import TopConnectorPanel from '../../voter-conversion/TopConnectorPanel'
+import { usePower5Workspace } from '../../../hooks/usePower5Workspace'
 
 const NEIGHBORHOOD_PRESETS: { id: string; key: CampaignEventTypeKey; label: string; hint: string }[] = [
   { id: 'house', key: 'house_party_intro_candidate', label: 'House meeting', hint: 'Introduce the campaign locally' },
@@ -28,6 +33,9 @@ const NEIGHBORHOOD_PRESETS: { id: string; key: CampaignEventTypeKey; label: stri
 
 export default function NeighborhoodEventHubContent() {
   const { profile } = useProfile()
+  const gotv = useGotvCommandLayer('default')
+  const voterConv = useVoterConversionLeadership(profile?.primary_role)
+  const power5 = usePower5Workspace(profile?.id != null ? String(profile.id) : undefined)
   const navigate = useNavigate()
   const profileId = profile?.id != null && profile.id !== '' ? String(profile.id) : null
   const isDeskEditor = canAccessEventCoordinatorDesk(profile?.primary_role)
@@ -88,6 +96,24 @@ export default function NeighborhoodEventHubContent() {
           </Link>
         </div>
       </header>
+
+      <GotvCountdownPriorities phaseResolution={gotv.phaseResolution} />
+
+      {voterConv.enabled && !voterConv.loading && !voterConv.error ? (
+        <section className="event-coordinator-desk__section" aria-labelledby="nh-voter-conv-heading">
+          <h2 id="nh-voter-conv-heading" className="event-coordinator-desk__h2">
+            Relational turnout (HQ view)
+          </h2>
+          <p className="event-coordinator-desk__meta">
+            Tracked voters <strong>{voterConv.rollups.reduce((a, r) => a + r.tracked_voters, 0)}</strong> · chase
+            pressure <strong>{voterConv.rollups.reduce((a, r) => a + r.needs_chase, 0)}</strong>
+          </p>
+        </section>
+      ) : null}
+
+      {!power5.loading && power5.nodes.length ? (
+        <TopConnectorPanel nodes={power5.nodes} viewerProfileId={profileId ?? undefined} />
+      ) : null}
 
       {step === 0 ? (
         <section className="event-coordinator-desk__section" aria-labelledby="nh-pick-heading">

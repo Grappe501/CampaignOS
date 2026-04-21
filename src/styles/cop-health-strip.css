@@ -1,0 +1,80 @@
+/* Campaign Operating Picture — dashboard / leadership strip */
+.cop-health-strip {
+  border: 1px solid color-mix(in srgb, var(--color-border, #334155) 80%, transparent);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  background: color-mix(in srgb, var(--color-surface-elevated, #0f172a) 92%, transparent);
+}
+
+.cop-health-strip__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.cop-health-strip__eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.cop-health-strip__time {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.cop-health-strip__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem 0.5rem;
+}
+
+@media (max-width: 720px) {
+  .cop-health-strip__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.cop-health-strip__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-surface, #020617) 70%, transparent);
+}
+
+.cop-health-strip__k {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.72;
+}
+
+.cop-health-strip__v {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.cop-health-strip__line {
+  margin: 0.4rem 0 0.35rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  opacity: 0.9;
+}
+
+.cop-health-strip__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.cop-health-strip__link {
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

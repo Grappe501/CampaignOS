@@ -2,9 +2,14 @@
  * Agent Jones — server-side OpenAI only. No DB, no Twilio/SendGrid.
  * Env: OPENAI_API_KEY (required), OPENAI_MODEL (optional, default gpt-4o-mini).
  *
- * Context shape mirrors `src/lib/agentJonesContext.ts` but is validated here
- * independently so this bundle stays self-contained.
+ * Scroll / navigate allowlists are imported from `src/lib/agentJonesAllowlists.ts`
+ * (same source as the client) so server and UI stay aligned.
  */
+
+import {
+  AGENT_JONES_NAVIGATE_PATHS,
+  AGENT_JONES_SCROLL_TARGET_IDS,
+} from '../../src/lib/agentJonesAllowlists'
 
 type AgentJonesOnboardingBrief = {
   flowSteps?: string[]
@@ -52,6 +57,26 @@ type AgentJonesVolunteerMissionSafe = {
   assignments_due_within_7d_count?: number
   points?: number
   streaks?: { active_days: number; completion_days: number }
+}
+
+type AgentJonesVolunteerThroughputSafe = {
+  campaign_id: string
+  pipeline_counts: Record<string, number>
+  open_unassigned_assignments: number
+  urgent_coverage_gaps: number
+  pending_reminder_rows: number
+  acceptance_rate: number | null
+  completion_rate: number | null
+  no_show_rate: number | null
+  reliability_mix: {
+    high_reliability: number
+    steady: number
+    developing: number
+    at_risk: number
+    inactive: number
+  }
+  bottleneck_headline: string | null
+  recommended_interventions: string[]
 }
 
 type AgentJonesDailyActivationSafe = {
@@ -408,6 +433,8 @@ type AgentJonesCountdownSummarySafe = {
   countdown_pressure_headline?: string | null
   action_window_notes?: string[]
   countdown_scope_note?: string | null
+  turnout_phase?: string | null
+  turnout_phase_priorities?: string[]
 }
 
 type AgentJonesTradeoffSummarySafe = {
@@ -452,6 +479,139 @@ type AgentJonesFieldExecutionSafe = {
   source: 'browser_workspace_v1'
 }
 
+/** Event → outcome loop — bounded counts + hint tokens (advisory). */
+type AgentJonesEventOutcomeLoopSafe = {
+  outcome_stage: string | null
+  attendance_checkins: number
+  followups_open: number
+  followups_total: number
+  closure_completeness_pct: number
+  effectiveness_hints: string[]
+}
+
+type AgentJonesGeographicCommandSafe = {
+  source: 'geographic_command_v1'
+  window_days: number
+  counties_in_view: number
+  precinct_rows_in_view: number
+  critical_hotspot_count: number
+  top_pressure_labels: string[]
+  under_scheduled_county_hints: string[]
+  summary_lines: string[]
+}
+
+type AgentJonesAutomationOrchestrationSafe = {
+  source: 'automation_orchestration_v1'
+  generated_at_ms: number
+  deterministic_trigger_count: number
+  open_queue_count: number
+  awaiting_approval_count: number
+  top_triggers: { trigger_type: string; count: number }[]
+  top_actions: {
+    title: string
+    severity: string
+    owner_role_hint: string | null
+    route_path: string | null
+    explanation_one_line: string
+    status?: string
+  }[]
+  pressure_lines: string[]
+}
+
+type AgentJonesGotvCommandSafe = {
+  source: 'gotv_command_v1'
+  generated_at_ms: number
+  turnout_phase: string
+  phase_priorities: string[]
+  site_readiness_distribution: { green: number; yellow: number; orange: number; red: number }
+  top_at_risk_site_labels: { label: string; county_id: string | null; score: number; band: string }[]
+  top_under_covered_county_hints: string[]
+  replacement_or_fill_hints: string[]
+  operational_lines: string[]
+  program_headline: string
+}
+
+type AgentJonesVoterConversionSafe = {
+  source: 'voter_conversion_command_v1'
+  generated_at_ms: number
+  turnout_phase: string
+  phase_priorities: string[]
+  totals: {
+    tracked_voters: number
+    supporters: number
+    committed: number
+    ballot_recorded: number
+    needs_chase: number
+    relational_linked: number
+    commitment_ask_pending: number
+  }
+  rates: {
+    contacted_to_supporter_pct: number | null
+    supporter_to_commitment_pct: number | null
+    commitment_to_ballot_pct: number | null
+  }
+  top_county_hints: string[]
+  operational_lines: string[]
+}
+
+type AgentJonesFinanceCommandSafe = {
+  source: 'finance_command_v1'
+  generated_at_ms: number
+  totals: {
+    donations: number
+    expenses: number
+    donation_rows: number
+    expense_rows: number
+  }
+  roi: {
+    net_position: number
+    cost_per_contact: number | null
+    cost_per_tracked_voter: number | null
+    cost_per_volunteer: number | null
+    burn_ratio: number | null
+  }
+  top_expense_categories: { label: string; amount: number }[]
+  allocation_hints: string[]
+  headline: string
+  discipline_reminders: string[]
+}
+
+type AgentJonesSimulationCommandSafe = {
+  source: 'simulation_command_v1'
+  generated_at_ms: number
+  turnout_phase: string
+  baseline_summary: {
+    tracked_voters: number
+    gotv_sites: number
+    mean_coverage_pct: number
+    active_events: number
+    volunteer_roster: number
+  }
+  data_gaps: string[]
+  comparison: {
+    baseline_readiness: number
+    scenario_labels: string[]
+    top_scenario_label: string | null
+    top_readiness: number | null
+    recommendation_line: string
+  }
+  sensitivity: { volunteer_1pct_readiness_delta: number }
+  risk_lines: string[]
+  discipline_reminders: string[]
+}
+
+type AgentJonesFieldNarrativeSafe = {
+  source: 'field_narrative_command_v1'
+  generated_at_ms: number
+  framework_version: string
+  slogan: string
+  pillar_keys: string[]
+  discipline_reminders: string[]
+  advisory_lines: string[]
+  usage_top_lines: string[]
+  weak_zone_lines: string[]
+}
+
 /** Event command — client-built briefing / similarity / after-action snapshot (bounded). */
 type AgentJonesEventIntelligenceSafe = {
   event_id: string
@@ -466,6 +626,7 @@ type AgentJonesEventIntelligenceSafe = {
   after_action_line?: string | null
   data_gap_warnings?: string[]
   field_execution?: AgentJonesFieldExecutionSafe
+  outcome_loop?: AgentJonesEventOutcomeLoopSafe
 }
 
 const GEO_SCOPE_TYPES = new Set([
@@ -515,6 +676,7 @@ type AgentJonesSafeContextV2 = {
   }
   relational_power5?: AgentJonesRelationalPower5Safe
   volunteer_mission?: AgentJonesVolunteerMissionSafe
+  volunteer_throughput?: AgentJonesVolunteerThroughputSafe
   daily_activation?: AgentJonesDailyActivationSafe
   intern_layer?: AgentJonesInternLayerSafe
   campaign_goals?: AgentJonesCampaignGoalsSafe
@@ -557,6 +719,34 @@ type AgentJonesSafeContextV2 = {
   cockpit_mission_digest?: AgentJonesCockpitMissionDigestSafe
   /** Event AI orchestration mesh — structured cross-domain intelligence (bounded; advisory). */
   event_ai_orchestration?: AgentJonesEventAiOrchestrationSafe
+  /** Campaign Operating Picture — deterministic indices + action queue (client-built). */
+  campaign_operating_picture?: AgentJonesCopOperatingSafe
+  /** Program-wide geographic pressure from calendar (bounded; advisory). */
+  geographic_command?: AgentJonesGeographicCommandSafe
+  /** Self-driving orchestration digest — deterministic triggers + queue sample (advisory; no execution). */
+  automation_orchestration?: AgentJonesAutomationOrchestrationSafe
+  /** Polling place / GOTV command — site readiness digest (advisory; no execution). */
+  gotv_command?: AgentJonesGotvCommandSafe
+  /** Voter conversion / relational turnout — DB rollup digest (advisory). */
+  voter_conversion_command?: AgentJonesVoterConversionSafe
+  /** Fundraising / spend / ROI command digest (advisory — no transactions). */
+  finance_command?: AgentJonesFinanceCommandSafe
+  /** What-if scenarios vs baseline (advisory — indices, not vote totals). */
+  simulation_command?: AgentJonesSimulationCommandSafe
+  /** Field narrative / message discipline — framework-bound digest (advisory). */
+  field_narrative_command?: AgentJonesFieldNarrativeSafe
+}
+
+type AgentJonesCopOperatingSafe = {
+  source: 'campaign_operating_picture_v1'
+  scopeLabel: string
+  generatedAtMs: number
+  readinessScore: number
+  pressureIndex: number
+  momentumIndex: number
+  criticalRisks: { title: string; severity: string; why: string }[]
+  topActions: { title: string; whyNow: string; href: string }[]
+  operationalNarrative: string
 }
 
 type AgentJonesCockpitFocusSafe = {
@@ -678,64 +868,8 @@ const ONBOARDING_DIR_SLUGS = new Set([
   'spread_the_word',
 ])
 
-const SCROLL_IDS = new Set([
-  'voter-workspace',
-  'power5-workspace',
-  'exception-request',
-  'onboarding-branch',
-  'onboarding-activation',
-  'workspace-cards',
-  'mission-tasks',
-  'daily-activation',
-  'intern-desk',
-  'campaign-kpis',
-  'agent-jones',
-  'dash-profile-photo',
-  'coordinator-mission-ops',
-  'candidate-health-snapshot',
-  'admin-overview',
-  'admin-exceptions',
-  'admin-desks',
-  'admin-tasks',
-  'admin-config',
-  'event-coordinator-desk',
-  'war-room-root',
-  'leadership-briefing-root',
-  'event-coordinator-postevent-queue',
-  'event-calendar-page',
-  'event-calendar-command',
-  'event-calendar-filters',
-  'event-record-detail',
-  'event-record-command',
-  'event-record-field',
-  'event-record-communications',
-  'event-detail-health',
-  'event-overview',
-  'event-stage-tracker',
-  'event-task-checklist',
-  'event-staffing',
-  'event-logistics',
-  'event-calendar-visibility',
-  'event-mobilize',
-  'event-outcomes',
-  'event-followup',
-])
-
-const NAV_PATHS = new Set([
-  '/',
-  '/dashboard',
-  '/intern',
-  '/coordinator',
-  '/candidate',
-  '/admin',
-  '/events',
-  '/events/war-room',
-  '/events/leadership',
-  '/events/calendar',
-  '/events/review-requests',
-  '/events/promotion',
-  '/cockpit/campaign-manager',
-])
+const SCROLL_IDS = new Set<string>(AGENT_JONES_SCROLL_TARGET_IDS)
+const NAV_PATHS = new Set<string>(AGENT_JONES_NAVIGATE_PATHS)
 
 const SURFACES = new Set<AgentJonesSurfaceSafe>([
   'volunteer_dashboard',
@@ -1215,6 +1349,80 @@ function validateVolunteerMission(
     return undefined
   }
   return out
+}
+
+function clampVolunteerRate(x: unknown): number | null {
+  if (x === null) return null
+  if (typeof x !== 'number' || !Number.isFinite(x)) return null
+  return Math.max(0, Math.min(1, x))
+}
+
+function validateVolunteerThroughput(
+  raw: unknown,
+): AgentJonesVolunteerThroughputSafe | undefined {
+  if (raw === null || raw === undefined) return undefined
+  if (!isRecord(raw)) return undefined
+  const cid = raw.campaign_id
+  if (typeof cid !== 'string' || cid.length > 120 || /[<>\\]/.test(cid)) return undefined
+  const pc = raw.pipeline_counts
+  if (!isRecord(pc)) return undefined
+  const pipeline_counts: Record<string, number> = {}
+  for (const [k, v] of Object.entries(pc)) {
+    if (k.length > 64) continue
+    if (typeof v !== 'number' || !Number.isFinite(v)) continue
+    pipeline_counts[k] = Math.max(0, Math.min(50000, Math.floor(v)))
+  }
+  const oua = raw.open_unassigned_assignments
+  const ucg = raw.urgent_coverage_gaps
+  const pr = raw.pending_reminder_rows
+  if (typeof oua !== 'number' || typeof ucg !== 'number' || typeof pr !== 'number') return undefined
+  if (oua < 0 || oua > 99999 || ucg < 0 || ucg > 99999 || pr < 0 || pr > 99999) return undefined
+
+  const rm = raw.reliability_mix
+  if (!isRecord(rm)) return undefined
+  const num = (key: string) => {
+    const z = rm[key]
+    return typeof z === 'number' && z >= 0 && z <= 100000 ? Math.floor(z) : 0
+  }
+  const reliability_mix = {
+    high_reliability: num('high_reliability'),
+    steady: num('steady'),
+    developing: num('developing'),
+    at_risk: num('at_risk'),
+    inactive: num('inactive'),
+  }
+
+  let bottleneck_headline: string | null = null
+  const bh = raw.bottleneck_headline
+  if (bh === null) bottleneck_headline = null
+  else if (typeof bh === 'string') {
+    const t = bh.trim()
+    if (t.length <= 280 && !/[<>\\]/.test(t)) bottleneck_headline = t
+  }
+
+  const riRaw = raw.recommended_interventions
+  const recommended_interventions: string[] = []
+  if (Array.isArray(riRaw)) {
+    for (const item of riRaw.slice(0, 5)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim()
+      if (t && t.length <= 200 && !/[<>\\]/.test(t)) recommended_interventions.push(t)
+    }
+  }
+
+  return {
+    campaign_id: cid,
+    pipeline_counts,
+    open_unassigned_assignments: Math.floor(oua),
+    urgent_coverage_gaps: Math.floor(ucg),
+    pending_reminder_rows: Math.floor(pr),
+    acceptance_rate: clampVolunteerRate(raw.acceptance_rate),
+    completion_rate: clampVolunteerRate(raw.completion_rate),
+    no_show_rate: clampVolunteerRate(raw.no_show_rate),
+    reliability_mix,
+    bottleneck_headline,
+    recommended_interventions,
+  }
 }
 
 const DAILY_TIER_LABELS = new Set(['#1', 'Top 5', 'Top 10', 'Top 25'])
@@ -2801,8 +3009,448 @@ function validateCountdownSummaryRaw(raw: unknown): AgentJonesCountdownSummarySa
     }
   }
   if (notes.length) out.action_window_notes = notes
+  const tpf = raw.turnout_phase
+  if (tpf === null) out.turnout_phase = null
+  else if (typeof tpf === 'string') {
+    const t = tpf.trim().slice(0, 80)
+    if (t && !/[<>\\]/.test(t)) out.turnout_phase = t
+  }
+  const tpp: string[] = []
+  if (Array.isArray(raw.turnout_phase_priorities)) {
+    for (const item of raw.turnout_phase_priorities.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      tpp.push(t)
+    }
+  }
+  if (tpp.length) out.turnout_phase_priorities = tpp
   if (Object.keys(out).length === 0) return undefined
   return out
+}
+
+function validateFieldNarrativeCommandRaw(
+  raw: unknown,
+): AgentJonesFieldNarrativeSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'field_narrative_command_v1') return undefined
+  const generated_at_ms =
+    typeof raw.generated_at_ms === 'number' && Number.isFinite(raw.generated_at_ms)
+      ? Math.max(0, Math.min(2_000_000_000_000, Math.floor(raw.generated_at_ms)))
+      : Date.now()
+  const framework_version =
+    typeof raw.framework_version === 'string' ? raw.framework_version.trim().slice(0, 64) : ''
+  if (!framework_version || /[<>\\]/.test(framework_version)) return undefined
+  const slogan = typeof raw.slogan === 'string' ? raw.slogan.trim().slice(0, 160) : ''
+  if (!slogan || /[<>\\]/.test(slogan)) return undefined
+  const pillar_keys: string[] = []
+  if (Array.isArray(raw.pillar_keys)) {
+    for (const item of raw.pillar_keys.slice(0, 24)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 80)
+      if (!t || /[<>\\]/.test(t)) continue
+      pillar_keys.push(t)
+    }
+  }
+  if (!pillar_keys.length) return undefined
+  const strList = (r: Record<string, unknown>, key: string, max: number, itemMax: number): string[] => {
+    const out: string[] = []
+    const arr = r[key]
+    if (!Array.isArray(arr)) return out
+    for (const item of arr.slice(0, max)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, itemMax)
+      if (!t || /[<>\\]/.test(t)) continue
+      out.push(t)
+    }
+    return out
+  }
+  const discipline_reminders = strList(raw, 'discipline_reminders', 8, 360)
+  const advisory_lines = strList(raw, 'advisory_lines', 8, 400)
+  const usage_top_lines = strList(raw, 'usage_top_lines', 10, 220)
+  const weak_zone_lines = strList(raw, 'weak_zone_lines', 10, 220)
+  if (!discipline_reminders.length && !advisory_lines.length) return undefined
+  return {
+    source: 'field_narrative_command_v1',
+    generated_at_ms,
+    framework_version,
+    slogan,
+    pillar_keys,
+    discipline_reminders,
+    advisory_lines,
+    usage_top_lines,
+    weak_zone_lines,
+  }
+}
+
+function validateVoterConversionCommandRaw(
+  raw: unknown,
+): AgentJonesVoterConversionSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'voter_conversion_command_v1') return undefined
+  const generated_at_ms =
+    typeof raw.generated_at_ms === 'number' && Number.isFinite(raw.generated_at_ms)
+      ? Math.max(0, Math.min(2_000_000_000_000, Math.floor(raw.generated_at_ms)))
+      : Date.now()
+  const turnout_phase =
+    typeof raw.turnout_phase === 'string' ? raw.turnout_phase.trim().slice(0, 80) : ''
+  if (!turnout_phase || /[<>\\]/.test(turnout_phase)) return undefined
+  const phase_priorities: string[] = []
+  if (Array.isArray(raw.phase_priorities)) {
+    for (const item of raw.phase_priorities.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      phase_priorities.push(t)
+    }
+  }
+  const totalsIn = isRecord(raw.totals) ? raw.totals : null
+  if (!totalsIn) return undefined
+  const num = (x: unknown, max: number) =>
+    typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(max, Math.floor(x))) : 0
+  const totals = {
+    tracked_voters: num(totalsIn.tracked_voters, 5_000_000),
+    supporters: num(totalsIn.supporters, 5_000_000),
+    committed: num(totalsIn.committed, 5_000_000),
+    ballot_recorded: num(totalsIn.ballot_recorded, 5_000_000),
+    needs_chase: num(totalsIn.needs_chase, 5_000_000),
+    relational_linked: num(totalsIn.relational_linked, 5_000_000),
+    commitment_ask_pending: num(totalsIn.commitment_ask_pending, 5_000_000),
+  }
+  const ratesIn = isRecord(raw.rates) ? raw.rates : {}
+  const rate = (x: unknown): number | null => {
+    if (x === null) return null
+    if (typeof x !== 'number' || !Number.isFinite(x)) return null
+    return Math.round(Math.max(0, Math.min(100, x)) * 10) / 10
+  }
+  const rates = {
+    contacted_to_supporter_pct: rate(ratesIn.contacted_to_supporter_pct),
+    supporter_to_commitment_pct: rate(ratesIn.supporter_to_commitment_pct),
+    commitment_to_ballot_pct: rate(ratesIn.commitment_to_ballot_pct),
+  }
+  const top_county_hints: string[] = []
+  if (Array.isArray(raw.top_county_hints)) {
+    for (const item of raw.top_county_hints.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 220)
+      if (!t || /[<>\\]/.test(t)) continue
+      top_county_hints.push(t)
+    }
+  }
+  const operational_lines: string[] = []
+  if (Array.isArray(raw.operational_lines)) {
+    for (const item of raw.operational_lines.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 400)
+      if (!t || /[<>\\]/.test(t)) continue
+      operational_lines.push(t)
+    }
+  }
+  return {
+    source: 'voter_conversion_command_v1',
+    generated_at_ms,
+    turnout_phase,
+    phase_priorities,
+    totals,
+    rates,
+    top_county_hints,
+    operational_lines,
+  }
+}
+
+function validateFinanceCommandRaw(
+  raw: unknown,
+): AgentJonesFinanceCommandSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'finance_command_v1') return undefined
+  const generated_at_ms =
+    typeof raw.generated_at_ms === 'number' && Number.isFinite(raw.generated_at_ms)
+      ? Math.max(0, Math.min(2_000_000_000_000, Math.floor(raw.generated_at_ms)))
+      : Date.now()
+  const money = (x: unknown): number =>
+    typeof x === 'number' && Number.isFinite(x)
+      ? Math.round(Math.max(0, Math.min(1e15, x)) * 100) / 100
+      : 0
+  const count = (x: unknown): number =>
+    typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(10_000_000, Math.floor(x))) : 0
+  const totalsIn = isRecord(raw.totals) ? raw.totals : null
+  if (!totalsIn) return undefined
+  const totals = {
+    donations: money(totalsIn.donations),
+    expenses: money(totalsIn.expenses),
+    donation_rows: count(totalsIn.donation_rows),
+    expense_rows: count(totalsIn.expense_rows),
+  }
+  const roiIn = isRecord(raw.roi) ? raw.roi : null
+  if (!roiIn) return undefined
+  const roiNum = (x: unknown): number =>
+    typeof x === 'number' && Number.isFinite(x)
+      ? Math.round(Math.max(-1e15, Math.min(1e15, x)) * 100) / 100
+      : 0
+  const roiNullable = (x: unknown): number | null => {
+    if (x === null) return null
+    if (typeof x !== 'number' || !Number.isFinite(x)) return null
+    return Math.round(Math.max(0, Math.min(1e15, x)) * 100) / 100
+  }
+  const burnRaw = roiIn.burn_ratio
+  const burn_ratio =
+    burnRaw === null
+      ? null
+      : typeof burnRaw === 'number' && Number.isFinite(burnRaw)
+        ? Math.round(Math.max(0, Math.min(1000, burnRaw)) * 1000) / 1000
+        : null
+  const roi = {
+    net_position: roiNum(roiIn.net_position),
+    cost_per_contact: roiNullable(roiIn.cost_per_contact),
+    cost_per_tracked_voter: roiNullable(roiIn.cost_per_tracked_voter),
+    cost_per_volunteer: roiNullable(roiIn.cost_per_volunteer),
+    burn_ratio,
+  }
+  const top_expense_categories: AgentJonesFinanceCommandSafe['top_expense_categories'] = []
+  if (Array.isArray(raw.top_expense_categories)) {
+    for (const item of raw.top_expense_categories.slice(0, 6)) {
+      if (!isRecord(item)) continue
+      const label = typeof item.label === 'string' ? item.label.trim().slice(0, 120) : ''
+      const amount = money(item.amount)
+      if (!label || /[<>\\]/.test(label)) continue
+      top_expense_categories.push({ label, amount })
+    }
+  }
+  const allocation_hints: string[] = []
+  if (Array.isArray(raw.allocation_hints)) {
+    for (const item of raw.allocation_hints.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      allocation_hints.push(t)
+    }
+  }
+  const discipline_reminders: string[] = []
+  if (Array.isArray(raw.discipline_reminders)) {
+    for (const item of raw.discipline_reminders.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      discipline_reminders.push(t)
+    }
+  }
+  const headlineRaw = typeof raw.headline === 'string' ? raw.headline.trim().slice(0, 480) : ''
+  if (!headlineRaw || /[<>\\]/.test(headlineRaw)) return undefined
+  return {
+    source: 'finance_command_v1',
+    generated_at_ms,
+    totals,
+    roi,
+    top_expense_categories,
+    allocation_hints,
+    headline: headlineRaw,
+    discipline_reminders,
+  }
+}
+
+function validateSimulationCommandRaw(
+  raw: unknown,
+): AgentJonesSimulationCommandSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'simulation_command_v1') return undefined
+  const generated_at_ms =
+    typeof raw.generated_at_ms === 'number' && Number.isFinite(raw.generated_at_ms)
+      ? Math.max(0, Math.min(2_000_000_000_000, Math.floor(raw.generated_at_ms)))
+      : Date.now()
+  const turnout_phase =
+    typeof raw.turnout_phase === 'string' ? raw.turnout_phase.trim().slice(0, 80) : ''
+  if (!turnout_phase || /[<>\\]/.test(turnout_phase)) return undefined
+  const gapList = (r: Record<string, unknown>, key: string, max: number, itemMax: number): string[] => {
+    const out: string[] = []
+    const arr = r[key]
+    if (!Array.isArray(arr)) return out
+    for (const item of arr.slice(0, max)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, itemMax)
+      if (!t || /[<>\\]/.test(t)) continue
+      out.push(t)
+    }
+    return out
+  }
+  const bsIn = isRecord(raw.baseline_summary) ? raw.baseline_summary : null
+  if (!bsIn) return undefined
+  const n0 = (x: unknown, max: number) =>
+    typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(max, Math.floor(x))) : 0
+  const baseline_summary = {
+    tracked_voters: n0(bsIn.tracked_voters, 5_000_000),
+    gotv_sites: n0(bsIn.gotv_sites, 50_000),
+    mean_coverage_pct: n0(bsIn.mean_coverage_pct, 100),
+    active_events: n0(bsIn.active_events, 100_000),
+    volunteer_roster: n0(bsIn.volunteer_roster, 500_000),
+  }
+  const data_gaps = gapList(raw as Record<string, unknown>, 'data_gaps', 12, 80)
+  const cmpIn = isRecord(raw.comparison) ? raw.comparison : null
+  if (!cmpIn) return undefined
+  const baseline_readiness =
+    typeof cmpIn.baseline_readiness === 'number' && Number.isFinite(cmpIn.baseline_readiness)
+      ? Math.max(0, Math.min(100, Math.round(cmpIn.baseline_readiness * 10) / 10))
+      : 0
+  const scenario_labels: string[] = []
+  if (Array.isArray(cmpIn.scenario_labels)) {
+    for (const item of cmpIn.scenario_labels.slice(0, 14)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 120)
+      if (!t || /[<>\\]/.test(t)) continue
+      scenario_labels.push(t)
+    }
+  }
+  const top_scenario_label =
+    cmpIn.top_scenario_label == null || cmpIn.top_scenario_label === ''
+      ? null
+      : String(cmpIn.top_scenario_label).trim().slice(0, 120)
+  if (top_scenario_label && /[<>\\]/.test(top_scenario_label)) return undefined
+  const top_readiness =
+    cmpIn.top_readiness == null
+      ? null
+      : typeof cmpIn.top_readiness === 'number' && Number.isFinite(cmpIn.top_readiness)
+        ? Math.max(0, Math.min(100, Math.round(cmpIn.top_readiness * 10) / 10))
+        : null
+  const rec =
+    typeof cmpIn.recommendation_line === 'string' ? cmpIn.recommendation_line.trim().slice(0, 520) : ''
+  if (!rec || /[<>\\]/.test(rec)) return undefined
+  const comparison = {
+    baseline_readiness,
+    scenario_labels,
+    top_scenario_label,
+    top_readiness,
+    recommendation_line: rec,
+  }
+  const sensIn = isRecord(raw.sensitivity) ? raw.sensitivity : null
+  if (!sensIn) return undefined
+  const volunteer_1pct_readiness_delta =
+    typeof sensIn.volunteer_1pct_readiness_delta === 'number' &&
+    Number.isFinite(sensIn.volunteer_1pct_readiness_delta)
+      ? Math.round(Math.max(-50, Math.min(50, sensIn.volunteer_1pct_readiness_delta)) * 100) / 100
+      : 0
+  const risk_lines: string[] = []
+  if (Array.isArray(raw.risk_lines)) {
+    for (const item of raw.risk_lines.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 400)
+      if (!t || /[<>\\]/.test(t)) continue
+      risk_lines.push(t)
+    }
+  }
+  const discipline_reminders: string[] = []
+  if (Array.isArray(raw.discipline_reminders)) {
+    for (const item of raw.discipline_reminders.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      discipline_reminders.push(t)
+    }
+  }
+  if (!discipline_reminders.length) return undefined
+  return {
+    source: 'simulation_command_v1',
+    generated_at_ms,
+    turnout_phase,
+    baseline_summary,
+    data_gaps,
+    comparison,
+    sensitivity: { volunteer_1pct_readiness_delta },
+    risk_lines,
+    discipline_reminders,
+  }
+}
+
+function validateGotvCommandRaw(raw: unknown): AgentJonesGotvCommandSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'gotv_command_v1') return undefined
+  const generated_at_ms =
+    typeof raw.generated_at_ms === 'number' && Number.isFinite(raw.generated_at_ms)
+      ? Math.max(0, Math.min(2_000_000_000_000, Math.floor(raw.generated_at_ms)))
+      : Date.now()
+  const turnout_phase =
+    typeof raw.turnout_phase === 'string' ? raw.turnout_phase.trim().slice(0, 80) : ''
+  if (!turnout_phase || /[<>\\]/.test(turnout_phase)) return undefined
+  const phase_priorities: string[] = []
+  if (Array.isArray(raw.phase_priorities)) {
+    for (const item of raw.phase_priorities.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      phase_priorities.push(t)
+    }
+  }
+  const dist = { green: 0, yellow: 0, orange: 0, red: 0 }
+  if (isRecord(raw.site_readiness_distribution)) {
+    for (const k of ['green', 'yellow', 'orange', 'red'] as const) {
+      const v = raw.site_readiness_distribution[k]
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        dist[k] = Math.max(0, Math.min(5000, Math.floor(v)))
+      }
+    }
+  }
+  const top_at_risk_site_labels: AgentJonesGotvCommandSafe['top_at_risk_site_labels'] = []
+  if (Array.isArray(raw.top_at_risk_site_labels)) {
+    for (const item of raw.top_at_risk_site_labels.slice(0, 8)) {
+      if (!isRecord(item)) continue
+      const label = typeof item.label === 'string' ? item.label.trim().slice(0, 160) : ''
+      const band = typeof item.band === 'string' ? item.band.trim().slice(0, 24) : ''
+      const score =
+        typeof item.score === 'number' && Number.isFinite(item.score)
+          ? Math.max(0, Math.min(100, Math.round(item.score)))
+          : 0
+      const county_id =
+        item.county_id == null || item.county_id === ''
+          ? null
+          : String(item.county_id).trim().slice(0, 120)
+      if (!label || /[<>\\]/.test(label)) continue
+      top_at_risk_site_labels.push({ label, county_id, score, band: band || 'unknown' })
+    }
+  }
+  const top_under_covered_county_hints: string[] = []
+  if (Array.isArray(raw.top_under_covered_county_hints)) {
+    for (const item of raw.top_under_covered_county_hints.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 160)
+      if (!t || /[<>\\]/.test(t)) continue
+      top_under_covered_county_hints.push(t)
+    }
+  }
+  const replacement_or_fill_hints: string[] = []
+  if (Array.isArray(raw.replacement_or_fill_hints)) {
+    for (const item of raw.replacement_or_fill_hints.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      replacement_or_fill_hints.push(t)
+    }
+  }
+  const operational_lines: string[] = []
+  if (Array.isArray(raw.operational_lines)) {
+    for (const item of raw.operational_lines.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 420)
+      if (!t || /[<>\\]/.test(t)) continue
+      operational_lines.push(t)
+    }
+  }
+  const ph = typeof raw.program_headline === 'string' ? raw.program_headline.trim().slice(0, 400) : ''
+  const program_headline = ph && !/[<>\\]/.test(ph) ? ph : 'Turnout command snapshot'
+  return {
+    source: 'gotv_command_v1',
+    generated_at_ms,
+    turnout_phase,
+    phase_priorities,
+    site_readiness_distribution: dist,
+    top_at_risk_site_labels,
+    top_under_covered_county_hints,
+    replacement_or_fill_hints,
+    operational_lines,
+    program_headline,
+  }
 }
 
 function validateTradeoffSummaryRaw(raw: unknown): AgentJonesTradeoffSummarySafe | undefined {
@@ -3019,6 +3667,197 @@ function validateFieldExecutionRaw(
   }
 }
 
+function validateOutcomeLoopRaw(raw: unknown): AgentJonesEventOutcomeLoopSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  const outcome_stage =
+    raw.outcome_stage === null
+      ? null
+      : typeof raw.outcome_stage === 'string'
+        ? raw.outcome_stage.trim().slice(0, 48) || null
+        : null
+  const attendance_checkins =
+    typeof raw.attendance_checkins === 'number' && Number.isFinite(raw.attendance_checkins)
+      ? Math.max(0, Math.min(5000, Math.floor(raw.attendance_checkins)))
+      : 0
+  const followups_open =
+    typeof raw.followups_open === 'number' && Number.isFinite(raw.followups_open)
+      ? Math.max(0, Math.min(500, Math.floor(raw.followups_open)))
+      : 0
+  const followups_total =
+    typeof raw.followups_total === 'number' && Number.isFinite(raw.followups_total)
+      ? Math.max(0, Math.min(500, Math.floor(raw.followups_total)))
+      : 0
+  const closure_completeness_pct =
+    typeof raw.closure_completeness_pct === 'number' && Number.isFinite(raw.closure_completeness_pct)
+      ? Math.max(0, Math.min(100, Math.round(raw.closure_completeness_pct)))
+      : 0
+  const effectiveness_hints: string[] = []
+  if (Array.isArray(raw.effectiveness_hints)) {
+    for (const item of raw.effectiveness_hints.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 64)
+      if (!t || /[<>\\]/.test(t)) continue
+      effectiveness_hints.push(t)
+    }
+  }
+  return {
+    outcome_stage,
+    attendance_checkins,
+    followups_open,
+    followups_total,
+    closure_completeness_pct,
+    effectiveness_hints,
+  }
+}
+
+function validateAutomationOrchestrationRaw(
+  raw: unknown,
+): AgentJonesAutomationOrchestrationSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'automation_orchestration_v1') return undefined
+  const generated_at_ms =
+    typeof raw.generated_at_ms === 'number' && Number.isFinite(raw.generated_at_ms)
+      ? Math.max(0, Math.min(2_000_000_000_000, Math.floor(raw.generated_at_ms)))
+      : Date.now()
+  const deterministic_trigger_count =
+    typeof raw.deterministic_trigger_count === 'number' && Number.isFinite(raw.deterministic_trigger_count)
+      ? Math.max(0, Math.min(500, Math.floor(raw.deterministic_trigger_count)))
+      : 0
+  const open_queue_count =
+    typeof raw.open_queue_count === 'number' && Number.isFinite(raw.open_queue_count)
+      ? Math.max(0, Math.min(500, Math.floor(raw.open_queue_count)))
+      : 0
+  const awaiting_approval_count =
+    typeof raw.awaiting_approval_count === 'number' && Number.isFinite(raw.awaiting_approval_count)
+      ? Math.max(0, Math.min(200, Math.floor(raw.awaiting_approval_count)))
+      : 0
+  const top_triggers: { trigger_type: string; count: number }[] = []
+  if (Array.isArray(raw.top_triggers)) {
+    for (const item of raw.top_triggers.slice(0, 8)) {
+      if (!isRecord(item)) continue
+      const trigger_type =
+        typeof item.trigger_type === 'string' ? item.trigger_type.trim().slice(0, 64) : ''
+      const count =
+        typeof item.count === 'number' && Number.isFinite(item.count)
+          ? Math.max(0, Math.min(500, Math.floor(item.count)))
+          : 0
+      if (!trigger_type || /[<>\\]/.test(trigger_type)) continue
+      top_triggers.push({ trigger_type, count })
+    }
+  }
+  const top_actions: AgentJonesAutomationOrchestrationSafe['top_actions'] = []
+  if (Array.isArray(raw.top_actions)) {
+    for (const item of raw.top_actions.slice(0, 8)) {
+      if (!isRecord(item)) continue
+      const title = typeof item.title === 'string' ? item.title.trim().slice(0, 160) : ''
+      const severity = typeof item.severity === 'string' ? item.severity.trim().slice(0, 24) : ''
+      const owner_role_hint =
+        item.owner_role_hint == null || item.owner_role_hint === ''
+          ? null
+          : String(item.owner_role_hint).trim().slice(0, 80)
+      const route_path =
+        item.route_path == null || item.route_path === ''
+          ? null
+          : String(item.route_path).trim().slice(0, 400)
+      const explanation_one_line =
+        typeof item.explanation_one_line === 'string'
+          ? item.explanation_one_line.trim().slice(0, 360)
+          : ''
+      const status =
+        typeof item.status === 'string' ? item.status.trim().slice(0, 32) : undefined
+      if (!title || /[<>\\]/.test(title)) continue
+      top_actions.push({
+        title,
+        severity: severity || 'watch',
+        owner_role_hint,
+        route_path,
+        explanation_one_line: explanation_one_line || '—',
+        ...(status ? { status } : {}),
+      })
+    }
+  }
+  const pressure_lines: string[] = []
+  if (Array.isArray(raw.pressure_lines)) {
+    for (const item of raw.pressure_lines.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 420)
+      if (!t || /[<>\\]/.test(t)) continue
+      pressure_lines.push(t)
+    }
+  }
+  return {
+    source: 'automation_orchestration_v1',
+    generated_at_ms,
+    deterministic_trigger_count,
+    open_queue_count,
+    awaiting_approval_count,
+    top_triggers,
+    top_actions,
+    pressure_lines,
+  }
+}
+
+function validateGeographicCommandRaw(raw: unknown): AgentJonesGeographicCommandSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'geographic_command_v1') return undefined
+  const window_days =
+    typeof raw.window_days === 'number' && Number.isFinite(raw.window_days)
+      ? Math.max(1, Math.min(60, Math.floor(raw.window_days)))
+      : 14
+  const counties_in_view =
+    typeof raw.counties_in_view === 'number' && Number.isFinite(raw.counties_in_view)
+      ? Math.max(0, Math.min(250, Math.floor(raw.counties_in_view)))
+      : 0
+  const precinct_rows_in_view =
+    typeof raw.precinct_rows_in_view === 'number' && Number.isFinite(raw.precinct_rows_in_view)
+      ? Math.max(0, Math.min(600, Math.floor(raw.precinct_rows_in_view)))
+      : 0
+  const critical_hotspot_count =
+    typeof raw.critical_hotspot_count === 'number' && Number.isFinite(raw.critical_hotspot_count)
+      ? Math.max(0, Math.min(120, Math.floor(raw.critical_hotspot_count)))
+      : 0
+  const top_pressure_labels: string[] = []
+  if (Array.isArray(raw.top_pressure_labels)) {
+    for (const item of raw.top_pressure_labels.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 96)
+      if (!t || /[<>\\]/.test(t)) continue
+      top_pressure_labels.push(t)
+    }
+  }
+  const under_scheduled_county_hints: string[] = []
+  if (Array.isArray(raw.under_scheduled_county_hints)) {
+    for (const item of raw.under_scheduled_county_hints.slice(0, 8)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 80)
+      if (!t || /[<>\\]/.test(t)) continue
+      under_scheduled_county_hints.push(t)
+    }
+  }
+  const summary_lines: string[] = []
+  if (Array.isArray(raw.summary_lines)) {
+    for (const item of raw.summary_lines.slice(0, 6)) {
+      if (typeof item !== 'string') continue
+      const t = item.trim().slice(0, 360)
+      if (!t || /[<>\\]/.test(t)) continue
+      summary_lines.push(t)
+    }
+  }
+  return {
+    source: 'geographic_command_v1',
+    window_days,
+    counties_in_view,
+    precinct_rows_in_view,
+    critical_hotspot_count,
+    top_pressure_labels,
+    under_scheduled_county_hints,
+    summary_lines,
+  }
+}
+
 function validateEventIntelligenceRaw(
   raw: unknown,
 ): AgentJonesEventIntelligenceSafe | undefined {
@@ -3085,6 +3924,7 @@ function validateEventIntelligenceRaw(
     after_action_line = t || undefined
   }
   const field_execution = validateFieldExecutionRaw(raw.field_execution)
+  const outcome_loop = validateOutcomeLoopRaw(raw.outcome_loop)
 
   const out: AgentJonesEventIntelligenceSafe = {
     event_id: raw.event_id.trim().slice(0, 64),
@@ -3099,6 +3939,7 @@ function validateEventIntelligenceRaw(
     ...(after_action_line !== undefined ? { after_action_line } : {}),
     ...(data_gap_warnings.length ? { data_gap_warnings } : {}),
     ...(field_execution ? { field_execution } : {}),
+    ...(outcome_loop ? { outcome_loop } : {}),
   }
   return out
 }
@@ -3156,6 +3997,88 @@ function validateEventOperationsExecutiveRaw(
     leadership_attention: strArr('leadership_attention', 12, 420),
     coordinator_level_ok: strArr('coordinator_level_ok', 8, 360),
   }
+}
+
+function validateCampaignOperatingPictureRaw(
+  raw: unknown,
+): AgentJonesCopOperatingSafe | undefined {
+  if (raw === undefined || raw === null) return undefined
+  if (!isRecord(raw)) return undefined
+  if (raw.source !== 'campaign_operating_picture_v1') return undefined
+  const scopeLabel =
+    typeof raw.scopeLabel === 'string' ? raw.scopeLabel.trim().slice(0, 160) : 'Campaign'
+  const gen =
+    typeof raw.generatedAtMs === 'number' && Number.isFinite(raw.generatedAtMs)
+      ? raw.generatedAtMs
+      : Date.now()
+  const readinessScore =
+    typeof raw.readinessScore === 'number' && Number.isFinite(raw.readinessScore)
+      ? Math.max(0, Math.min(100, raw.readinessScore))
+      : 0
+  const pressureIndex =
+    typeof raw.pressureIndex === 'number' && Number.isFinite(raw.pressureIndex)
+      ? Math.max(0, Math.min(100, raw.pressureIndex))
+      : 0
+  const momentumIndex =
+    typeof raw.momentumIndex === 'number' && Number.isFinite(raw.momentumIndex)
+      ? Math.max(0, Math.min(100, raw.momentumIndex))
+      : 0
+  const narrative =
+    typeof raw.operationalNarrative === 'string'
+      ? raw.operationalNarrative.trim().slice(0, 4000)
+      : ''
+  const risks = validateCopRiskListRaw(raw.criticalRisks)
+  const actions = validateCopTopActionsRaw(raw.topActions)
+  if (!narrative && !risks.length && !actions.length) return undefined
+  return {
+    source: 'campaign_operating_picture_v1',
+    scopeLabel: scopeLabel || 'Campaign',
+    generatedAtMs: gen,
+    readinessScore,
+    pressureIndex,
+    momentumIndex,
+    criticalRisks: risks,
+    topActions: actions,
+    operationalNarrative: narrative || '—',
+  }
+}
+
+function validateCopRiskListRaw(raw: unknown): {
+  title: string
+  severity: string
+  why: string
+}[] {
+  if (!Array.isArray(raw)) return []
+  const out: { title: string; severity: string; why: string }[] = []
+  for (const item of raw.slice(0, 12)) {
+    if (!isRecord(item)) continue
+    const title = typeof item.title === 'string' ? item.title.trim().slice(0, 200) : ''
+    const severity =
+      typeof item.severity === 'string' ? item.severity.trim().slice(0, 32) : ''
+    const why = typeof item.why === 'string' ? item.why.trim().slice(0, 420) : ''
+    if (!title || /[<>\\]/.test(title)) continue
+    out.push({ title, severity: severity || 'unknown', why: why || '—' })
+  }
+  return out
+}
+
+function validateCopTopActionsRaw(raw: unknown): {
+  title: string
+  whyNow: string
+  href: string
+}[] {
+  if (!Array.isArray(raw)) return []
+  const out: { title: string; whyNow: string; href: string }[] = []
+  for (const item of raw.slice(0, 12)) {
+    if (!isRecord(item)) continue
+    const title = typeof item.title === 'string' ? item.title.trim().slice(0, 200) : ''
+    const whyNow = typeof item.whyNow === 'string' ? item.whyNow.trim().slice(0, 360) : ''
+    let href = typeof item.href === 'string' ? item.href.trim().slice(0, 240) : ''
+    if (href && !href.startsWith('/')) href = '/dashboard'
+    if (!title || /[<>\\]/.test(title)) continue
+    out.push({ title, whyNow: whyNow || '—', href: href || '/dashboard' })
+  }
+  return out
 }
 
 function validateReadinessCoverageRaw(
@@ -3460,6 +4383,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
     const campaign = validateCampaign(raw.campaign)
     const relational = validateRelationalPower5(raw.relational_power5)
     const volunteer_mission = validateVolunteerMission(raw.volunteer_mission)
+    const volunteer_throughput = validateVolunteerThroughput(raw.volunteer_throughput)
     const daily_activation = validateDailyActivation(raw.daily_activation)
     const intern_layer = validateInternLayer(raw.intern_layer)
     const campaign_goals = validateCampaignGoals(raw.campaign_goals)
@@ -3497,6 +4421,16 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
     const cockpit_focus = validateCockpitFocusRaw(raw.cockpit_focus)
     const cockpit_mission_digest = validateCockpitMissionDigestRaw(raw.cockpit_mission_digest)
     const event_ai_orchestration = validateEventAiOrchestrationRaw(raw.event_ai_orchestration)
+    const campaign_operating_picture = validateCampaignOperatingPictureRaw(
+      raw.campaign_operating_picture,
+    )
+    const geographic_command = validateGeographicCommandRaw(raw.geographic_command)
+    const automation_orchestration = validateAutomationOrchestrationRaw(raw.automation_orchestration)
+    const gotv_command = validateGotvCommandRaw(raw.gotv_command)
+    const voter_conversion_command = validateVoterConversionCommandRaw(raw.voter_conversion_command)
+    const finance_command = validateFinanceCommandRaw(raw.finance_command)
+    const simulation_command = validateSimulationCommandRaw(raw.simulation_command)
+    const field_narrative_command = validateFieldNarrativeCommandRaw(raw.field_narrative_command)
     return {
       surface,
       user,
@@ -3519,6 +4453,7 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
         : {}),
       ...(relational ? { relational_power5: relational } : {}),
       ...(volunteer_mission ? { volunteer_mission } : {}),
+      ...(volunteer_throughput ? { volunteer_throughput } : {}),
       ...(daily_activation ? { daily_activation } : {}),
       ...(intern_layer ? { intern_layer } : {}),
       ...(campaign_goals ? { campaign_goals } : {}),
@@ -3556,6 +4491,14 @@ function validateContext(raw: unknown): AgentJonesSafeContextV2 | null {
       ...(cockpit_focus ? { cockpit_focus } : {}),
       ...(cockpit_mission_digest ? { cockpit_mission_digest } : {}),
       ...(event_ai_orchestration ? { event_ai_orchestration } : {}),
+      ...(campaign_operating_picture ? { campaign_operating_picture } : {}),
+      ...(geographic_command ? { geographic_command } : {}),
+      ...(automation_orchestration ? { automation_orchestration } : {}),
+      ...(gotv_command ? { gotv_command } : {}),
+      ...(voter_conversion_command ? { voter_conversion_command } : {}),
+      ...(finance_command ? { finance_command } : {}),
+      ...(simulation_command ? { simulation_command } : {}),
+      ...(field_narrative_command ? { field_narrative_command } : {}),
     }
   }
 
@@ -3581,8 +4524,17 @@ Rules:
 - Campaign context (if present) is public campaign info (slogan, bio, issue pillars, CTAs) — ground wording and next-steps in it, but do not invent policy details.
 - If dashboardContext.campaign.retrievedKnowledge exists, it is a **small set of excerpt chunks** from the campaign knowledge base chosen for this user message (keyword match on chunk text). Prefer these excerpts when answering factual or policy questions; if they conflict with other campaign fields, prefer retrievedKnowledge for specifics. If the list is empty or off-topic, say so honestly — do not pretend you ran a live search.
 - If dashboardContext.campaign.onboardingBrief exists, it is the structured Volunteer Welcome Kit + Organization Outline (culture, lane options, first actions, messaging, escalation). Use it for how we work, lane fit, first tasks, and when to escalate — still do not invent policy beyond what is written there.
-- If dashboardContext.event_intelligence exists, it is a **client-built event-command snapshot** (similar past events, deterministic briefing lines, optional after-action documentation warnings, delta since last briefing snapshot). When **event_intelligence.field_execution** is present, it mirrors the same **browser-only** day-of workspace as the Field surface (phase label, bounded briefing lines, open field-issue count, pending closure items, signup handoff ack — source tag browser_workspace_v1). Treat it as live tactical context, not Supabase truth; never claim it mutates server rows. Use it for tactical event operations tone on /events routes; staff actions only.
+- If dashboardContext.event_intelligence exists, it is a **client-built event-command snapshot** (similar past events, deterministic briefing lines, optional after-action documentation warnings, delta since last briefing snapshot). When **event_intelligence.field_execution** is present, it mirrors the same **browser-only** day-of workspace as the Field surface (phase label, bounded briefing lines, open field-issue count, pending closure items, signup handoff ack — source tag browser_workspace_v1). When **event_intelligence.outcome_loop** is present, it summarizes **DB-backed** check-in counts, follow-up queue pressure, a closure-quality score, and deterministic effectiveness hint tokens — advisory coaching only; staff still act in-app. Treat it as live tactical context, not autonomous writes. Use it for tactical event operations tone on /events routes; staff actions only.
+- If dashboardContext.geographic_command exists (source geographic_command_v1), it is a **program-wide geographic pressure digest** from visible campaign events: window_days horizon, county/precinct row counts, critical_hotspot_count, top_pressure_labels, under_scheduled_county_hints, and summary_lines — **not** a map server, census block, or volunteer roster file. Use for statewide / regional field tone; do not invent turf-level voter metrics.
+- If dashboardContext.automation_orchestration exists (source automation_orchestration_v1), it is a **bounded orchestration digest**: deterministic_trigger_count (rules-first scan), open_queue_count / awaiting_approval_count, top_triggers, top_actions (title, severity, owner hint, optional route_path, explanation line), and pressure_lines — **advisory only**. It does **not** mean the AI executed tasks, sends, or staffing changes; staff still act through normal app flows and approvals.
+- If dashboardContext.gotv_command exists (source gotv_command_v1), it is a **bounded turnout / polling-place digest** from the in-app command layer: turnout_phase, phase_priorities, site_readiness_distribution counts, top_at_risk_site_labels, county hints, replacement_or_fill_hints, operational_lines — **advisory only**. It does **not** grant poll-watcher authority, BOE data, or silent volunteer reassignments; staff still use approved assignment and task paths.
+- If dashboardContext.voter_conversion_command exists (source voter_conversion_command_v1), it is a **bounded voter conversion digest** from DB rollups: aggregate totals, conversion-rate hints, county chase hints, operational_lines — **advisory only**. It is not individual voter PII; staff still record contacts through approved capture flows.
+- If dashboardContext.finance_command exists (source finance_command_v1), it is a **bounded fundraising / spend / ROI digest** from logged revenue and expenses: headline, totals, efficiency ratios, top expense categories, allocation_hints — **advisory only**. Agent Jones does **not** execute wires, charges, donations, vendor payments, or compliance filings; all money movement stays with finance staff and bank reality.
+- If dashboardContext.simulation_command exists (source simulation_command_v1), it is a **bounded what-if digest** from the in-app simulation engine: baseline_summary, scenario comparison labels, recommendation_line, sensitivity — **advisory only**. It is **not** a ballot forecast, turnout percentage guarantee, or substitute for polling; do not fabricate projections beyond these fields or imply microtargeting precision.
+- If dashboardContext.field_narrative_command exists (source field_narrative_command_v1), it is a **framework-bound message discipline digest**: pillar keys, reminders to stay on canonical narrative, usage hints — **advisory only**. Do **not** invent new campaign pillars, new policy, or new narrative arcs beyond what HQ encodes; recommend phrasing that aligns with those pillars only.
+- If dashboardContext.countdown_summary includes turnout_phase / turnout_phase_priorities, they mirror the deterministic GOTV phase engine tied to the in-app election clock — not a secretary-of-state system.
 - If dashboardContext.event_operations_executive exists (source leadership_briefing_v1), it is a **client-built executive event-operations digest** from the leadership briefing page: approvals, war-room priority, staffing/comms rollups, trends vs prior browser visit — advisory only, not authority for approvals or edits. Use for leadership tone: top risks, decisions, what can stay with coordinators.
+- If dashboardContext.campaign_operating_picture exists (source campaign_operating_picture_v1), it is the **Campaign Operating Picture** — deterministic readiness/pressure/momentum indices, bounded risk titles, and ranked actions with internal hrefs from the same leadership briefing engine. Treat as structured operating truth for tone; **do not override** these numbers with guesses. Narrative may elaborate, not replace the scores.
 - If dashboardContext.cockpit_focus exists, the Campaign Manager command cockpit session is summarized: center_primary_module_id / center_secondary_module_id name the active workspace modules; center_mode is single | split_h | split_v | quad; fullscreen_module_id names a fullscreen-expanded module when present; module_hint is a short layout summary. Treat as UI routing hints only — do not invent module data or URLs beyond what appears elsewhere in context.
 - If dashboardContext.cockpit_mission_digest exists, it is a **bounded cross-system mission summary** for the Campaign Manager cockpit: strip_mode classifies operational tempo (calm | high_volume | crisis | fundraising | candidate_heavy | staffing_strain); top_consequences lists short consequence lines derived from visible leadership snapshots; recommended_center_module_id and optional recommended_compare_template_id are UI prioritization hints — not orders; cross_system_pressure_line is advisory; stay consistent with cockpit_focus when both are present. Do not claim automated simulations or hidden data stores.
 - If dashboardContext.event_ai_orchestration exists, it is a **bounded Event AI orchestration mesh** synthesized client-side from leadership snapshots, cockpit digest, event desk intelligence, deterministic similar-event retrieval, and cross-module graph summaries: scope is cockpit_campaign | event_desk | leadership_wide; completeness_pct and data_gap_warnings describe honest sparsity; mesh_headline and connected_systems_in_play are operational routing/attention hints — not authority; top_cross_system_risks and alignment_gap_lines may echo consequences; retrieval_matches lists **filtered** deterministic peers above a quality threshold — if retrieval_fallback_note is present, retrieval is empty or weak and you must say so honestly instead of inventing peers; simulation_ready_scenarios names **available** scenario ids for what-if framing — still no automatic simulation execution; recommendation_digest_lines are typed stubs. Honor audit_note: the app remains source of truth; AI does not mutate approvals, staffing, sends, finance, or assignments.
@@ -3591,6 +4543,7 @@ Rules:
 - If dashboardContext.user includes onboarding_momentum_state / onboarding_direction_key / onboarding_micro_commitment_key (and optional onboarding_last_prompt / onboarding_last_action_at), the volunteer is in optional guided momentum (not a wizard). Honor their direction and micro-commitment when suggesting next steps; never imply they are blocked from the dashboard.
 - If dashboardContext.relational_power5 exists, it is a bounded summary of their Power of 5 list (counts, open manual relay steps, suggested next move). Do not invent additional names or voter data. Never suggest bulk messaging or automated sends.
 - If dashboardContext.volunteer_mission exists, it is their short mission queue (active task titles, next best move, recent completions, optional score/streak hints). Encourage completion without guilt; suggest scrolling to mission-tasks when offering a concrete task. Do not imply tasks block dashboard access.
+- If dashboardContext.volunteer_throughput exists, it is a **bounded coordinator throughput digest**: pipeline_counts by stage, open unassigned assignments, urgent near-term coverage gaps, reminder backlog rows, acceptance/completion/no-show rates (0–1 when present), reliability tier counts, bottleneck_headline, and recommended_interventions (advisory — no writes). Use for volunteer-ops tone on coordinator surfaces; do not invent volunteers or opportunities beyond these aggregates.
 - If dashboardContext.daily_activation exists, it is today's daily activation (completed_today / total_today, points_today, optional team_tier_label, next_task_title, optional adaptive fields: progression_stage new|active|advanced, top_lane, growth_lane, lane_scores, behavior scores, assignment_hint). Social/communications stay universal; other lanes adapt over time. Explain assignments briefly when assignment_hint or lane fields are present (e.g. strength in outreach, growth in leadership). Encourage specialization without pressure. Suggest scrolling to daily-activation for the checklist. Never imply they must finish all tasks to use the app.
 - If dashboardContext.intern_layer exists, the user is an intern or supervisor with intern-layer data: overdue_contacts, pending_followups, next_best_action (title, volunteer_name, suggested_script), leadership_task_title, pipeline counts. Prioritize overdue first contacts (72h rule), then follow-ups. Give short call openers from suggested_script when present. For placement, name the lane from next_best_action if given. Reinforce one leadership habit per reply (mentor, escalate properly, review progress). Suggest scrolling to intern-desk when on that page.
 - If dashboardContext.campaign_goals exists, it lists top campaign KPIs (name, current, target, unit, pct toward goal) and optional user_contribution_summary (slug + contributed). Tie encouragement to these numbers (e.g. “moves us toward 20,000 volunteers”, “about 60% to fundraising goal” when pct matches). Connect completed mission tasks to moving these metrics. Suggest scrolling to campaign-kpis when pointing at the goal strip.

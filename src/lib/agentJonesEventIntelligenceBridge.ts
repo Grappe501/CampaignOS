@@ -5,6 +5,7 @@
 import type { OperatorBriefingPack } from './eventIntelligenceContracts'
 import type { BriefingDelta } from './eventIntelligenceContracts'
 import type { AfterActionScoreResult } from './eventIntelligenceContracts'
+import type { AgentJonesEventOutcomeLoopSnapshot } from './eventOutcomeMetrics'
 
 /** Browser-localStorage v1 field execution — advisory; never authoritative over Supabase. */
 export type AgentJonesFieldExecutionSnapshot = {
@@ -32,6 +33,8 @@ export type AgentJonesEventIntelligenceLayer = {
   data_gap_warnings?: string[]
   /** Day-of / onsite ops workspace (deterministic lines + counts). */
   field_execution?: AgentJonesFieldExecutionSnapshot
+  /** DB-backed outcome loop snapshot (bounded; advisory). */
+  outcome_loop?: AgentJonesEventOutcomeLoopSnapshot | null
 }
 
 export function buildAgentJonesEventIntelligenceLayer(input: {
@@ -40,8 +43,9 @@ export function buildAgentJonesEventIntelligenceLayer(input: {
   afterAction: AfterActionScoreResult | null
   recordTitle: string
   fieldExecution?: AgentJonesFieldExecutionSnapshot | null
+  outcomeLoop?: AgentJonesEventOutcomeLoopSnapshot | null
 }): AgentJonesEventIntelligenceLayer {
-  const { pack, delta, afterAction, recordTitle, fieldExecution } = input
+  const { pack, delta, afterAction, recordTitle, fieldExecution, outcomeLoop } = input
   const briefing_quick = [
     pack.purpose_line,
     pack.staffing_line,
@@ -84,5 +88,6 @@ export function buildAgentJonesEventIntelligenceLayer(input: {
     after_action_line,
     data_gap_warnings,
     ...(fieldExecution ? { field_execution: fieldExecution } : {}),
+    ...(outcomeLoop ? { outcome_loop: outcomeLoop } : {}),
   }
 }

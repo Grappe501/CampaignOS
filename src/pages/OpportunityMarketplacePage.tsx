@@ -57,7 +57,7 @@ export default function OpportunityMarketplacePage({ onDevSessionClear }: Props)
       eventType: 'opened_opportunity_detail',
       metadataJson: { role_slug: detail.roleSlug ?? '' },
     })
-  }, [detail?.id, self.volunteer])
+  }, [detail, self.volunteer])
 
   const recMap = useMemo(() => {
     const m = new Map<string, (typeof desk.recommended)[0]['summary']>()
@@ -65,7 +65,7 @@ export default function OpportunityMarketplacePage({ onDevSessionClear }: Props)
       m.set(r.opportunity.id, r.summary)
     }
     return m
-  }, [desk.recommended])
+  }, [desk])
 
   return (
     <>

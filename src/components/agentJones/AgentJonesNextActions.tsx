@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { scrollToDashboardId } from '../../lib/agentJonesGuidance'
 import type { AgentJonesNavigationHint } from '../../lib/agentJonesContextV2'
 
@@ -11,6 +12,7 @@ export default function AgentJonesNextActions({
   /** Phase-aware “first move” already synthesized in leadership_command — surfaces above taps. */
   chiefPriorityLine?: string | null
 }) {
+  const navigate = useNavigate()
   const lines = nextStepLines.slice(0, 3)
   const chief = chiefPriorityLine?.trim().slice(0, 360) ?? ''
 
@@ -37,7 +39,7 @@ export default function AgentJonesNextActions({
                     scrollToDashboardId(h.target_id)
                   }
                   if (h.kind === 'navigate' && h.route) {
-                    window.location.assign(h.route)
+                    void navigate(h.route)
                   }
                 }}
               >

@@ -144,6 +144,9 @@ export type CampaignCalendarEventRecord = {
   /** Captured outcomes (operational domain); null until field teams enter them. */
   volunteer_outcome?: number | null
   voter_contact_outcome?: number | null
+  /** Planning / reconciliation (operational domain). */
+  expected_audience_size?: number | null
+  actual_audience_size?: number | null
   readiness_score?: number | null
   /** `campaign_profiles.id` for volunteer/neighborhood submissions awaiting approval. */
   requester_user_id?: string | null

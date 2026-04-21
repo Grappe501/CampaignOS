@@ -48,7 +48,7 @@ export function useVolunteerMarketplace(volunteer: VolunteerProfile | null, prof
     } finally {
       setLoading(false)
     }
-  }, [volunteer?.id])
+  }, [volunteer])
 
   useEffect(() => {
     void load()

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useMobilizePromotionSummary } from '../../hooks/useEventSummaries'
 import type { CampaignProfile } from '../../hooks/useProfile'
@@ -32,6 +32,17 @@ import { buildRapidActionContextFromEvent } from '../../lib/rapidActionContextSe
 import RapidActionsBar from './command/RapidActionsBar'
 import StaffingCoverageHeatmap from './command/StaffingCoverageHeatmap'
 import VolunteerLoadBalancerPanel from './command/VolunteerLoadBalancerPanel'
+import AutomationQueuePanel from '../automation/AutomationQueuePanel'
+import AutomationPressureSummary from '../automation/AutomationPressureSummary'
+import { useCampaignAutomationDesk } from '../../hooks/useCampaignAutomationDesk'
+import { canApprove } from '../../lib/automationApprovals'
+import {
+  approveAutomationAction,
+  completeAutomationAction,
+  dismissAutomationAction,
+  rejectAutomationAction,
+  snoozeAutomationAction,
+} from '../../lib/campaignAutomationDb'
 
 export default function EventCoordinatorDeskContent({
   profile,
@@ -80,6 +91,55 @@ export default function EventCoordinatorDeskContent({
 
   const deskSnapshot = useMemo(() => buildTodayCommandSnapshot(queueEvents), [queueEvents])
 
+  const campaignId = 'default'
+  const {
+    rows: automationRows,
+    loading: automationLoading,
+    lastError: automationError,
+    refresh: refreshAutomation,
+  } = useCampaignAutomationDesk({
+    campaignId,
+    events: queueEvents,
+    assignmentMap: deskAssignmentMap,
+  })
+
+  const handleAutomationApprove = useCallback(
+    async (id: string) => {
+      await approveAutomationAction({ campaignId, actionId: id })
+      await refreshAutomation()
+    },
+    [campaignId, refreshAutomation],
+  )
+  const handleAutomationReject = useCallback(
+    async (id: string) => {
+      await rejectAutomationAction({ campaignId, actionId: id })
+      await refreshAutomation()
+    },
+    [campaignId, refreshAutomation],
+  )
+  const handleAutomationComplete = useCallback(
+    async (id: string) => {
+      await completeAutomationAction({ campaignId, actionId: id })
+      await refreshAutomation()
+    },
+    [campaignId, refreshAutomation],
+  )
+  const handleAutomationDismiss = useCallback(
+    async (id: string) => {
+      await dismissAutomationAction({ campaignId, actionId: id })
+      await refreshAutomation()
+    },
+    [campaignId, refreshAutomation],
+  )
+  const handleAutomationSnooze = useCallback(
+    async (id: string) => {
+      const until = new Date(Date.now() + 24 * 3600000).toISOString()
+      await snoozeAutomationAction({ campaignId, actionId: id, untilIso: until })
+      await refreshAutomation()
+    },
+    [campaignId, refreshAutomation],
+  )
+
   return (
     <div className="event-coordinator-desk" id="event-coordinator-desk">
       <header className="event-coordinator-desk__command" id="event-coordinator-command">
@@ -115,6 +175,11 @@ export default function EventCoordinatorDeskContent({
                 </>
               )}
             </p>
+            {!deskSnapshot.empty ? (
+              <div style={{ marginTop: 8 }}>
+                <AutomationPressureSummary rows={automationRows} />
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="event-coordinator-desk__quick-actions" aria-label="Quick actions">
@@ -126,6 +191,12 @@ export default function EventCoordinatorDeskContent({
               Executive briefing
             </Link>
           ) : null}
+          <Link to="/events/finance-command" className="btn-touch">
+            Finance command
+          </Link>
+          <Link to="/events/simulation-command" className="btn-touch">
+            Simulation
+          </Link>
           <Link to="/events/county-ops" className="btn-touch">
             County command center
           </Link>
@@ -174,6 +245,19 @@ export default function EventCoordinatorDeskContent({
       <TodayCommandPanel events={queueEvents} assignmentMap={deskAssignmentMap} />
 
       <EventApprovalQueue events={queueEvents} profile={profile} onRefetch={() => void refetchEvents()} />
+
+      <AutomationQueuePanel
+        rows={automationRows}
+        loading={automationLoading}
+        errorMessage={automationError}
+        canApprove={canApprove(profile?.primary_role)}
+        onRefresh={() => void refreshAutomation()}
+        onApprove={(id) => void handleAutomationApprove(id)}
+        onReject={(id) => void handleAutomationReject(id)}
+        onComplete={(id) => void handleAutomationComplete(id)}
+        onDismiss={(id) => void handleAutomationDismiss(id)}
+        onSnooze24h={(id) => void handleAutomationSnooze(id)}
+      />
 
       <section className="event-coordinator-desk__section" aria-labelledby="ec-attn-heading">
         <h2 id="ec-attn-heading" className="event-coordinator-desk__h2">

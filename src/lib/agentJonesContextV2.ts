@@ -26,7 +26,15 @@ import { buildAgentJonesV3Brain } from './agentJonesV3Brain'
 import { buildAgentJonesV33Pack } from './agentJonesV33Pack'
 import { buildAgentJonesV34Pack } from './agentJonesV34Pack'
 import type { AgentJonesEventIntelligenceLayer } from './agentJonesEventIntelligenceBridge'
+import type { AgentJonesGeographicCommandSnapshot } from './geographicCommandMetrics'
+import type { AgentJonesAutomationOrchestrationSnapshot } from './agentJonesAutomationOrchestration'
+import type { AgentJonesGotvCommandSnapshot } from './agentJonesGotvCommand'
+import type { AgentJonesVoterConversionSnapshot } from './agentJonesVoterConversion'
+import type { AgentJonesFinanceCommandSnapshot } from './agentJonesFinanceCommand'
+import type { AgentJonesSimulationCommandSnapshot } from './agentJonesSimulationCommand'
+import type { AgentJonesFieldNarrativeSnapshot } from './agentJonesMessageDiscipline'
 import type { AgentJonesEventOperationsExecutive } from './leadershipBriefingAgentBridge'
+import type { CopAgentSummary } from './cop/copAgentBridge'
 
 /** Bounded relational organizing summary — no PII beyond counts and stage hints. */
 export type AgentJonesRelationalPower5Context = {
@@ -475,6 +483,9 @@ export type AgentJonesCountdownSummary = {
   action_window_notes?: string[]
   /** When the timing layer has no surfaced assignment milestones — election clock only. */
   countdown_scope_note?: string | null
+  /** Deterministic GOTV / turnout phase from `gotvCountdownEngine` (advisory). */
+  turnout_phase?: string | null
+  turnout_phase_priorities?: string[]
 }
 
 /** v3.4 — resource / posture tradeoffs (heuristic). */
@@ -555,6 +566,27 @@ export type AgentJonesVolunteerMissionContext = {
   assignments_due_within_7d_count?: number
   points?: number
   streaks?: { active_days: number; completion_days: number }
+}
+
+/** Coordinator-grade throughput digest — counts and rates only (advisory). */
+export type AgentJonesVolunteerThroughputContext = {
+  campaign_id: string
+  pipeline_counts: Record<string, number>
+  open_unassigned_assignments: number
+  urgent_coverage_gaps: number
+  pending_reminder_rows: number
+  acceptance_rate: number | null
+  completion_rate: number | null
+  no_show_rate: number | null
+  reliability_mix: {
+    high_reliability: number
+    steady: number
+    developing: number
+    at_risk: number
+    inactive: number
+  }
+  bottleneck_headline: string | null
+  recommended_interventions: string[]
 }
 
 /** Bounded cockpit UI focus for Agent Jones (no PII). */
@@ -657,6 +689,7 @@ export type AgentJonesContextV2 = {
   }
   relational_power5?: AgentJonesRelationalPower5Context
   volunteer_mission?: AgentJonesVolunteerMissionContext
+  volunteer_throughput?: AgentJonesVolunteerThroughputContext
   daily_activation?: AgentJonesDailyActivationContext
   intern_layer?: AgentJonesInternLayerContext
   campaign_goals?: AgentJonesCampaignGoalsContext
@@ -703,12 +736,28 @@ export type AgentJonesContextV2 = {
   event_intelligence?: AgentJonesEventIntelligenceLayer
   /** Leadership /executive briefing — aggregated ops snapshot (client-built; advisory). */
   event_operations_executive?: AgentJonesEventOperationsExecutive
+  /** Campaign Operating Picture — deterministic executive indices + actions (client-built). */
+  campaign_operating_picture?: CopAgentSummary
   /** Campaign Manager cockpit — active center layout + fullscreen (bounded; server-validated). */
   cockpit_focus?: AgentJonesCockpitFocus
   /** Campaign Manager cockpit — mission control / cross-system digest (bounded). */
   cockpit_mission_digest?: AgentJonesCockpitMissionDigest
   /** Event AI orchestration layer — mesh summary, retrieval stubs, scenarios (bounded). */
   event_ai_orchestration?: AgentJonesEventAiOrchestration
+  /** Program-wide geographic pressure from calendar rows (bounded; advisory). */
+  geographic_command?: AgentJonesGeographicCommandSnapshot | null
+  /** Deterministic automation / orchestration digest + queue sample (bounded; advisory — no execution). */
+  automation_orchestration?: AgentJonesAutomationOrchestrationSnapshot | null
+  /** Polling place / GOTV command — DB-backed site readiness digest (advisory). */
+  gotv_command?: AgentJonesGotvCommandSnapshot | null
+  /** Voter conversion / relational turnout — DB-backed rollups digest (advisory). */
+  voter_conversion_command?: AgentJonesVoterConversionSnapshot | null
+  /** Fundraising / spend / ROI command digest (advisory — no transactions). */
+  finance_command?: AgentJonesFinanceCommandSnapshot | null
+  /** What-if scenarios vs baseline snapshot (advisory — indices, not vote totals). */
+  simulation_command?: AgentJonesSimulationCommandSnapshot | null
+  /** Field narrative / message discipline — framework-bound digest (advisory). */
+  field_narrative_command?: AgentJonesFieldNarrativeSnapshot | null
 }
 
 function trunc(s: unknown, max: number): string | null {
@@ -743,9 +792,18 @@ export function buildAgentJonesContextV2(input: {
   /** Optional event desk intelligence (same source of truth as event command UI). */
   eventIntelligence?: AgentJonesEventIntelligenceLayer | null
   eventOperationsExecutive?: AgentJonesEventOperationsExecutive | null
+  campaignOperatingPicture?: CopAgentSummary | null
   cockpitFocus?: AgentJonesCockpitFocus | null
   cockpitMissionDigest?: AgentJonesCockpitMissionDigest | null
   eventAiOrchestration?: AgentJonesEventAiOrchestration | null
+  volunteerThroughput?: AgentJonesVolunteerThroughputContext | null
+  geographicCommand?: AgentJonesGeographicCommandSnapshot | null
+  automationOrchestration?: AgentJonesAutomationOrchestrationSnapshot | null
+  gotvCommand?: AgentJonesGotvCommandSnapshot | null
+  voterConversionCommand?: AgentJonesVoterConversionSnapshot | null
+  financeCommand?: AgentJonesFinanceCommandSnapshot | null
+  simulationCommand?: AgentJonesSimulationCommandSnapshot | null
+  fieldNarrativeCommand?: AgentJonesFieldNarrativeSnapshot | null
 }): AgentJonesContextV2 {
   const {
     profile,
@@ -767,9 +825,17 @@ export function buildAgentJonesContextV2(input: {
     pathname: pathnameIn = '/',
     eventIntelligence,
     eventOperationsExecutive,
+    campaignOperatingPicture,
     cockpitFocus,
     cockpitMissionDigest,
     eventAiOrchestration,
+    volunteerThroughput,
+    geographicCommand,
+    automationOrchestration,
+    gotvCommand,
+    voterConversionCommand,
+    financeCommand,
+    fieldNarrativeCommand,
   } = input
 
   const surface: AgentJonesSurface = surfaceIn ?? 'volunteer_dashboard'
@@ -966,6 +1032,7 @@ export function buildAgentJonesContextV2(input: {
     },
     ...(relationalPower5 ? { relational_power5: relationalPower5 } : {}),
     ...(volunteerMission ? { volunteer_mission: volunteerMission } : {}),
+    ...(volunteerThroughput ? { volunteer_throughput: volunteerThroughput } : {}),
     ...(dailyActivation ? { daily_activation: dailyActivation } : {}),
     ...(internLayer ? { intern_layer: internLayer } : {}),
     ...(campaignGoals ? { campaign_goals: campaignGoals } : {}),
@@ -1023,9 +1090,17 @@ export function buildAgentJonesContextV2(input: {
     ...(v34Brain?.desk_routing ? { desk_routing: v34Brain.desk_routing } : {}),
     ...(eventIntelligence ? { event_intelligence: eventIntelligence } : {}),
     ...(eventOperationsExecutive ? { event_operations_executive: eventOperationsExecutive } : {}),
+    ...(campaignOperatingPicture ? { campaign_operating_picture: campaignOperatingPicture } : {}),
     ...(cockpitFocus ? { cockpit_focus: cockpitFocus } : {}),
     ...(cockpitMissionDigest ? { cockpit_mission_digest: cockpitMissionDigest } : {}),
     ...(eventAiOrchestration ? { event_ai_orchestration: eventAiOrchestration } : {}),
+    ...(geographicCommand ? { geographic_command: geographicCommand } : {}),
+    ...(automationOrchestration ? { automation_orchestration: automationOrchestration } : {}),
+    ...(gotvCommand ? { gotv_command: gotvCommand } : {}),
+    ...(voterConversionCommand ? { voter_conversion_command: voterConversionCommand } : {}),
+    ...(financeCommand ? { finance_command: financeCommand } : {}),
+    ...(simulationCommand ? { simulation_command: simulationCommand } : {}),
+    ...(fieldNarrativeCommand ? { field_narrative_command: fieldNarrativeCommand } : {}),
   }
 }
 

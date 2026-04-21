@@ -80,8 +80,8 @@ export default function CockpitModuleViewport({ moduleId, profile }: Props) {
       return (
         <PlaceholderModule
           title="Finance / fundraising"
-          body="Financial cockpit module is routed to dashboard KPIs until a dedicated finance board lands."
-          href="/dashboard"
+          body="Open the finance command board for revenue, spend, and allocation snapshots."
+          href="/events/finance-command"
         />
       )
     case 'candidate_schedule':

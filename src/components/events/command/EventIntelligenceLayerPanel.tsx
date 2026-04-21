@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom'
 import type { CampaignCalendarEventRecord } from '../../../lib/campaignCalendarArchitecture'
 import type { CampaignEventTypeKey } from '../../../lib/campaignEventTypeMatrix'
 import {
+  fetchCampaignEventOutcome,
   fetchEventAttendanceAggregates,
   fetchEventFollowups,
+  fetchEventLearningCaptureFromDb,
   fetchRecentEventHistoryForArea,
+  upsertEventLearningCaptureDb,
 } from '../../../lib/campaignEventsFromSupabase'
 import type { EventIntelligenceEnrichment } from '../../../lib/eventIntelligenceJones'
 import { rankSimilarEvents } from '../../../lib/similarEventIntelligenceService'
@@ -24,7 +27,15 @@ import { buildAgentJonesFieldExecutionSnapshot } from '../../../lib/eventDayOfAg
 import { EVENT_DAY_OF_WORKSPACE_SAVED } from '../../../lib/eventDayOfLocalStorage'
 import { collectOperationsGapsForEvent } from '../../../lib/campaignEventCoordinatorOperations'
 import type { StaffingAssignmentLike } from '../../../lib/eventStaffingMatrix'
-import { loadLearningCapture, saveLearningCapture } from '../../../lib/eventLearningCaptureStorage'
+import {
+  isLearningCaptureDraftFilled,
+  learningDraftFromDbPayload,
+  learningDraftToPayload,
+  loadLearningCapture,
+  saveLearningCapture,
+} from '../../../lib/eventLearningCaptureStorage'
+import { buildAgentJonesEventOutcomeLoopSnapshot } from '../../../lib/eventOutcomeMetrics'
+import type { CampaignEventOutcomeRow } from '../../../lib/eventOutcomeDomain'
 import { loadBriefingSnapshot, saveBriefingSnapshot } from '../../../lib/eventBriefingSnapshotStorage'
 import { campaignEventRecordPath } from '../../../lib/campaignEventSystem'
 
@@ -51,6 +62,7 @@ export default function EventIntelligenceLayerPanel({
   }, [onAgentJonesLayer])
 
   const [enrichment, setEnrichment] = useState<EventIntelligenceEnrichment | null>(null)
+  const [outcomeRow, setOutcomeRow] = useState<CampaignEventOutcomeRow | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [briefMode, setBriefMode] = useState<OperatorBriefingMode>('full')
   const [asOfMs, setAsOfMs] = useState(() => Date.now())
@@ -78,11 +90,25 @@ export default function EventIntelligenceLayerPanel({
   useEffect(() => {
     let cancelled = false
     void (async () => {
+      const row = await fetchEventLearningCaptureFromDb(record.event_id)
+      if (cancelled) return
+      const d = row ? learningDraftFromDbPayload(record.event_id, row.payload) : null
+      if (d) setLearning(d)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [record.event_id])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
       try {
-        const [agg, rawFollowups, recentAreaEvents] = await Promise.all([
+        const [agg, rawFollowups, recentAreaEvents, outcome] = await Promise.all([
           fetchEventAttendanceAggregates(record.event_id),
           fetchEventFollowups(record.event_id).catch(() => [] as Record<string, unknown>[]),
           fetchRecentEventHistoryForArea(record.county_id, record.precinct_id, record.event_id, 5),
+          fetchCampaignEventOutcome(record.event_id),
         ])
         if (cancelled) return
         const followups = (rawFollowups as { followup_type?: string; status?: string; due_at?: string | null }[]).map(
@@ -92,6 +118,7 @@ export default function EventIntelligenceLayerPanel({
             dueAt: f.due_at != null ? String(f.due_at) : null,
           }),
         )
+        setOutcomeRow(outcome)
         setEnrichment({
           attendanceCount: agg.totalCount,
           followups,
@@ -104,6 +131,7 @@ export default function EventIntelligenceLayerPanel({
         if (!cancelled) {
           setLoadErr(e instanceof Error ? e.message : 'Context load failed')
           setEnrichment(null)
+          setOutcomeRow(null)
         }
       }
     })()
@@ -150,6 +178,19 @@ export default function EventIntelligenceLayerPanel({
     return buildAgentJonesFieldExecutionSnapshot(record, staffingAssignments, asOfMs)
   }, [record, staffingAssignments, asOfMs, fieldWorkspaceTick])
 
+  const outcomeLoop = useMemo(() => {
+    if (!enrichment) return null
+    return buildAgentJonesEventOutcomeLoopSnapshot({
+      record,
+      outcomeRow,
+      attendanceCheckinCount: enrichment.attendanceCount,
+      volunteerInterestFromCheckin: enrichment.volunteerInterestFlags,
+      followups: enrichment.followups.map((f) => ({ status: f.status })),
+      learningCaptureFilled: isLearningCaptureDraftFilled(learning),
+      nowMs: asOfMs,
+    })
+  }, [enrichment, record, outcomeRow, learning, asOfMs])
+
   useEffect(() => {
     const layer = buildAgentJonesEventIntelligenceLayer({
       pack: briefingPack,
@@ -157,9 +198,10 @@ export default function EventIntelligenceLayerPanel({
       afterAction,
       recordTitle: record.title,
       fieldExecution,
+      outcomeLoop,
     })
     layerCbRef.current(layer)
-  }, [briefingPack, delta, afterAction, record.title, fieldExecution])
+  }, [briefingPack, delta, afterAction, record.title, fieldExecution, outcomeLoop])
 
   useEffect(
     () => () => {
@@ -170,6 +212,9 @@ export default function EventIntelligenceLayerPanel({
 
   const handleSaveLearning = () => {
     saveLearningCapture(learning)
+    void upsertEventLearningCaptureDb(record.event_id, learningDraftToPayload(learning)).then(({ error }) => {
+      if (error) setLoadErr(`Learning save: ${error.message}`)
+    })
   }
 
   const handleMarkBriefingSeen = () => {
@@ -186,8 +231,9 @@ export default function EventIntelligenceLayerPanel({
         Event intelligence layer
       </h2>
       <p className="event-coordinator-desk__meta" style={{ marginBottom: 12 }}>
-        Similar events, briefings, after-action scoring, and learning capture share one operational snapshot. Outputs are
-        advisory — they never change Supabase rows automatically.
+        Similar events, briefings, after-action scoring, and learning capture share one operational snapshot. Scoring is
+        advisory. Learning capture saves to Supabase only when you click save (editors); nothing here auto-closes tasks or
+        mutates outcomes without your action.
       </p>
       {loadErr ? (
         <p className="event-coordinator-desk__placeholder" role="alert">
@@ -291,8 +337,11 @@ export default function EventIntelligenceLayerPanel({
         </div>
 
         <div className="event-intelligence-layer__card">
-          <h3 className="event-panel__h3">Learning capture (local draft)</h3>
-          <p className="event-coordinator-desk__meta">Stored in this browser until we add a Supabase table — export habits preserved.</p>
+          <h3 className="event-panel__h3">Learning capture</h3>
+          <p className="event-coordinator-desk__meta">
+            Saves to this browser and <code>campaign_event_learning_capture</code> (editors). Advisory only — does not
+            auto-close tasks.
+          </p>
           {(
             [
               ['what_worked', 'What worked'],

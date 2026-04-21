@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { scrollToDashboardId } from '../../lib/agentJonesGuidance'
 import { isAgentJonesNavigatePath } from '../../lib/agentJonesContext'
 import type { AgentJonesProactiveAlert } from '../../lib/agentJonesContextV2'
@@ -7,6 +8,7 @@ export default function AgentJonesProactiveAlerts({
 }: {
   alerts: AgentJonesProactiveAlert[]
 }) {
+  const navigate = useNavigate()
   if (!alerts.length) return null
 
   return (
@@ -27,7 +29,7 @@ export default function AgentJonesProactiveAlerts({
                 onClick={() => {
                   if (a.target_id) scrollToDashboardId(a.target_id)
                   else if (a.route_hint && isAgentJonesNavigatePath(a.route_hint)) {
-                    window.location.assign(a.route_hint)
+                    void navigate(a.route_hint)
                   }
                 }}
               >

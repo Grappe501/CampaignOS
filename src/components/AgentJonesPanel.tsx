@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { CampaignProfile } from '../hooks/useProfile'
 import type { DashboardProgressSlice } from '../lib/dashboardState'
 import {
@@ -43,9 +43,13 @@ import {
   type AgentJonesSurface,
   type AgentJonesCoordinatorOpsContext,
   type AgentJonesLeadershipSnapshotContext,
+  type AgentJonesVolunteerThroughputContext,
 } from '../lib/agentJonesContextV2'
 import type { AgentJonesEventIntelligenceLayer } from '../lib/agentJonesEventIntelligenceBridge'
 import type { AgentJonesEventOperationsExecutive } from '../lib/leadershipBriefingAgentBridge'
+import type { CopAgentSummary } from '../lib/cop/copAgentBridge'
+import { useCampaignEventsContext } from '../context/CampaignEventsContext'
+import { useCampaignStaffingBulk } from '../hooks/useCampaignStaffingBulk'
 import { useCockpitTelemetry } from '../context/CockpitTelemetryContext'
 import { useEventAiOrchestration } from '../context/EventAiOrchestrationContext'
 import {
@@ -69,6 +73,24 @@ import {
   saveAgentJonesPersisted,
   type AgentJonesTranscriptEntry,
 } from '../lib/agentJonesSessionStorage'
+import {
+  buildAgentJonesGeographicCommandSnapshot,
+  type AgentJonesGeographicCommandSnapshot,
+} from '../lib/geographicCommandMetrics'
+import { buildVolunteerLoadMap } from '../lib/volunteerLoadBalancerService'
+import { evaluateAutomationTriggers } from '../lib/automationRulesEngine'
+import { buildAgentJonesAutomationOrchestrationSnapshot } from '../lib/agentJonesAutomationOrchestration'
+import { fetchOpenAutomationActions } from '../lib/campaignAutomationDb'
+import type { AutomationActionRow } from '../lib/automationDomain'
+import { useGotvCommandLayer } from '../hooks/useGotvCommandLayer'
+import { useVoterConversionLeadership } from '../hooks/useVoterConversionLeadership'
+import { useFinanceCommandLayer } from '../hooks/useFinanceCommandLayer'
+import { useSimulationCommandLayer } from '../hooks/useSimulationCommandLayer'
+import { buildAgentJonesGotvCommandSnapshot } from '../lib/agentJonesGotvCommand'
+import { buildAgentJonesVoterConversionSnapshot } from '../lib/agentJonesVoterConversion'
+import { buildAgentJonesFinanceCommandSnapshot } from '../lib/agentJonesFinanceCommand'
+import { buildAgentJonesSimulationCommandSnapshot } from '../lib/agentJonesSimulationCommand'
+import { buildAgentJonesFieldNarrativeSnapshot } from '../lib/agentJonesMessageDiscipline'
 import {
   agentJonesPolicyPayload,
   getAgentJonesCapabilities,
@@ -261,6 +283,8 @@ export type AgentJonesPanelProps = {
   uiMode?: 'standard' | 'floating'
   eventIntelligenceLayer?: AgentJonesEventIntelligenceLayer | null
   eventOperationsExecutive?: AgentJonesEventOperationsExecutive | null
+  campaignOperatingPicture?: CopAgentSummary | null
+  volunteerThroughput?: AgentJonesVolunteerThroughputContext | null
 }
 
 export default function AgentJonesPanel({
@@ -284,8 +308,30 @@ export default function AgentJonesPanel({
   uiMode = 'standard',
   eventIntelligenceLayer = null,
   eventOperationsExecutive = null,
+  campaignOperatingPicture = null,
+  volunteerThroughput = null,
 }: AgentJonesPanelProps) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { events: campaignEventsForGeo } = useCampaignEventsContext()
+  const eventIdsForAutomation = useMemo(
+    () => campaignEventsForGeo.map((e) => e.event_id),
+    [campaignEventsForGeo],
+  )
+  const { assignmentMap: agentJonesAssignmentMap } = useCampaignStaffingBulk(eventIdsForAutomation)
+  const automationEventKey = useMemo(
+    () => JSON.stringify([...new Set(eventIdsForAutomation)].filter(Boolean).sort()),
+    [eventIdsForAutomation],
+  )
+  const automationStaffingKey = useMemo(() => {
+    let rows = 0
+    for (const v of agentJonesAssignmentMap.values()) rows += v.length
+    return `${agentJonesAssignmentMap.size}:${rows}`
+  }, [agentJonesAssignmentMap])
+  const gotv = useGotvCommandLayer('default')
+  const voterConv = useVoterConversionLeadership(profile?.primary_role)
+  const financeCmd = useFinanceCommandLayer(profile?.primary_role)
+  const simulationCmd = useSimulationCommandLayer(profile?.primary_role)
   const { focus: cockpitTelemetryFocus, missionDigest: cockpitMissionDigest } =
     useCockpitTelemetry()
   const { effectiveOrchestration: eventAiOrchestrationWire } = useEventAiOrchestration()
@@ -760,11 +806,11 @@ export default function AgentJonesPanel({
           scrollToDashboardId(a.targetId)
         }
         if (a.type === 'navigate' && a.targetId) {
-          window.location.assign(a.targetId)
+          void navigate(a.targetId)
         }
       }
     },
-    [],
+    [navigate],
   )
 
   const submitCustomUserMessage = useCallback(
@@ -915,9 +961,76 @@ export default function AgentJonesPanel({
 
   const policyPayload = useMemo(() => agentJonesPolicyPayload(caps), [caps])
 
+  const [geographicCommand, setGeographicCommand] = useState<AgentJonesGeographicCommandSnapshot | null>(null)
+
+  useEffect(() => {
+    setGeographicCommand(buildAgentJonesGeographicCommandSnapshot(campaignEventsForGeo, Date.now()))
+  }, [campaignEventsForGeo, operating.signal_epoch])
+
   useEffect(() => {
     let cancelled = false
     async function run() {
+      const nowMs = Date.now()
+      const loadMap = buildVolunteerLoadMap(
+        campaignEventsForGeo,
+        agentJonesAssignmentMap,
+        nowMs,
+        7,
+      )
+      const firings = evaluateAutomationTriggers({
+        nowMs,
+        events: campaignEventsForGeo,
+        assignmentMap: agentJonesAssignmentMap,
+        loadMap,
+        gotvRollups: gotv.rollups,
+      })
+      let openQueueRows: AutomationActionRow[] = []
+      if (!isDevAuthBypassEnabled()) {
+        const q = await fetchOpenAutomationActions('default')
+        if (q.ok) openQueueRows = q.rows
+      }
+      const automationOrchestration = buildAgentJonesAutomationOrchestrationSnapshot({
+        generatedAtMs: nowMs,
+        firings,
+        openQueueRows,
+      })
+      const gotvCommand = buildAgentJonesGotvCommandSnapshot({
+        generatedAtMs: nowMs,
+        phase: gotv.phaseResolution.phase,
+        phasePriorities: gotv.phaseResolution.phase_priorities,
+        rollups: gotv.rollups,
+        analytics: gotv.analytics,
+      })
+      const voterConversionCommand =
+        voterConv.enabled && !voterConv.loading
+          ? buildAgentJonesVoterConversionSnapshot({
+              generatedAtMs: nowMs,
+              phase: gotv.phaseResolution.phase,
+              phasePriorities: gotv.phaseResolution.phase_priorities,
+              rollups: voterConv.rollups,
+            })
+          : null
+      const financeCommand =
+        financeCmd.enabled && !financeCmd.loading && !financeCmd.voterConvLoading
+          ? buildAgentJonesFinanceCommandSnapshot({
+              generatedAtMs: nowMs,
+              summary: financeCmd.summary,
+              roi: financeCmd.roi,
+              recommendations: financeCmd.recommendations,
+            })
+          : null
+      const simulationCommand =
+        simulationCmd.enabled && !simulationCmd.dataLoading && !simulationCmd.error
+          ? buildAgentJonesSimulationCommandSnapshot({
+              generatedAtMs: nowMs,
+              baseline: simulationCmd.baseline,
+              scenarios: simulationCmd.scenariosForAgentJones,
+            })
+          : null
+      const fieldNarrativeCommand = buildAgentJonesFieldNarrativeSnapshot({
+        generatedAtMs: nowMs,
+        usageEvents: [],
+      })
       const base = buildAgentJonesContextV2({
         profile,
         matchedVoter: matchedVoter ?? null,
@@ -937,9 +1050,18 @@ export default function AgentJonesPanel({
         operating,
         eventIntelligence: eventIntelligenceLayer ?? null,
         eventOperationsExecutive: eventOperationsExecutive ?? null,
+        campaignOperatingPicture: campaignOperatingPicture ?? null,
         cockpitFocus: cockpitTelemetryFocus ?? undefined,
         cockpitMissionDigest: cockpitMissionDigest ?? undefined,
         eventAiOrchestration: eventAiOrchestrationWire ?? undefined,
+        volunteerThroughput: volunteerThroughput ?? null,
+        geographicCommand: geographicCommand ?? null,
+        automationOrchestration,
+        gotvCommand,
+        voterConversionCommand,
+        financeCommand,
+        simulationCommand,
+        fieldNarrativeCommand,
       })
       try {
         const campaign = await getRelevantCampaignContext({
@@ -992,9 +1114,34 @@ export default function AgentJonesPanel({
     location.pathname,
     eventIntelligenceLayer,
     eventOperationsExecutive,
+    campaignOperatingPicture,
     cockpitTelemetryFocus,
     cockpitMissionDigest,
     eventAiOrchestrationWire,
+    volunteerThroughput,
+    geographicCommand,
+    campaignEventsForGeo,
+    agentJonesAssignmentMap,
+    automationEventKey,
+    automationStaffingKey,
+    gotv.rollups,
+    gotv.analytics,
+    gotv.phaseResolution.phase,
+    gotv.phaseResolution.phase_priorities,
+    voterConv.enabled,
+    voterConv.loading,
+    voterConv.rollups,
+    financeCmd.enabled,
+    financeCmd.loading,
+    financeCmd.voterConvLoading,
+    financeCmd.summary,
+    financeCmd.roi,
+    financeCmd.recommendations,
+    simulationCmd.enabled,
+    simulationCmd.dataLoading,
+    simulationCmd.error,
+    simulationCmd.baseline,
+    simulationCmd.scenariosForAgentJones,
   ])
 
   const handleSelect = async (prompt: AgentJonesPrompt) => {
@@ -1326,7 +1473,7 @@ export default function AgentJonesPanel({
             className="btn-touch btn-primary agent-jones-action-btn"
             onClick={() => {
               if (a.type === 'scroll' && a.targetId) scrollToDashboardId(a.targetId)
-              if (a.type === 'navigate' && a.targetId) window.location.assign(a.targetId)
+              if (a.type === 'navigate' && a.targetId) void navigate(a.targetId)
             }}
           >
             {a.type === 'scroll'

@@ -8,6 +8,7 @@ import { useVolunteerTasks } from '../hooks/useVolunteerTasks'
 import { useDailyMission } from '../hooks/useDailyMission'
 import { useInternLayer } from '../hooks/useInternLayer'
 import { useCampaignKpis } from '../hooks/useCampaignKpis'
+import { useCampaignOperatingPicture } from '../hooks/useCampaignOperatingPicture'
 import { useCoordinatorDesk } from '../hooks/useCoordinatorDesk'
 import {
   buildAgentJonesRelationalPower5Context,
@@ -28,6 +29,7 @@ import {
 import FloatingAgentJones from './FloatingAgentJones'
 import { useEventIntelligenceRegistry } from '../context/EventIntelligenceLayerContext'
 import { useLeadershipExecutiveBriefing } from '../hooks/useLeadershipExecutiveBriefing'
+import { useVolunteerCommandDesk } from '../hooks/useVolunteerCommandDesk'
 
 /**
  * Single campaign assistant entry point for all authenticated routes (mounted from `App`).
@@ -62,9 +64,13 @@ export default function GlobalFloatingAgentJones() {
   const dailyMission = useDailyMission(profileId)
   const internDesk = useInternLayer(profileId, primaryRole)
   const campaignKpis = useCampaignKpis(profileId, primaryRole)
+  const campaignOperatingPicture = useCampaignOperatingPicture({
+    kpiRows: campaignKpis.kpis,
+  })
   const coordinatorDesk = useCoordinatorDesk(profile?.power5_home_team_id)
   const { layer: eventIntelligenceLayer } = useEventIntelligenceRegistry()
   const { agentPayload: leadershipExecutivePayload } = useLeadershipExecutiveBriefing()
+  const volunteerCommandDesk = useVolunteerCommandDesk()
 
   const agentJonesRelationalPower5 = useMemo(
     () =>
@@ -184,6 +190,8 @@ export default function GlobalFloatingAgentJones() {
       campaignGoals={campaignKpis.agentCampaignGoals}
       eventIntelligenceLayer={eventIntelligenceLayer}
       eventOperationsExecutive={leadershipExecutivePayload}
+      campaignOperatingPicture={campaignOperatingPicture.copAgentSummary}
+      volunteerThroughput={volunteerCommandDesk.agentJonesVolunteerThroughput}
     />
   )
 }

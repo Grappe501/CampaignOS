@@ -47,6 +47,20 @@ export function mapCampaignEventRowToCalendarRecord(row: Record<string, unknown>
         ? Number(row.voter_contact_outcome)
         : null,
     readiness_score: readiness != null && !Number.isNaN(readiness) ? readiness : null,
+    expected_audience_size: (() => {
+      const n =
+        row.expected_audience_size != null && row.expected_audience_size !== ''
+          ? Number(row.expected_audience_size)
+          : NaN
+      return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null
+    })(),
+    actual_audience_size: (() => {
+      const n =
+        row.actual_audience_size != null && row.actual_audience_size !== ''
+          ? Number(row.actual_audience_size)
+          : NaN
+      return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null
+    })(),
     title: String(row.title ?? 'Untitled event'),
     event_type: String(row.event_type ?? 'coffee_meeting'),
     event_subtype: row.event_subtype != null ? String(row.event_subtype) : null,

@@ -12,6 +12,9 @@ import { useVolunteerTasks } from '../hooks/useVolunteerTasks'
 import { useDailyMission } from '../hooks/useDailyMission'
 import { useInternLayer } from '../hooks/useInternLayer'
 import { useCampaignKpis } from '../hooks/useCampaignKpis'
+import { useCampaignOperatingPicture } from '../hooks/useCampaignOperatingPicture'
+import CampaignOperatingPictureHealthStrip from '../components/cop/CampaignOperatingPictureHealthStrip'
+import { isCampaignLeadershipRole } from '../lib/kpiEngine'
 import {
   devBypassDisplayEmail,
   isDevAuthBypassEnabled,
@@ -134,6 +137,9 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
     profileId,
     profile?.primary_role != null ? String(profile.primary_role) : null,
   )
+  const campaignOperatingPicture = useCampaignOperatingPicture({
+    kpiRows: campaignKpis.kpis,
+  })
   const calendarPersona = mapProfileRoleToCalendarWidgetPersona(
     profile?.primary_role != null ? String(profile.primary_role) : null,
   )
@@ -427,6 +433,14 @@ export default function Dashboard({ onDevSessionClear }: DashboardProps) {
                 window.dispatchEvent(new CustomEvent('campaignos:open-agent-jones'))
               }
             />
+            {isCampaignLeadershipRole(
+              profile?.primary_role != null ? String(profile.primary_role) : null,
+            ) ? (
+              <CampaignOperatingPictureHealthStrip
+                cop={campaignOperatingPicture.cop}
+                ready={!campaignOperatingPicture.profileLoading}
+              />
+            ) : null}
         <DashboardGrid>
           <DashboardPanelFrame
             storageKey="dash-identity"

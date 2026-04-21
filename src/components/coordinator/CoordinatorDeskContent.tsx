@@ -121,6 +121,10 @@ export default function CoordinatorDeskContent({
           <Link to="/volunteers/command">Volunteer command center</Link>
           {' — '}roster, assignments, shifts, and reliability (Supabase-backed).
         </p>
+        <p className="subtitle coordinator-desk-crosslink" style={{ margin: '6px 0 0' }}>
+          <Link to="/field-narrative">Field narrative &amp; message discipline</Link>
+          {' — '}talking points, scripts, objection handling, bounded AI drafts.
+        </p>
       </header>
 
       <div className="coordinator-calendar-widgets">

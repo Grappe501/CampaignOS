@@ -33,6 +33,7 @@ const SCROLL_LABELS: Record<string, string> = {
   'workspace-cards': 'Workspace cards',
   'dash-profile-photo': 'Profile photo',
   'event-coordinator-desk': 'Event desk',
+  'cm-cockpit-root': 'Campaign Manager cockpit',
 }
 
 function scrollLabel(id: string): string {

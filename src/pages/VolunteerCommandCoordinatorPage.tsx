@@ -4,14 +4,14 @@ import VolunteerCommandNav from '../components/volunteer-command/VolunteerComman
 import CoordinatorMarketplacePanel from '../components/volunteer-command/CoordinatorMarketplacePanel'
 import CoordinatorRecommendationInsightsPanel from '../components/volunteer-command/CoordinatorRecommendationInsightsPanel'
 import { useProfile } from '../hooks/useProfile'
-import { useVolunteerCommandCoordinator } from '../hooks/useVolunteerCommandCoordinator'
+import { useVolunteerCommandDesk } from '../hooks/useVolunteerCommandDesk'
 import { supabase } from '../lib/supabaseClient'
 
 type Props = { onDevSessionClear?: () => void }
 
 export default function VolunteerCommandCoordinatorPage({ onDevSessionClear }: Props) {
   const { profile, loading } = useProfile()
-  const desk = useVolunteerCommandCoordinator('default')
+  const desk = useVolunteerCommandDesk()
 
   const handleSignOut = () => {
     if (onDevSessionClear) {

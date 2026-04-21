@@ -5,6 +5,11 @@
 import { supabase } from './supabaseClient'
 import type { VolunteerEngagementEventType } from './volunteerRecommendationSchemas'
 
+/** Metadata fragment for tracing volunteer movement back to a campaign event (honest, non-attributive). */
+export function volunteerCampaignEventMetadata(eventId: string): Record<string, unknown> {
+  return { origin: 'campaign_event', campaign_event_id: eventId }
+}
+
 export async function logVolunteerEngagementEvent(input: {
   volunteerId: string
   opportunityId?: string | null

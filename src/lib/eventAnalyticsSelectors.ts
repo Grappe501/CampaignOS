@@ -11,6 +11,13 @@ import { evaluateStaffingMatrix } from './eventStaffingMatrix'
 import { getDevStaffingAssignmentsForEvent } from './campaignEventStaffingDevFixtures'
 import { isFollowupOverdue, normalizeFollowupPhase } from './eventPostEventWorkflow'
 
+export {
+  buildEventYieldByCounty,
+  buildEventYieldByType,
+  contactOutcomeHookSummary,
+  type EventOutcomeRollupRow,
+} from './eventOutcomeMetrics'
+
 export type EventAnalyticsSnapshot = {
   totalEvents: number
   byCounty: Record<string, number>
@@ -35,7 +42,7 @@ function readinessFromWorkflow(run: EventWorkflowRun): number {
 }
 
 /** Prefer persisted `readiness_score` (operational truth); else template workflow progress. */
-function effectiveReadinessPercent(row: CampaignCalendarEventRecord): number | null {
+export function effectiveReadinessPercent(row: CampaignCalendarEventRecord): number | null {
   const persisted = row.readiness_score
   if (persisted != null && !Number.isNaN(Number(persisted))) {
     return Math.round(Number(persisted))

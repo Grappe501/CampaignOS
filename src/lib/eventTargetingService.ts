@@ -103,3 +103,6 @@ export function estimateAttendanceBand(
     basis: 'Heuristic from expected audience hint and event focus until historical data is wired.',
   }
 }
+
+/** Honest contact-outcome framing for event-linked cohorts (see eventOutcomeMetrics). */
+export { contactOutcomeHookSummary } from './eventOutcomeMetrics'

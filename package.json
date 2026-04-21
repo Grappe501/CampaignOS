@@ -9,6 +9,7 @@
     "check:env": "node scripts/check-env.mjs",
     "bootstrap": "npm install && npm run check:env",
     "verify": "npm run lint && npm run build",
+    "test": "vitest run",
     "audit:build": "node scripts/audit-build.mjs",
     "handoff:chatgpt": "node scripts/generate-chatgpt-handoff.mjs",
     "db:list": "node scripts/list-migrations.mjs",

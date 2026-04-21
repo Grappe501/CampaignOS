@@ -6,6 +6,7 @@ import { resetAgentJonesIfProgressionChanged } from '../lib/agentJonesSessionSto
 import type {
   AgentJonesRelationalPower5Context,
   AgentJonesVolunteerMissionContext,
+  AgentJonesVolunteerThroughputContext,
   AgentJonesDailyActivationContext,
   AgentJonesInternLayerContext,
   AgentJonesCampaignGoalsContext,
@@ -15,6 +16,7 @@ import type {
 } from '../lib/agentJonesContextV2'
 import type { AgentJonesEventIntelligenceLayer } from '../lib/agentJonesEventIntelligenceBridge'
 import type { AgentJonesEventOperationsExecutive } from '../lib/leadershipBriefingAgentBridge'
+import type { CopAgentSummary } from '../lib/cop/copAgentBridge'
 import AgentJonesPanel, { AGENT_JONES_CLEAR_EVENT } from './AgentJonesPanel'
 import AgentJonesLauncher from './agentJones/AgentJonesLauncher'
 import AgentJonesFloatingPanel from './agentJones/AgentJonesFloatingPanel'
@@ -44,6 +46,8 @@ export type FloatingAgentJonesProps = {
   eventIntelligenceLayer?: AgentJonesEventIntelligenceLayer | null
   /** Leadership briefing page — executive event-ops digest for Agent Jones API. */
   eventOperationsExecutive?: AgentJonesEventOperationsExecutive | null
+  campaignOperatingPicture?: CopAgentSummary | null
+  volunteerThroughput?: AgentJonesVolunteerThroughputContext | null
 }
 
 export default function FloatingAgentJones({
@@ -63,6 +67,8 @@ export default function FloatingAgentJones({
   campaignGoals,
   eventIntelligenceLayer,
   eventOperationsExecutive,
+  campaignOperatingPicture,
+  volunteerThroughput,
   surface,
   coordinatorOps,
   leadershipSnapshot,
@@ -170,6 +176,8 @@ export default function FloatingAgentJones({
               campaignGoals={campaignGoals}
               eventIntelligenceLayer={eventIntelligenceLayer ?? undefined}
               eventOperationsExecutive={eventOperationsExecutive ?? null}
+              campaignOperatingPicture={campaignOperatingPicture ?? null}
+              volunteerThroughput={volunteerThroughput ?? null}
             />
           </AgentJonesFloatingPanel>
         </>

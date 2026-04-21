@@ -14,6 +14,8 @@ export const CAMPAIGN_EVENT_LIST_SELECT = [
   'volunteer_outcome',
   'voter_contact_outcome',
   'readiness_score',
+  'expected_audience_size',
+  'actual_audience_size',
   'staffing_state',
   'followup_state',
   'visibility_scope',

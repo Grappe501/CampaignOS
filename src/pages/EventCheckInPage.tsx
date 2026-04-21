@@ -4,6 +4,7 @@ import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
 import { useProfile } from '../hooks/useProfile'
 import { campaignEventRecordPath } from '../lib/campaignEventSystem'
+import { eventOutcomeRouteHints } from '../lib/eventOutcomeDomain'
 import { insertEventAttendance } from '../lib/campaignEventsFromSupabase'
 import { supabase } from '../lib/supabaseClient'
 
@@ -78,6 +79,13 @@ export default function EventCheckInPage({ onDevSessionClear }: Props) {
             </p>
             <Link to={campaignEventRecordPath(eventId)} className="btn-touch btn-touch--ghost">
               Event command center
+            </Link>
+            <Link
+              to={eventOutcomeRouteHints(eventId).recordOutcomes}
+              className="btn-touch btn-touch--ghost"
+              style={{ marginLeft: 8 }}
+            >
+              Record outcomes
             </Link>
           </header>
 

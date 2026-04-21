@@ -20,6 +20,8 @@ import Power5TreeView from './Power5TreeView'
 import Power5ImpactPanel from './Power5ImpactPanel'
 import Power5ContactPlanCard from './Power5ContactPlanCard'
 import Power5PropagationCard from './Power5PropagationCard'
+import VoterConversionQuickCapture from '../voter-conversion/VoterConversionQuickCapture'
+import { pickSuggestedPower5Node } from '../../lib/power5DashboardHints'
 import type { Power5PropagationApi } from '../../hooks/usePower5Propagation'
 
 export type Power5WorkspaceApi = ReturnType<typeof usePower5Workspace>
@@ -319,6 +321,11 @@ export default function Power5Workspace({
     [progressStates],
   )
 
+  const conversionNode = useMemo(() => {
+    const linked = nodes.find((n) => n.linked_voter_id && String(n.linked_voter_id).trim() !== '')
+    return linked ?? pickSuggestedPower5Node(nodes)
+  }, [nodes])
+
   return (
     <section
       id="power5-workspace"
@@ -339,6 +346,8 @@ export default function Power5Workspace({
       <Power5TreeView nodes={nodes} />
 
       <Power5ContactPlanCard spotlightNode={nodes[0] ?? null} />
+
+      <VoterConversionQuickCapture profileId={profileId} node={conversionNode ?? null} />
 
       {error ? (
         <p className="subtitle" role="alert">

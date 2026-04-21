@@ -49,8 +49,12 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
   const isEventsDesk = location.pathname.startsWith('/events')
   const isWarRoom = location.pathname === '/events/war-room'
   const isLeadershipBriefing = location.pathname === '/events/leadership'
+  const isFinanceCommand = location.pathname === '/events/finance-command'
+  const isSimulationCommand = location.pathname === '/events/simulation-command'
   const isCampaignManagerCockpit =
     location.pathname === '/cockpit/campaign-manager'
+
+  const useLegacyWorkspaceNav = Boolean(onSignOut && profileLoading)
 
   const showCockpitNav =
     Boolean(onSignOut) &&
@@ -62,7 +66,6 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
     !useLegacyWorkspaceNav &&
     canAccessLeadershipBriefing(profile?.primary_role)
 
-  const useLegacyWorkspaceNav = Boolean(onSignOut && profileLoading)
   const primaryPath = useLegacyWorkspaceNav
     ? '/dashboard'
     : getRoleHomePath(profile?.primary_role)
@@ -94,7 +97,7 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
     <header className="app-topbar">
       <ElectionCountdownBar />
       <div className="app-topbar-main">
-      <Link to="/" className="app-brand">
+      <Link to={onSignOut ? primaryPath : '/'} className="app-brand">
         <span className="app-brand-lockup" aria-label="Jones-OS">
           <img
             className="app-brand-logo"
@@ -178,6 +181,18 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                     Executive briefing
                   </Link>
                 ) : null}
+                <Link
+                  to="/events/finance-command"
+                  aria-current={isFinanceCommand ? 'page' : undefined}
+                >
+                  Finance command
+                </Link>
+                <Link
+                  to="/events/simulation-command"
+                  aria-current={isSimulationCommand ? 'page' : undefined}
+                >
+                  Simulation
+                </Link>
                 {showCockpitNav ? (
                   <Link
                     to="/cockpit/campaign-manager"
@@ -331,6 +346,22 @@ export default function AppHeader({ onSignOut, showInternDesk }: AppHeaderProps)
                         Executive briefing
                       </Link>
                     ) : null}
+                    <Link
+                      to="/events/finance-command"
+                      className="drawer-nav-link"
+                      aria-current={isFinanceCommand ? 'page' : undefined}
+                      onClick={closeDrawer}
+                    >
+                      Finance command
+                    </Link>
+                    <Link
+                      to="/events/simulation-command"
+                      className="drawer-nav-link"
+                      aria-current={isSimulationCommand ? 'page' : undefined}
+                      onClick={closeDrawer}
+                    >
+                      Simulation
+                    </Link>
                     {showCockpitNav ? (
                       <Link
                         to="/cockpit/campaign-manager"
